@@ -13,9 +13,9 @@ import multiprocessing
 
 #will at some point be changes into argparse or sth similar
 reference_genome_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38.fa" #reads will be created based on this reference
-vector_sequence_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/pSLCAR-CD19-28z.fasta"#vector
+vector_sequence_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/pSLCAR-CD19-28z.fasta"#vector #currently 8866 - 42000 (not observed in data): 5kb long should be enough!
 sequenced_data_path = "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/FullRunAfterModulaization_BUFFERMODE100_CD19_cd247_Vector_integration_site/FASTA/Full_MK025_GFP+.fa"
-output_path = "./out/SummaryTable.csv"
+output_path = "./out/MK025_10xSummaryTable.csv"
 coverage=5
 insertion_numbers=5
 mean_read_length=5000 #for artificial reads
@@ -232,15 +232,19 @@ print(full)
 print(partial)
 '''
 t0 = time.time()
-coverages = [1, 5, 10, 15, 20]
-mean_read_lengths = [1000, 5000, 6000,7000,8000,9000,10000,15000]
+coverages = [1, 5, 10, 15, 20] * 10 #ten replicates?
+#mean_read_lengths = [1000, 2000, 3000, 4000, 5000, 6000,7000,8000,9000,10000,15000, 20000, 25000, 30000]
+mean_read_lengths = [5200]
+#coverages=[1,2]
+#mean_read_lengths=[5000, 6000]
 combinations = itertools.product(mean_read_lengths, coverages)
 #coverages=[1,2]
 #mean_read_lengths=[5000, 6000]
 
 #run once
 #1 Creates the vector in the right format
-insertion_fasta = collapse_fasta(vector_sequence_path)
+#insertion_fasta = collapse_fasta(vector_sequence_path)
+insertion_fasta = 'X' * 5000 #artificial insertion
 #2 Creates a single-string reference genome, while storing the chromosome borders
 fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
 #3 Randomly inserts insertio sequence into the single-string reference x times
@@ -256,7 +260,8 @@ def process_combination(mean_read_length, coverage, insertion_numbers, mod_fasta
     Creates a read length distribution based mean read length and draws artificial reads from it based on coverage settings. Then it compares the coordinates of the previously created
     insertions in the reference fasta and checks whether they are partially or fully contained within the artificial reads.
     '''
-    custom_read_length_distribution = generate_read_length_distribution(10000, mean_read_length=mean_read_length, distribution='lognormal')
+    custom_read_length_distribution = get_read_length_distribution_from_real_data(sequenced_data_path) #for experimental data
+    #custom_read_length_distribution = generate_read_length_distribution(10000, mean_read_length=mean_read_length, distribution='lognormal')
     custom_cov_coordinates = generate_reads_based_on_coverage(mod_fasta, custom_read_length_distribution, coverage=coverage)
     detected, full, partial = count_insertions(insertion_dir, custom_cov_coordinates)
     return [mean_read_length, coverage, insertion_numbers, full, partial]
@@ -266,7 +271,7 @@ def process_combination(mean_read_length, coverage, insertion_numbers, mod_fasta
     gc.collect()
 
 # Create a multiprocessing pool
-pool = multiprocessing.Pool(processes=10)
+pool = multiprocessing.Pool(processes=20)
 
 # Parallel execution of process_combination function for each combination
 results = []
