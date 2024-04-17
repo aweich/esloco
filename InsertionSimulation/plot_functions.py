@@ -6,16 +6,12 @@ import pandas as pd
 import os
 
 out_dir="./out/"
-finaloutput="./out/10xSummaryTable.csv"
-prefix='Added_MK025_10x'
+finaloutput="./out/Test_100xIntrons_SummaryTable.csv"
+prefix='Added_MK025_Test100XIntrons'
 
 def plot_matches(data, out_dir):
     """
     Plot partial and full matches over the mean read lengths with group ID being the coverage and save the plot as a JPG file.
-
-    Parameters:
-        data (pandas.DataFrame): DataFrame containing the data with columns 'mean_read_length', 'coverage', 'insertion_number', 'full_matches', and 'partial_matches'.
-        out_dir (str): Output directory where the JPG file will be saved.
     """
     # Create a seaborn catplot for full matches
     plt.figure()
