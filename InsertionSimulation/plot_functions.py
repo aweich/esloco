@@ -7,8 +7,8 @@ import os
 import numpy as np
 
 out_dir="./out/"
-finaloutput="./out/Barcode5_SummaryTable.csv"
-prefix='Barcoded_Added_MK025_Test100XIntrons'
+inputdata="./out/Homogenous_NonWeigthed_20_Iterations_SummaryTable.csv"
+prefix='Homogenous_NonWeigthed_20_Iterations' #sample name for output plot
 
 def plot_matches(data, out_dir):
 	"""
@@ -109,7 +109,6 @@ def plot_barcode_barplot_panel(df, match_type, out_dir, prefix):
 	for i, (coverage, group) in enumerate(grouped_df):
 		# Calculate the total matches (full or partial) for each coverage, mean read length, and Barcode
 		pivot_df = group.pivot_table(index="mean_read_length", columns="Barcode", values=match_type, aggfunc="mean", fill_value=0)
-		print(pivot_df)
 
 		# Plot stacked bar chart
 		ax = axes[i // num_cols, i % num_cols]
@@ -137,10 +136,10 @@ def plot_barcode_barplot_panel(df, match_type, out_dir, prefix):
 
 def plot_barcode_barplot(df, match_type, out_dir, prefix):
 	# Calculate the total full matches for each coverage and mean read length
-	df["Barcode"] = df["Insertion"].str.split("_insertion").str[0]
+	#df["Barcode"] = df["Insertion"].str.split("_insertion").str[0]
 
 	# Calculate the total matches (full or partial) for each coverage, mean read length, and Barcode
-	pivot_df = df.pivot_table(index=["mean_read_length", "coverage"], columns="Barcode", values=match_type, aggfunc="mean", fill_value=0)
+	pivot_df = df.pivot_table(index=["mean_read_length", "coverage"], columns="Barcode", values=match_type, aggfunc="sum", fill_value=0)
 
 	# Plot stacked bar chart
 	ax = pivot_df.plot(kind='bar', stacked=True, figsize=(15, 8))
@@ -164,13 +163,13 @@ def lineplot_matches_barcode(data, value_column, out_dir):
 	"""
 	# Create a line plot for full matches
 	plt.figure()
-	data["Barcode"] = data["Insertion"].str.split("_insertion").str[0]
-	unique_barcodes = data["Barcode"].unique()
+	#data["Barcode"] = data["Insertion"].str.split("_insertion").str[0]
+	unique_barcodes = data["Iteration"].unique()
 	for n, barcode in enumerate(unique_barcodes):
-		barcode_data = data[data["Barcode"] == barcode]
+		barcode_data = data[data["Iteration"] == barcode]
 		if n == 0:
-			g = sns.lineplot(data=barcode_data, x='mean_read_length', y=value_column, hue='coverage', legend=True,errorbar=None, sort=False) #collapse multiple iterations
-		g = sns.lineplot(data=barcode_data, x='mean_read_length', y=value_column, hue='coverage', legend=False, errorbar=None, sort=False) #collapsed 10
+			g = sns.lineplot(data=barcode_data, x='mean_read_length', y=value_column, hue='coverage', legend=True,errorbar=None) #collapse multiple iterations
+		g = sns.lineplot(data=barcode_data, x='mean_read_length', y=value_column, hue='coverage', legend=False, errorbar=None) #collapsed 10
 	
 	g.set_xticks(data['mean_read_length'].unique())
 	g.tick_params(axis='x', labelrotation=90)
@@ -192,19 +191,27 @@ def lineplot_matches_barcode(data, value_column, out_dir):
 	plt.savefig(full_matches_plot_path, bbox_inches='tight')
 
 # Example usage:
-finaloutput_df=pd.read_csv(finaloutput, sep='\t')
+inputdata_df=pd.read_csv(inputdata, sep='\t')
 MK025_data = pd.read_csv("./out/MK025_10xSummaryTable.csv", sep='\t')
 
-finaloutput_df["Barcode"] = finaloutput_df["Insertion"].str.split("_insertion").str[0]
-finaloutput_df["Iteration"] = finaloutput_df["Insertion"].str.split("_").str[4]
-summed_df = finaloutput_df.groupby(['coverage', 'mean_read_length', 'Barcode', 'Iteration']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
+inputdata_df["Barcode"] = inputdata_df["Insertion"].str.split("_insertion").str[0]
+inputdata_df["Iteration"] = inputdata_df["Insertion"].str.split("_").str[4]
 
-#plot_matches(finaloutput_df, out_dir)
-#plot_combined_matches(finaloutput_df, out_dir)
+#sums up the full matches and partial matches across the barcodes but keeps the iterations for the statistics int he plot!
+summed_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Iteration']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
+print(summed_df)
+#plot_matches(inputdata_df, out_dir)
+#plot_combined_matches(finputdata_df, out_dir)
 lineplot_matches(summed_df, "full_matches", out_dir)
-#lineplot_matches_barcode(finaloutput_df, "full_matches", out_dir)
-#lineplot_matches_barcode(finaloutput_df, "partial_matches", out_dir)
-#lineplot_matches(finaloutput_df, "full_matches", out_dir)
-#lineplot_matches(finaloutput_df, "partial_matches", out_dir)
-#plot_barcode_barplot(finaloutput_df, "full_matches", out_dir, "Barcoded_")
-#plot_barcode_barplot_panel(finaloutput_df, "full_matches", out_dir, "Barcoded_")
+lineplot_matches(summed_df, "partial_matches", out_dir)
+lineplot_matches_barcode(summed_df, "full_matches", out_dir)
+lineplot_matches_barcode(summed_df, "partial_matches", out_dir)
+#lineplot_matches(inputdata_df, "full_matches", out_dir)
+#lineplot_matches(inputdata_df, "partial_matches", out_dir)
+
+#calculates the mean value for each barcode across the iterations
+print(inputdata_df)
+mean_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
+print(mean_df)
+plot_barcode_barplot(mean_df, "full_matches", out_dir, prefix)
+plot_barcode_barplot(mean_df, "partial_matches", out_dir, prefix)
