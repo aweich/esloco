@@ -7,8 +7,8 @@ import os
 import numpy as np
 
 out_dir="./out/"
-inputdata="./out/Homogenous_NonWeigthed_20_Iterations_SummaryTable.csv"
-prefix='Homogenous_NonWeigthed_20_Iterations' #sample name for output plot
+inputdata="./out/Homogeneous_NotWeigthed_20_Iterations_SummaryTable.csv"
+prefix='Homogeneous_NotWeigthed_20_Iterations' #sample name for output plot
 
 def plot_matches(data, out_dir):
 	"""
@@ -48,6 +48,7 @@ def lineplot_matches(data, value_column, out_dir):
 	"""
 	# Create a line plot for full matches
 	plt.figure()
+	plt.title(prefix, y=1.1)
 	g = sns.lineplot(data=data, x='mean_read_length', y=value_column, hue='coverage', legend='full', errorbar='sd')
 	g.set_xticks(data['mean_read_length'].unique())
 	g.tick_params(axis='x', labelrotation=90)
@@ -155,6 +156,7 @@ def plot_barcode_barplot(df, match_type, out_dir, prefix):
 	# Save the plot
 	plotname = f"{prefix}_{match_type.capitalize()}_stacked_bar.jpg"
 	plot_path = os.path.join(out_dir, plotname)
+	plt.title(prefix, y=1.1)
 	plt.savefig(plot_path, bbox_inches='tight')
 
 def lineplot_matches_barcode(data, value_column, out_dir):
@@ -163,6 +165,7 @@ def lineplot_matches_barcode(data, value_column, out_dir):
 	"""
 	# Create a line plot for full matches
 	plt.figure()
+	plt.title(prefix, y=1.1)
 	#data["Barcode"] = data["Insertion"].str.split("_insertion").str[0]
 	unique_barcodes = data["Iteration"].unique()
 	for n, barcode in enumerate(unique_barcodes):
@@ -192,7 +195,7 @@ def lineplot_matches_barcode(data, value_column, out_dir):
 
 # Example usage:
 inputdata_df=pd.read_csv(inputdata, sep='\t')
-MK025_data = pd.read_csv("./out/MK025_10xSummaryTable.csv", sep='\t')
+MK025_data = pd.read_csv("./out/MK025_experimental_data.csv", sep='\t')
 
 inputdata_df["Barcode"] = inputdata_df["Insertion"].str.split("_insertion").str[0]
 inputdata_df["Iteration"] = inputdata_df["Insertion"].str.split("_").str[4]

@@ -18,14 +18,13 @@ from joblib import Parallel, delayed
 reference_genome_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38.fa" #reads will be created based on this reference
 vector_sequence_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/pSLCAR-CD19-28z.fasta"#vector #currently 8866 - 42000 (not observed in data): 5kb long should be enough!
 sequenced_data_path = "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/FullRunAfterModulaization_BUFFERMODE100_CD19_cd247_Vector_integration_site/FASTA/Full_MK025_GFP+.fa"
-output_path = "./out/test_Heterogeneous5_Weigthed_20_Iterations_SummaryTable.csv"
-bedpath = "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE_V44_Introns_04_24" #default setting to None
-#coverage=5
-weights_dict = {"Barcode_0": 10, "Barcode_1": 5}
+output_path = "./out/Homogeneous_NotWeigthed_20_Iterations_SummaryTable.csv"
+bedpath = None #"/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE_V44_Introns_04_24" #default setting to None
+weights_dict = {}#{"Barcode_0": 10, "Barcode_1": 5}
 insertion_numbers=5
-barcoding=True
-n_barcodes=5 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false
-#mean_read_length=5000 #for artificial reads
+n_barcodes=1 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false
+iterations=20
+parallel_jobs=10
 #Part 1: Create an insertion-infiltrated chromosome and check where the insertions happen.
 
 ### WRAPPER START
@@ -52,6 +51,11 @@ def profile(func):
 		return result
 	return wrapper
 #### WRAPPER END
+
+def check_barcoding(n_barcodes):
+	if n_barcodes >= 1:
+		return True
+	return False
 
 def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
 	try:
@@ -93,7 +97,7 @@ def pseudo_fasta_coordinates(path_to_fasta):
 				seqList.append(str(record.seq))
 	return ''.join(seqList), entries
 
-def barcode_genome(chromosome_dir, barcoding, barcode):
+def barcode_genome(chromosome_dir, barcode):
 	'''
 	Adds prefix to chromosome dict
 	'''
@@ -230,7 +234,7 @@ insertions_df = insertions_per_chromosome(chromosome_dir, insertion_dir)
 print(insertions_df)
 '''
 @profile
-def create_barcoded_insertion_genome(reference_genome_path, barcoding, bedpath, insertion_fasta, n_barcodes):
+def create_barcoded_insertion_genome(reference_genome_path, bedpath, insertion_fasta, n_barcodes):
 	"""
 	Calls all functions n times and combines their results in one barcoded output file. This allows us to simulate a mixture of different cells.
 	""" 
@@ -241,14 +245,14 @@ def create_barcoded_insertion_genome(reference_genome_path, barcoding, bedpath, 
 	fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
 	
 	for i in range(n_barcodes):
-		barcoded_chromosome_dir = barcode_genome(chromosome_dir, barcoding, i)
-		bed_df = readbed(bedpath, barcoded_chromosome_dir.keys(), barcoding=barcoding)
+		barcoded_chromosome_dir = barcode_genome(chromosome_dir, i)
+		bed_df = readbed(bedpath, barcoded_chromosome_dir.keys(), barcoding=check_barcoding(n_barcodes))
 		mod_fasta, insertion_dir = add_insertions_to_genome_sequence_with_bed(fasta, insertion_fasta, insertion_numbers, barcoded_chromosome_dir, bed_df)
 		insertion_dict.update(insertion_dir)
 		#mod_fasta_dict.update({str(i): mod_fasta})
 		del barcoded_chromosome_dir, bed_df, insertion_dir
 	
-	return mod_fasta, insertion_dict #''.join( #_dict #now returns just one mod fasta
+	return len(mod_fasta), insertion_dict #''.join( #_dict #now returns just one mod fasta
 
 
 #Part 2: Create artifical reads
@@ -275,7 +279,7 @@ def generate_reads_based_on_coverage(fasta, read_length_distribution, coverage, 
 	print("Coverage: " + str(coverage))
 	print("Pulling reads...")
 	covered_length = 0
-	total_length = len(fasta)
+	total_length = fasta
 	#reads = [] #only a goodf idea if we are not testing high coverages, otherwise memory is floated
 	read_coordinates = {}
 	while covered_length < coverage * total_length: #human genome size now #total_length: #6 seconds per 3x10^9 string length for mean read length of 1k
@@ -325,8 +329,8 @@ def get_weighted_probabilities(insertion_name,n_barcodes, weights_dict):
 		# Check if insertion_name contains any key in weights_dict
 		for key in weights_dict: 
 			if key in insertion_name:
-				print(key)
-				print((weights_dict[key] * n_barcodes) / common_denominator)
+				#print(key)
+				#print((weights_dict[key] * n_barcodes) / common_denominator)
 				return (weights_dict[key] * n_barcodes) / common_denominator
 		# No weight provided, using 1/Number of barcodes for this barcode
 		#print("No weight provided. Using standard weight for this barcode. Standard weigth:")
@@ -351,11 +355,18 @@ def count_insertions(insertion_dir, n_barcodes,weights_dict, read_dir):
 		insertion_start, insertion_end = insertion_positions
 		insertion_data = {'Insertion': insertion}
 
-		weight = get_weighted_probabilities(insertion, n_barcodes, weights_dict)
-		# Check the probability threshold for skipping the read part # this is a direct result from the barcoding part!     
-		if weight >= random.random(): #we have a certain probability that the read we pulled is from the correct genome. This probability is defined in the weighting function accoridng to the assigned weigths.
+		weight = get_weighted_probabilities(insertion, n_barcodes, weights_dict) #get probability of insertion/genome: This probability will then be used for eac read!
+		
 
-			for read, read_positions in read_dir.items():
+		'''
+		The weights are supposed to illustrate the follwoing probability: 
+		If I choose a random read from my collection, how probable is it that this read contains an insertion and both of them are from the same genome.
+		'''
+
+		 #we have a certain probability that the read we pulled is from the correct genome. This probability is defined in the weighting function accoridng to the assigned weigths.
+
+		for read, read_positions in read_dir.items():
+			if weight >= random.random():
 				read_start, read_end = read_positions
 
 				if read_start <= insertion_start and insertion_end <= read_end:  # Full-length insertion
@@ -363,10 +374,11 @@ def count_insertions(insertion_dir, n_barcodes,weights_dict, read_dir):
 				elif (insertion_start < read_start and insertion_end > read_start) or \
 					 (insertion_start < read_end and insertion_end > read_end):  # Partial insertion
 					partial_count += 1
-			
-			insertion_data['full_matches'] = full_length_count
-			insertion_data['partial_matches'] = partial_count
-			data.append(insertion_data)
+				
+		insertion_data['full_matches'] = full_length_count
+		insertion_data['partial_matches'] = partial_count
+		data.append(insertion_data)
+		
 
 	return data
 
@@ -408,8 +420,8 @@ print(partial)
 t0 = time.time()
 coverages = [1, 5, 10, 15, 20] 
 mean_read_lengths = [1000, 2000, 3000, 4000, 5000, 6000,7000,8000,9000,10000,15000,20000]
-#mean_read_lengths = [5000, 12000]
-#coverages=[5,10] #* 10 #,5,10] #* 10 #coverage with some influence on the runtime
+#mean_read_lengths = [5000, 8000, 12000]
+#coverages=[1,5,10,15] #* 10 #,5,10] #* 10 #coverage with some influence on the runtime
 combinations = itertools.product(mean_read_lengths, coverages)
 #coverages=[1,2]
 #mean_read_lengths=[5000, 6000]
@@ -432,7 +444,7 @@ del fasta
 del bed_df
 '''
 # Define a function to process each combination
-def process_combination(mean_read_length, coverage, insertion_numbers, weights_dict, mod_fasta, insertion_dir, iteration):
+def process_combination(mean_read_length, coverage, insertion_numbers, weights_dict, length_mod_fasta, insertion_dir, iteration):
 	
 	#Creates a read length distribution based mean read length and draws artificial reads from it based on coverage settings. Then it compares the coordinates of the previously created
 	#insertions in the reference fasta and checks whether they are partially or fully contained within the artificial reads.
@@ -442,7 +454,7 @@ def process_combination(mean_read_length, coverage, insertion_numbers, weights_d
 	custom_read_length_distribution = generate_read_length_distribution(1000000, mean_read_length=mean_read_length, distribution='lognormal')
 	PRECOMPUTE_RANDOM = [random.choice(custom_read_length_distribution) for _ in range(100000000)]
 	#custom_cov_coordinates = generate_reads_based_on_coverage_parallel(mod_fasta, custom_read_length_distribution, coverage=coverage, num_processes=10)
-	custom_cov_coordinates = generate_reads_based_on_coverage(mod_fasta, custom_read_length_distribution, coverage, PRECOMPUTE_RANDOM)
+	custom_cov_coordinates = generate_reads_based_on_coverage(length_mod_fasta, custom_read_length_distribution, coverage, PRECOMPUTE_RANDOM)
 	#detected, full, partial = count_insertions(insertion_dir, custom_cov_coordinates)
 	detected = count_insertions(insertion_dir, n_barcodes, weights_dict, custom_cov_coordinates)
 	suffix = "_" + str(iteration)
@@ -458,17 +470,18 @@ def process_combination(mean_read_length, coverage, insertion_numbers, weights_d
 	gc.collect()
 
 #barcode test
-mod_fasta_dict, insertion_dir = create_barcoded_insertion_genome(reference_genome_path=reference_genome_path, barcoding=barcoding, bedpath=bedpath, insertion_fasta=insertion_fasta, n_barcodes=n_barcodes)
-print(insertion_dir)
-def parallel_duplicates(n_interations): #x100 down to ~5.5h
+length_mod_fasta, insertion_dict = create_barcoded_insertion_genome(reference_genome_path=reference_genome_path, bedpath=bedpath, insertion_fasta=insertion_fasta, n_barcodes=n_barcodes)
+print(insertion_dict)
+
+def parallel_replicates(n_interations): #x100 down to ~5.5h
 	results=[]
 	print("Iteration number: %i" % n_interations)
 	for mean_read_length, coverage in combinations:
-		out = process_combination(mean_read_length, coverage, insertion_numbers, weights_dict, mod_fasta_dict, insertion_dir, n_interations)
+		out = process_combination(mean_read_length, coverage, insertion_numbers, weights_dict, length_mod_fasta, insertion_dict, n_interations)
 		results.append(out)
 	return results
 
-parallel_results= Parallel(n_jobs=10)(delayed(parallel_duplicates)(i) for i in range(20))
+parallel_results= Parallel(n_jobs=parallel_jobs)(delayed(parallel_replicates)(i) for i in range(iterations))
 finaloutput = list(itertools.chain(*parallel_results))
 
 #results=[]
@@ -489,4 +502,5 @@ print(total)
 print(finaloutput_df)
 # Write DataFrame to CSV
 finaloutput_df.to_csv(output_path, sep='\t', header=True, index=False)
+print("Done.")
 sys.exit()
