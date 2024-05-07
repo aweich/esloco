@@ -18,11 +18,12 @@ from joblib import Parallel, delayed
 reference_genome_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38.fa" #reads will be created based on this reference
 vector_sequence_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/pSLCAR-CD19-28z.fasta"#vector #currently 8866 - 42000 (not observed in data): 5kb long should be enough!
 sequenced_data_path = "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/FullRunAfterModulaization_BUFFERMODE100_CD19_cd247_Vector_integration_site/FASTA/Full_MK025_GFP+.fa"
-output_path = "./out/Homogeneous_NotWeigthed_20_Iterations_SummaryTable.csv"
+output_path = "./out/Heterogeneous5_NonWeighted_08VCN_20_Iterations_SummaryTable.csv"
+insertion_probability = 0.8
 bedpath = None #"/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE_V44_Introns_04_24" #default setting to None
 weights_dict = {}#{"Barcode_0": 10, "Barcode_1": 5}
 insertion_numbers=5
-n_barcodes=1 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false
+n_barcodes=5 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false
 iterations=20
 parallel_jobs=10
 #Part 1: Create an insertion-infiltrated chromosome and check where the insertions happen.
@@ -150,70 +151,72 @@ def add_insertions_to_genome_sequence_with_bed(reference_sequence, insertion_seq
 	"""Randomly add insertion sequence into the reference genome or within specified regions."""
 	position = {}
 	if bed_df is not None:
-		# Step 1: Calculate probabilities based on region lengths
-		print("Calculating insertion probabilities (region length / sum of all regions lengths)...")
-		region_lengths = bed_df['end'] - bed_df['start']
-		region_probabilities = region_lengths / region_lengths.sum()
-		updated_reference_sequence = reference_sequence
+		if random.random() < insertion_probability: 
+			# Step 1: Calculate probabilities based on region lengths
+			print("Calculating insertion probabilities (region length / sum of all regions lengths)...")
+			region_lengths = bed_df['end'] - bed_df['start']
+			region_probabilities = region_lengths / region_lengths.sum()
+			updated_reference_sequence = reference_sequence
 
-		for i in range(num_insertions):
-			# Step 2: Randomly select insertion regions
-			selected_region_index = np.random.choice(bed_df.index, p=region_probabilities)
-			selected_region = bed_df.iloc[selected_region_index]
+			for i in range(num_insertions):
+				# Step 2: Randomly select insertion regions
+				selected_region_index = np.random.choice(bed_df.index, p=region_probabilities)
+				selected_region = bed_df.iloc[selected_region_index]
 
-			# Step 3: Perform insertions within selected regions
-			chromosome = selected_region['chrom']
-			chromosome_range = chromosome_dir[chromosome]
+				# Step 3: Perform insertions within selected regions
+				chromosome = selected_region['chrom']
+				chromosome_range = chromosome_dir[chromosome]
 
-			insert_position = random.randint(selected_region['start'], selected_region['end'])
-			# Adjust insertion position to the global genomic coordinates
-			global_insert_position = chromosome_range[0] + insert_position
+				insert_position = random.randint(selected_region['start'], selected_region['end'])
+				# Adjust insertion position to the global genomic coordinates
+				global_insert_position = chromosome_range[0] + insert_position
 
-			# Insert the insertion sequence into the reference sequence
-			updated_reference_sequence = (
-				updated_reference_sequence[:global_insert_position] +
-				insertion_sequence +
-				updated_reference_sequence[global_insert_position:]
-			)
+				# Insert the insertion sequence into the reference sequence
+				updated_reference_sequence = (
+					updated_reference_sequence[:global_insert_position] +
+					insertion_sequence +
+					updated_reference_sequence[global_insert_position:]
+				)
 
-			# Update position table
-			for key, value in position.items():
-			# If the insertion is after the current position, update the position
-				if value[0] >= global_insert_position:
-					position[key][0] += len(insertion_sequence)
-					position[key][1] += len(insertion_sequence)
+				# Update position table
+				for key, value in position.items():
+				# If the insertion is after the current position, update the position
+					if value[0] >= global_insert_position:
+						position[key][0] += len(insertion_sequence)
+						position[key][1] += len(insertion_sequence)
 
-			# Add the new insertion position and (barcoded) name
-			insertion_name = chromosome.split('chr')[0] + "insertion_%s" %i
-			position[insertion_name] = [global_insert_position, global_insert_position + len(insertion_sequence)]
+				# Add the new insertion position and (barcoded) name
+				insertion_name = chromosome.split('chr')[0] + "insertion_%s" %i
+				position[insertion_name] = [global_insert_position, global_insert_position + len(insertion_sequence)]
 
 
 		return updated_reference_sequence, position
 	
 	#if no bed is provided
 	for i in range(num_insertions):
-		# Choose a random position to insert the smaller sequence
-		insert_position = random.randint(0, len(reference_sequence))
-		
-		#check in which chr it landed
-		chromosome = get_chromosome(insert_position, chromosome_dir)
-		
-		# Insert the insertion sequence at the chosen position
-		updated_reference_sequence = (
-			reference_sequence[:insert_position] +
-			insertion_sequence +
-			reference_sequence[insert_position:]
-		)
-		# Update position table
-		for key, value in position.items():
-		# If the insertion is after the current position, update the position
-			if value[0] >= insert_position:
-				position[key][0] += len(insertion_sequence)
-				position[key][1] += len(insertion_sequence)
+		if random.random() < insertion_probability:
+			# Choose a random position to insert the smaller sequence
+			insert_position = random.randint(0, len(reference_sequence))
+			
+			#check in which chr it landed
+			chromosome = get_chromosome(insert_position, chromosome_dir)
+			
+			# Insert the insertion sequence at the chosen position
+			updated_reference_sequence = (
+				reference_sequence[:insert_position] +
+				insertion_sequence +
+				reference_sequence[insert_position:]
+			)
+			# Update position table
+			for key, value in position.items():
+			# If the insertion is after the current position, update the position
+				if value[0] >= insert_position:
+					position[key][0] += len(insertion_sequence)
+					position[key][1] += len(insertion_sequence)
 
-		# Add the new insertion position and (barcoded) name
-		insertion_name = chromosome.split('chr')[0] + "insertion_%s" %i
-		position[insertion_name]= [insert_position, insert_position + len(insertion_sequence)]
+			# Add the new insertion position and (barcoded) name
+			insertion_name = chromosome.split('chr')[0] + "insertion_%s" %i
+			position[insertion_name]= [insert_position, insert_position + len(insertion_sequence)]
 	#return reference_sequence, position
 	#updated_reference_sequence, position = add_insertions_to_genome_sequence(reference_sequence=reference_sequence, insertion_sequence=insertion_sequence, num_insertions=num_insertions)
 	return updated_reference_sequence, position
@@ -471,7 +474,8 @@ def process_combination(mean_read_length, coverage, insertion_numbers, weights_d
 
 #barcode test
 length_mod_fasta, insertion_dict = create_barcoded_insertion_genome(reference_genome_path=reference_genome_path, bedpath=bedpath, insertion_fasta=insertion_fasta, n_barcodes=n_barcodes)
-print(insertion_dict)
+print("Number of insertions:")
+print(len(insertion_dict.keys()))
 
 def parallel_replicates(n_interations): #x100 down to ~5.5h
 	results=[]

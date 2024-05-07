@@ -7,8 +7,8 @@ import os
 import numpy as np
 
 out_dir="./out/"
-inputdata="./out/Homogeneous_NotWeigthed_20_Iterations_SummaryTable.csv"
-prefix='Homogeneous_NotWeigthed_20_Iterations' #sample name for output plot
+inputdata="./out/Heterogeneous5_Weighted_08VCN_20_Iterations_SummaryTable.csv"
+prefix='Heterogeneous5_Weighted_08VCN_20_Iterations' #sample name for output plot
 
 def plot_matches(data, out_dir):
 	"""
