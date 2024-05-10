@@ -6,9 +6,10 @@ import pandas as pd
 import os
 import numpy as np
 
-out_dir="./out/"
-inputdata="./out/Heterogeneous5_Weighted_08VCN_20_Iterations_SummaryTable.csv"
-prefix='Heterogeneous5_Weighted_08VCN_20_Iterations' #sample name for output plot
+out_dir="./out/ROI/"
+inputdata="./out/Blocked_By_Weights_ROI_Monosomie3_SummaryTable.csv"
+prefix='Blocked_By_Weights_ROI_Monosomie3_SummaryTable' #sample name for output plot
+mode="ROI"
 
 def plot_matches(data, out_dir):
 	"""
@@ -57,10 +58,10 @@ def lineplot_matches(data, value_column, out_dir):
 
 	# Save the plot as a JPG file
 	#add experimental line
-	plt.axvline(x=5200, color='black', linestyle=':')
-	plt.text(5200, plt.ylim()[1], 'MK025', verticalalignment='bottom', horizontalalignment='center')
+	#plt.axvline(x=5200, color='black', linestyle=':')
+	#plt.text(5200, plt.ylim()[1], 'MK025', verticalalignment='bottom', horizontalalignment='center')
 	# Add point at y=5 on the vertical line
-	plot_points(MK025_data, option=value_column, color=sns.cubehelix_palette())
+	#plot_points(MK025_data, option=value_column, color=sns.cubehelix_palette())
 
 	plotname = prefix + "_" + value_column + '_lineplot.jpg'
 	plot_path = os.path.join(out_dir, plotname)
@@ -73,7 +74,7 @@ def plot_points(data, option, color):
 		plt.plot(5200, 22, marker='o', color='red', mec='black', mew=1)
 		#plt.text(5200 + 500, 22, 'Observed value', verticalalignment='bottom', horizontalalignment='left') #+10 for space
 		#for n,i in enumerate(mean_data['coverage']):
-		#	plt.plot(data['mean_read_length'].unique(), mean_data['partial_matches'][n], marker='o', color=color[n], mec='black', mew=1)
+		#   plt.plot(data['mean_read_length'].unique(), mean_data['partial_matches'][n], marker='o', color=color[n], mec='black', mew=1)
 	elif option == "full_matches":
 		plt.plot(5200, 5, marker='o', color='red', mec='black', mew=1)
 		plt.text(5200 + 500, 5, 'Observed value', verticalalignment='bottom', horizontalalignment='left') #+10 for space
@@ -194,27 +195,41 @@ def lineplot_matches_barcode(data, value_column, out_dir):
 	plt.savefig(full_matches_plot_path, bbox_inches='tight')
 
 # Example usage:
-inputdata_df=pd.read_csv(inputdata, sep='\t')
-MK025_data = pd.read_csv("./out/MK025_experimental_data.csv", sep='\t')
+if mode == "I":
+	inputdata_df=pd.read_csv(inputdata, sep='\t')
+	MK025_data = pd.read_csv("./out/MK025_experimental_data.csv", sep='\t')
 
-inputdata_df["Barcode"] = inputdata_df["Insertion"].str.split("_insertion").str[0]
-inputdata_df["Iteration"] = inputdata_df["Insertion"].str.split("_").str[4]
+	inputdata_df["Barcode"] = inputdata_df["Insertion"].str.split("_insertion").str[0]
+	inputdata_df["Iteration"] = inputdata_df["Insertion"].str.split("_").str[4]
 
-#sums up the full matches and partial matches across the barcodes but keeps the iterations for the statistics int he plot!
-summed_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Iteration']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
-print(summed_df)
-#plot_matches(inputdata_df, out_dir)
-#plot_combined_matches(finputdata_df, out_dir)
-lineplot_matches(summed_df, "full_matches", out_dir)
-lineplot_matches(summed_df, "partial_matches", out_dir)
-lineplot_matches_barcode(summed_df, "full_matches", out_dir)
-lineplot_matches_barcode(summed_df, "partial_matches", out_dir)
-#lineplot_matches(inputdata_df, "full_matches", out_dir)
-#lineplot_matches(inputdata_df, "partial_matches", out_dir)
+	#sums up the full matches and partial matches across the barcodes but keeps the iterations for the statistics int he plot! = This means that the plot shows all detected insertions across the barcodes, irrespective of the barcode
+	summed_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Iteration']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
+	print(summed_df)
+	#plot_matches(inputdata_df, out_dir)
+	#plot_combined_matches(finputdata_df, out_dir)
+	lineplot_matches(summed_df, "full_matches", out_dir)
+	lineplot_matches(summed_df, "partial_matches", out_dir)
+	#lineplot_matches_barcode(summed_df, "full_matches", out_dir)
+	#lineplot_matches_barcode(summed_df, "partial_matches", out_dir)
+	#lineplot_matches(inputdata_df, "full_matches", out_dir)
+	#lineplot_matches(inputdata_df, "partial_matches", out_dir)
 
-#calculates the mean value for each barcode across the iterations
-print(inputdata_df)
-mean_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
-print(mean_df)
-plot_barcode_barplot(mean_df, "full_matches", out_dir, prefix)
-plot_barcode_barplot(mean_df, "partial_matches", out_dir, prefix)
+	#calculates the mean value for each barcode across the iterations
+	print(inputdata_df)
+	mean_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
+	print(mean_df)
+	plot_barcode_barplot(mean_df, "full_matches", out_dir, prefix)
+	plot_barcode_barplot(mean_df, "partial_matches", out_dir, prefix)
+
+elif mode=="ROI":
+	inputdata_df=pd.read_csv(inputdata, sep='\t')
+	print(inputdata_df.head())
+	inputdata_df["Barcode"] = inputdata_df["Insertion"].str.rsplit(pat="_", n=1).str[0]
+	#aggregate over iterations (=replications)
+	grouped = inputdata_df.groupby(['Barcode', 'coverage', 'mean_read_length']).agg({
+		'full_matches': 'sum',
+		'partial_matches': 'sum'
+	}).reset_index()
+	print(grouped)
+	plot_barcode_barplot(grouped, "full_matches", out_dir, prefix)
+	plot_barcode_barplot(grouped, "partial_matches", out_dir, prefix)

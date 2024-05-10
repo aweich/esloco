@@ -18,14 +18,34 @@ from joblib import Parallel, delayed
 reference_genome_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38.fa" #reads will be created based on this reference
 vector_sequence_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/pSLCAR-CD19-28z.fasta"#vector #currently 8866 - 42000 (not observed in data): 5kb long should be enough!
 sequenced_data_path = "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/FullRunAfterModulaization_BUFFERMODE100_CD19_cd247_Vector_integration_site/FASTA/Full_MK025_GFP+.fa"
-output_path = "./out/Heterogeneous5_NonWeighted_08VCN_20_Iterations_SummaryTable.csv"
-insertion_probability = 0.8
-bedpath = None #"/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE_V44_Introns_04_24" #default setting to None
-weights_dict = {}#{"Barcode_0": 10, "Barcode_1": 5}
+output_path = "./out/Test_SummaryTable.csv"
+insertion_probability = 1
+bedpath = "/home/weichan/permanent/Projects/VIS/dev/UCSC/intron_test.bed" #default setting to None #bed for insertions
+weights_dict = None#{"Barcode_0": 10, "Barcode_1": 5}
+chromosome_weights = {'chr1': 0.5, 'chr2': 2} #0.5 means that its half as likely to be discarded, while 2 means its 2 as likely t be discarded
 insertion_numbers=5
-n_barcodes=5 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false
-iterations=20
+n_barcodes=3 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false ## ONLY 1 to 9 work currently!!!!
+iterations=2
 parallel_jobs=10
+mode="ROI" # "I"or "ROI"
+#Combinations
+#coverages = [1, 5, 10, 15, 20] 
+#mean_read_lengths = [1000, 2000, 3000, 4000, 5000, 6000,7000,8000,9000,10000,15000,20000]
+#mean_read_lengths = [5000, 8000, 12000]
+#coverages=[1,5,10,15] #* 10 #,5,10] #* 10 #coverage with some influence on the runtime
+coverages=[2,5]
+mean_read_lengths=[5000, 9000]
+combinations = itertools.product(mean_read_lengths, coverages)
+
+#ROI analysis
+roi_bedpath = "/home/weichan/permanent/Projects/VIS/dev/Monosomie_Panel_Sim.bed" #in this case, the roi file and the blocked file are the same, since we assume monosomie !
+# Blocked from generating reads
+# path to bedfle with weights for probability!
+blocked_regions_bedpath = "/home/weichan/permanent/Projects/VIS/dev/Monosomie_Panel_Sim.bed"
+
+
+
+
 #Part 1: Create an insertion-infiltrated chromosome and check where the insertions happen.
 
 ### WRAPPER START
@@ -60,7 +80,7 @@ def check_barcoding(n_barcodes):
 
 def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
 	try:
-		bed = pd.read_csv(bedpath, sep='\t', header=None, usecols=[0,1,2], names=['chrom', 'start', 'end'])
+		bed = pd.read_csv(bedpath, sep='\t', header=None, usecols=[0,1,2,3,4], names=['chrom', 'start', 'end','ID','weight'])
 		if barcoding:
 			print('Barcoding selected: Transforming the names in the bed... Adding the following barcode...')
 			print('_'.join(list(list_of_chromosomes_in_reference)[0].split("_")[:-1]))
@@ -72,6 +92,26 @@ def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
 			print(list_of_chromosomes_in_reference)
 			bed = bed[bed["chrom"].isin(list_of_chromosomes_in_reference)]
 		return bed
+	except:
+		return None
+
+def update_coordinates(df, chromosome_dir, include_weights=False):
+	'''
+	Uses a df (bed-based) and a dir of chromsome cooridnates in global format and returns the global cooridnates of the bed entries.
+	if return type dict, the thrid column will be used as keys.
+	'''
+	try:
+		updated_coordinates = {}
+		for index, row in df.iterrows():
+			ID=row["ID"]
+			chrom = row['chrom']
+			start = row['start'] + chromosome_dir[chrom][0]
+			end = row['end'] + chromosome_dir[chrom][0]
+			if include_weights: #adds weights if there are any /// a weight of 1 means that the corresponding coordinates will be blocked with a probability of 1 
+				updated_coordinates[ID] = {row['weight'], start, end}
+			else:
+				updated_coordinates[ID] = {start, end}
+		return updated_coordinates
 	except:
 		return None
 
@@ -221,21 +261,6 @@ def add_insertions_to_genome_sequence_with_bed(reference_sequence, insertion_seq
 	#updated_reference_sequence, position = add_insertions_to_genome_sequence(reference_sequence=reference_sequence, insertion_sequence=insertion_sequence, num_insertions=num_insertions)
 	return updated_reference_sequence, position
 
-
-#1 Creates the vector in the right format
-#insertion_fasta = collapse_fasta(vector_sequence_path)
-insertion_fasta = 'X' * 5000
-'''
-#2 Creates a single-string reference genome, while storing the chromosome borders
-fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path, barcoding=barcoding, barcode=5)
-bed_df = readbed(bedpath, chromosome_dir.keys(), barcoding=barcoding)
-#3 Randomly inserts insertio sequence into the single-string reference x times
-mod_fasta, insertion_dir = add_insertions_to_genome_sequence_with_bed(fasta, insertion_fasta, insertion_numbers, chromosome_dir, bed_df)
-#4 Creates an overview table of the insertion distribution
-print(insertion_dir)
-insertions_df = insertions_per_chromosome(chromosome_dir, insertion_dir)
-print(insertions_df)
-'''
 @profile
 def create_barcoded_insertion_genome(reference_genome_path, bedpath, insertion_fasta, n_barcodes):
 	"""
@@ -247,6 +272,10 @@ def create_barcoded_insertion_genome(reference_genome_path, bedpath, insertion_f
 	
 	fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
 	
+	#check blocking
+	blocked_bed = readbed(blocked_regions_bedpath, chromosome_dir.keys()) #barcoding should be default false
+	masked_regions = update_coordinates(blocked_bed, chromosome_dir, include_weights=True)
+
 	for i in range(n_barcodes):
 		barcoded_chromosome_dir = barcode_genome(chromosome_dir, i)
 		bed_df = readbed(bedpath, barcoded_chromosome_dir.keys(), barcoding=check_barcoding(n_barcodes))
@@ -255,7 +284,7 @@ def create_barcoded_insertion_genome(reference_genome_path, bedpath, insertion_f
 		#mod_fasta_dict.update({str(i): mod_fasta})
 		del barcoded_chromosome_dir, bed_df, insertion_dir
 	
-	return len(mod_fasta), insertion_dict #''.join( #_dict #now returns just one mod fasta
+	return len(mod_fasta), insertion_dict, masked_regions #''.join( #_dict #now returns just one mod fasta
 
 
 #Part 2: Create artifical reads
@@ -274,6 +303,20 @@ def generate_reads(fasta, read_length_distribution, num_reads):
 		reads.append(read)
 	return reads
 
+def check_if_blocked_region(start_position, read_length, blocked_region_coordinates=None):
+	"""
+	Checks whether the start position of the read would be inside the coordinates of a blocked region.
+	Blocked can mean that no reads are obtained there or only with a certain probability.
+	This is useful to simulate monosomy or non-sequencable regions.
+	"""
+	if blocked_region_coordinates:
+		for values in blocked_region_coordinates.values():
+			probability, start, stop = values
+			if (start < start_position < stop) or (start < start_position + read_length < stop): #checks if start lays in the blocked region or if the end lays in a blocked region
+				# The start position falls within a blocked region
+				if random.random() >= probability:
+					return True  # position is blocked 
+
 @profile
 def generate_reads_based_on_coverage(fasta, read_length_distribution, coverage, PRECOMPUTE_RANDOM):
 	'''
@@ -289,10 +332,11 @@ def generate_reads_based_on_coverage(fasta, read_length_distribution, coverage, 
 		#read_length = random.choice(read_length_distribution)
 		read_length = PRECOMPUTE_RANDOM.pop()
 		start_position = random.randint(0, total_length - read_length)
-		#read = fasta[start_position:start_position + read_length]
-		#reads.append(read)
-		covered_length += read_length
-		read_coordinates["Read_%s" % len(read_coordinates.keys())] =[start_position, start_position + read_length]
+		if not check_if_blocked_region(start_position, read_length, masked_regions):
+			# If the start position is not blocked, record the read coordinates
+			read_coordinates[f"Read_{len(read_coordinates)}"] = [start_position, start_position + read_length]
+			# Update the total covered length
+			covered_length += read_length
 	return read_coordinates #reads optional
 
 
@@ -331,8 +375,7 @@ def get_weighted_probabilities(insertion_name,n_barcodes, weights_dict):
 		common_denominator = (sum(weights_dict.values()) + n_barcodes - len(weights_dict)) * n_barcodes
 		# Check if insertion_name contains any key in weights_dict
 		for key in weights_dict: 
-			if key in insertion_name:
-				#print(key)
+			if any(key == part for part in insertion_name.split("_")):
 				#print((weights_dict[key] * n_barcodes) / common_denominator)
 				return (weights_dict[key] * n_barcodes) / common_denominator
 		# No weight provided, using 1/Number of barcodes for this barcode
@@ -340,7 +383,7 @@ def get_weighted_probabilities(insertion_name,n_barcodes, weights_dict):
 		#print(n_barcodes / common_denominator)
 		return n_barcodes / common_denominator
 	else:
-		#print("No weights provided, using equal weights.")
+		#print("No weights provided, using equal weights.") # = probability that insertion/roi is from the right genome is 1/number of genomes 
 		return 1 / n_barcodes
 
 #Part 3: Simulate how many insertions can be found using our sequencing approach with different parameter settings
@@ -363,7 +406,7 @@ def count_insertions(insertion_dir, n_barcodes,weights_dict, read_dir):
 
 		'''
 		The weights are supposed to illustrate the follwoing probability: 
-		If I choose a random read from my collection, how probable is it that this read contains an insertion and both of them are from the same genome.
+		If I choose a random read from my collection, how probable is it that this read contains an insertion/roi and both of them are from the same genome.
 		'''
 
 		 #we have a certain probability that the read we pulled is from the correct genome. This probability is defined in the weighting function accoridng to the assigned weigths.
@@ -385,69 +428,9 @@ def count_insertions(insertion_dir, n_barcodes,weights_dict, read_dir):
 
 	return data
 
-'''
-### Calling everything in the right order
-#1 Creates the vector in the right format
-insertion_fasta = collapse_fasta(vector_sequence_path)
-#2 Creates a single-string reference genome, while storing the chromosome borders
-fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
-#3 Randomly inserts insertio sequence into the single-string reference x times
-mod_fasta, insertion_dir = add_insertions_to_genome_sequence(fasta, insertion_fasta, insertion_numbers)
-#4 Creates an overview table of the insertion distribution
-insertions_df = insertions_per_chromosome(chromosome_dir, insertion_dir)
-print(insertions_df)
-#5 creates histogram from actual sequenced distribution and the randomly pulled reads
-sequence_read_length_distribution = get_read_length_distribution_from_real_data(sequenced_data_path)
-plt.hist(sequence_read_length_distribution, bins=400)
-reads = generate_reads(mod_fasta, sequence_read_length_distribution, num_reads=len(sequence_read_length_distribution))
-plt.hist([len(i) for i in reads], bins=400)
 
-cov_reads, cov_coordinates = generate_reads_based_on_coverage(mod_fasta, sequence_read_length_distribution, coverage=coverage)
-plt.hist([len(i) for i in cov_reads], bins=400)
-plt.savefig('sequence_based_read_length_distribution.pdf')
-plt.close()
-
-#6 creates histogram for artificially created distribution and the randomly pulled reads
-custom_read_length_distribution = generate_read_length_distribution(500000, mean_read_length = mean_read_length, distribution = 'lognormal') #currently only normal and lognormal work
-plt.hist(custom_read_length_distribution, bins=400)
-
-custom_cov_reads, custom_cov_coordinates = generate_reads_based_on_coverage(mod_fasta, custom_read_length_distribution, coverage=coverage)
-plt.hist([len(i) for i in custom_cov_reads], bins=400)
-plt.savefig('calculated_read_length_distribution.pdf')
-#7 creates final table with detected insertions
-detected, full, partial = count_insertions(insertion_dir, custom_cov_coordinates)
-print("Total Reads: " + str(len(custom_cov_reads)))
-print(full)
-print(partial)
-'''
-t0 = time.time()
-coverages = [1, 5, 10, 15, 20] 
-mean_read_lengths = [1000, 2000, 3000, 4000, 5000, 6000,7000,8000,9000,10000,15000,20000]
-#mean_read_lengths = [5000, 8000, 12000]
-#coverages=[1,5,10,15] #* 10 #,5,10] #* 10 #coverage with some influence on the runtime
-combinations = itertools.product(mean_read_lengths, coverages)
-#coverages=[1,2]
-#mean_read_lengths=[5000, 6000]
-
-#run once
-#1 Creates the vector in the right format
-#insertion_fasta = collapse_fasta(vector_sequence_path)
-insertion_fasta = 'X' * 5000 #artificial insertion
-
-'''
-#2 Creates a single-string reference genome, while storing the chromosome borders
-fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
-#3 import bed with possible insertion positions 
-bed_df = readbed(bedpath, chromosome_dir.keys())
-#3 Randomly inserts insertio sequence into the single-string reference x times
-mod_fasta, insertion_dir = add_insertions_to_genome_sequence_with_bed(fasta, insertion_fasta, insertion_numbers, chromosome_dir, bed_df)
-
-del fasta
-#del insertion_fasta
-del bed_df
-'''
 # Define a function to process each combination
-def process_combination(mean_read_length, coverage, insertion_numbers, weights_dict, length_mod_fasta, insertion_dir, iteration):
+def process_combination(mean_read_length, coverage, weights_dict, length_mod_fasta, insertion_dir, iteration):
 	
 	#Creates a read length distribution based mean read length and draws artificial reads from it based on coverage settings. Then it compares the coordinates of the previously created
 	#insertions in the reference fasta and checks whether they are partially or fully contained within the artificial reads.
@@ -472,39 +455,119 @@ def process_combination(mean_read_length, coverage, insertion_numbers, weights_d
 	del custom_cov_coordinates
 	gc.collect()
 
-#barcode test
-length_mod_fasta, insertion_dict = create_barcoded_insertion_genome(reference_genome_path=reference_genome_path, bedpath=bedpath, insertion_fasta=insertion_fasta, n_barcodes=n_barcodes)
-print("Number of insertions:")
-print(len(insertion_dict.keys()))
 
-def parallel_replicates(n_interations): #x100 down to ~5.5h
-	results=[]
-	print("Iteration number: %i" % n_interations)
-	for mean_read_length, coverage in combinations:
-		out = process_combination(mean_read_length, coverage, insertion_numbers, weights_dict, length_mod_fasta, insertion_dict, n_interations)
-		results.append(out)
-	return results
 
-parallel_results= Parallel(n_jobs=parallel_jobs)(delayed(parallel_replicates)(i) for i in range(iterations))
-finaloutput = list(itertools.chain(*parallel_results))
+#insertion mode
+if mode == "I":
+	print("Insertion mode selected...")
+	t0 = time.time()
+	#run once
+	#1 Creates the vector in the right format
+	#insertion_fasta = collapse_fasta(vector_sequence_path)
+	insertion_fasta = 'X' * 5000 #artificial insertion
 
-#results=[]
+	length_mod_fasta, insertion_dict, masked_regions = create_barcoded_insertion_genome(reference_genome_path=reference_genome_path, bedpath=bedpath, insertion_fasta=insertion_fasta, n_barcodes=n_barcodes)
+	print("Number of insertions:")
+	print(len(insertion_dict.keys()))
+	print(insertion_dict)
 
-#for mean_read_length, coverage in combinations:
-#    out = process_combination(mean_read_length, coverage, insertion_numbers, big_fasta, big_insertion_dict)
-#    results.append(out)
 
-#print(results)
-#sys.exit()
-# Convert finaloutput to DataFrame
-if any(isinstance(i, list) for i in finaloutput):
-	finaloutput_df = pd.DataFrame(sum(finaloutput, []))
-#finaloutput_df = pd.DataFrame(finaloutput, columns=['mean_read_length', 'coverage', 'insertion_number', 'full_matches', 'partial_matches'])
-t1 = time.time()
-total = t1-t0
-print(total)
-print(finaloutput_df)
-# Write DataFrame to CSV
-finaloutput_df.to_csv(output_path, sep='\t', header=True, index=False)
-print("Done.")
-sys.exit()
+	def parallel_replicates(n_iterations): #x100 down to ~5.5h
+		results=[]
+		print("Iteration number: %i" % n_iterations)
+		for mean_read_length, coverage in combinations:
+			out = process_combination(mean_read_length, coverage, weights_dict, length_mod_fasta, insertion_dict, n_iterations)
+			results.append(out)
+		return results
+
+	parallel_results= Parallel(n_jobs=parallel_jobs)(delayed(parallel_replicates)(i) for i in range(iterations))
+	finaloutput = list(itertools.chain(*parallel_results))
+
+	#results=[]
+
+	#for mean_read_length, coverage in combinations:
+	#    out = process_combination(mean_read_length, coverage, insertion_numbers, big_fasta, big_insertion_dict)
+	#    results.append(out)
+
+	#print(results)
+	#sys.exit()
+	# Convert finaloutput to DataFrame
+	if any(isinstance(i, list) for i in finaloutput):
+		finaloutput_df = pd.DataFrame(sum(finaloutput, []))
+	#finaloutput_df = pd.DataFrame(finaloutput, columns=['mean_read_length', 'coverage', 'insertion_number', 'full_matches', 'partial_matches'])
+	t1 = time.time()
+	total = t1-t0
+	print(total)
+	print(finaloutput_df)
+	# Write DataFrame to CSV
+	finaloutput_df.to_csv(output_path, sep='\t', header=True, index=False)
+	print("Done.")
+	sys.exit()
+
+elif mode == "ROI":
+	print("Region of interest mode selected...")
+	t0 = time.time()
+	#create global cooridnates from bed based on provided genome ref
+	fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
+	bed = pd.read_csv(roi_bedpath, sep='\t', header=None, usecols=[0,1,2,3,4], names=['chrom', 'start', 'end','ID','weight'])
+	roi_dict = update_coordinates(bed, chromosome_dir)
+	print(chromosome_dir)
+	'''
+	aberration_dir = chromosome_dir
+	for chrom in chromosome_dir.keys():
+	    # Get the weighted probabilities for the chromosome
+	    weighted_probs = get_weighted_probabilities(chrom, len(chromosome_dir.keys()), chromosome_weights)
+	    # Insert the weighted probabilities at index 1 of the value list associated with the chromosome key
+	    aberration_dir[chrom].insert(0, weighted_probs)
+
+	print(aberration_dir)
+	'''
+
+	#create blocked regions file
+	blocked_bed = readbed(blocked_regions_bedpath, chromosome_dir.keys()) #barcoding should be default false
+	masked_regions = update_coordinates(blocked_bed, chromosome_dir, include_weights=True)
+
+	monosomie =["chr3"]
+	if monosomie and not masked_regions:
+		masked_regions={}
+	try:
+		for i in monosomie:
+			masked_regions[i] =  chromosome_dir[i]
+			chromsome_dir[i].insert(0, 0.5) #is not added yet
+	except:
+		print("no monosomie")
+
+	print(masked_regions)
+	sys.exit()
+
+
+
+	#chromosomal aberrations check
+
+
+	def parallel_replicates(n_iterations): #x100 down to ~5.5h
+		results=[]
+		print("Iteration number: %i" % n_iterations)
+		for mean_read_length, coverage in combinations:
+			out = process_combination(mean_read_length, coverage, weights_dict, len(fasta), roi_dict, n_iterations)
+			results.append(out)
+		return results
+
+	parallel_results= Parallel(n_jobs=parallel_jobs)(delayed(parallel_replicates)(i) for i in range(iterations))
+	finaloutput = list(itertools.chain(*parallel_results))
+
+	if any(isinstance(i, list) for i in finaloutput):
+		finaloutput_df = pd.DataFrame(sum(finaloutput, []))
+
+	print(finaloutput_df)
+	
+	t1 = time.time()
+	total = t1-t0
+	print(total)
+	print("Done.")
+	finaloutput_df.to_csv(output_path, sep='\t', header=True, index=False)
+	sys.exit()
+
+else:
+	print("no valid mode selected.")
+	sys.exit()
