@@ -5,10 +5,11 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import numpy as np
+import sys
 
 out_dir="./out/ROI/"
-inputdata="./out/Blocked_By_Weights_ROI_Monosomie3_SummaryTable.csv"
-prefix='Blocked_By_Weights_ROI_Monosomie3_SummaryTable' #sample name for output plot
+inputdata="./out/5Iterations_05_chr3_Test_SummaryTable.csv"
+prefix='5Iterations_05_chr3_Test_SummaryTable.' #sample name for output plot
 mode="ROI"
 
 def plot_matches(data, out_dir):
@@ -194,6 +195,37 @@ def lineplot_matches_barcode(data, value_column, out_dir):
 	full_matches_plot_path = os.path.join(out_dir, plotname)
 	plt.savefig(full_matches_plot_path, bbox_inches='tight')
 
+def plot_insertions(data, insertion_name, value_column_1, value_column_2, out_dir, prefix=""):
+	"""
+	Plot two value columns for each insertion side by side.
+
+	"""
+	# Filter data for the specified insertion
+	insertion_data = data[data['ROI'] == insertion_name]
+
+	# Plot first value column
+	plt.figure(figsize=(15, 6))
+	plt.subplot(1, 2, 1)
+	sns.lineplot(x='mean_read_length', y=value_column_1, hue='coverage', data=insertion_data)
+	plt.title(f'{value_column_1} for {insertion_name}')
+	plt.xlabel('Mean Read Length')
+	plt.ylabel(value_column_1)
+	plt.legend(title='Coverage')
+
+	# Plot second value column
+	plt.subplot(1, 2, 2)
+	sns.lineplot(x='mean_read_length', y=value_column_2, hue='coverage', data=insertion_data)
+	plt.title(f'{value_column_2} for {insertion_name}')
+	plt.xlabel('Mean Read Length')
+	plt.ylabel(value_column_2)
+	plt.legend(title='Coverage')
+
+	# Save plot
+	plotname = prefix + f"ROI_{insertion_name}_lineplot.jpg"
+	plotpath = os.path.join(out_dir, plotname)
+	plt.savefig(plotpath, bbox_inches='tight')
+	plt.close()
+
 # Example usage:
 if mode == "I":
 	inputdata_df=pd.read_csv(inputdata, sep='\t')
@@ -224,12 +256,26 @@ if mode == "I":
 elif mode=="ROI":
 	inputdata_df=pd.read_csv(inputdata, sep='\t')
 	print(inputdata_df.head())
-	inputdata_df["Barcode"] = inputdata_df["Insertion"].str.rsplit(pat="_", n=1).str[0]
+	#inputdata_df["Barcode"] = inputdata_df["Insertion"].str.rsplit(pat="_", n=2).str[1]
+	inputdata_df["ROI"] = inputdata_df["Insertion"].str.rsplit(pat="_", n=2).str[0]
+	inputdata_df["Barcode"] = inputdata_df["Insertion"].str.rsplit(pat="_", n=2).str[1]
+	print(inputdata_df)
 	#aggregate over iterations (=replications)
-	grouped = inputdata_df.groupby(['Barcode', 'coverage', 'mean_read_length']).agg({
+	grouped = inputdata_df.groupby(['ROI','Barcode', 'coverage', 'mean_read_length']).agg({
 		'full_matches': 'sum',
 		'partial_matches': 'sum'
 	}).reset_index()
 	print(grouped)
-	plot_barcode_barplot(grouped, "full_matches", out_dir, prefix)
-	plot_barcode_barplot(grouped, "partial_matches", out_dir, prefix)
+	#plot_barcode_barplot(grouped, "full_matches", out_dir, prefix)
+	#plot_barcode_barplot(grouped, "partial_matches", out_dir, prefix)
+	#does not work and needs a better plan!
+	plot_insertions(grouped,"BAP1", "partial_matches", "full_matches", out_dir)
+
+	#sums up the full matches and partial matches across the barcodes but keeps the iterations for the statistics int he plot! = This means that the plot shows all detected insertions across the barcodes, irrespective of the barcode
+	#inputdata_df["Iteration"] = inputdata_df["Insertion"].str.rsplit(pat="_", n=1).str[1]
+	#summed_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Iteration']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
+	#print(summed_df)
+	#plot_matches(inputdata_df, out_dir)
+	#plot_combined_matches(finputdata_df, out_dir)
+	#lineplot_matches(summed_df, "full_matches", out_dir)
+	#lineplot_matches(summed_df, "partial_matches", out_dir)

@@ -22,11 +22,11 @@ output_path = "./out/Test_SummaryTable.csv"
 insertion_probability = 1
 bedpath = "/home/weichan/permanent/Projects/VIS/dev/UCSC/intron_test.bed" #default setting to None #bed for insertions
 weights_dict = None#{"Barcode_0": 10, "Barcode_1": 5}
-chromosome_weights = {'chr1': 0.5, 'chr2': 2} #0.5 means that its half as likely to be discarded, while 2 means its 2 as likely t be discarded
+chromosome_weights = {'chr3': 0.5} #0.5 means that its half as likely to be discarded, while 2 means its 2 as likely t be discarded
 insertion_numbers=5
 n_barcodes=3 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false ## ONLY 1 to 9 work currently!!!!
-iterations=2
-parallel_jobs=10
+iterations=5
+parallel_jobs=5
 mode="ROI" # "I"or "ROI"
 #Combinations
 #coverages = [1, 5, 10, 15, 20] 
@@ -115,6 +115,29 @@ def update_coordinates(df, chromosome_dir, include_weights=False):
 	except:
 		return None
 
+def add_monosomy_regions(monosomie, chromosome_dir, masked_regions=None, chromosome_weights=None):
+	"""
+	Adds monosomy regions to the masked regions with optional weights.
+	"""
+	if monosomie is None:
+		return masked_regions
+
+	if not masked_regions:
+		masked_regions = {}
+	try:
+		for chromosome in monosomie:
+			masked_regions[chromosome] = chromosome_dir[chromosome]
+			if chromosome_weights and chromosome in chromosome_weights:
+				chromosome_dir[chromosome].insert(0, chromosome_weights[chromosome])
+			else:
+				print("No weight provided for %s. Added 0 probability." %chromosome)
+				chromosome_dir[chromosome].insert(0, 0)
+	except KeyError:
+		print("Chromosome names in monosomie list and reference genome do not overlap")
+
+	return masked_regions
+
+
 def collapse_fasta(path_to_fasta):
 	with open(path_to_fasta, 'r') as fasta_file:
 		# extracting multiple data in single fasta file using biopython
@@ -144,6 +167,18 @@ def barcode_genome(chromosome_dir, barcode):
 	'''
 	chromosome_dir = {f'Barcode_{barcode}_{k}': v for k, v in chromosome_dir.items()}
 	return chromosome_dir
+
+def roi_barcoding(roi_dict, n_barcodes):
+	"""
+	Add _i suffix to each key in the dictionary for each index i in the specified range.
+	"""
+	new_dict = {}
+	for key, value in roi_dict.items():
+		for i in range(n_barcodes):
+			new_key = f"{key}_{i}"
+			new_dict[new_key] = value
+	return new_dict
+
 
 def get_chromosome(insert_position, chromosome_dir):
 	'Checks where the random insertion landed in the artifical one string full genome'
@@ -308,6 +343,7 @@ def check_if_blocked_region(start_position, read_length, blocked_region_coordina
 	Checks whether the start position of the read would be inside the coordinates of a blocked region.
 	Blocked can mean that no reads are obtained there or only with a certain probability.
 	This is useful to simulate monosomy or non-sequencable regions.
+	Probability of 0 means all reads with a start or end position in the respective interval are discarded!
 	"""
 	if blocked_region_coordinates:
 		for values in blocked_region_coordinates.values():
@@ -330,6 +366,7 @@ def generate_reads_based_on_coverage(fasta, read_length_distribution, coverage, 
 	read_coordinates = {}
 	while covered_length < coverage * total_length: #human genome size now #total_length: #6 seconds per 3x10^9 string length for mean read length of 1k
 		#read_length = random.choice(read_length_distribution)
+		#pseudo code: weighted selection of a barcode, then random start position, then check if blocked (somehow linked to barcode), then adding of read name with barcode
 		read_length = PRECOMPUTE_RANDOM.pop()
 		start_position = random.randint(0, total_length - read_length)
 		if not check_if_blocked_region(start_position, read_length, masked_regions):
@@ -509,16 +546,18 @@ elif mode == "ROI":
 	t0 = time.time()
 	#create global cooridnates from bed based on provided genome ref
 	fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
-	bed = pd.read_csv(roi_bedpath, sep='\t', header=None, usecols=[0,1,2,3,4], names=['chrom', 'start', 'end','ID','weight'])
+	bed = readbed(roi_bedpath, chromosome_dir.keys())
 	roi_dict = update_coordinates(bed, chromosome_dir)
 	print(chromosome_dir)
+	roi_dict = roi_barcoding(roi_dict, n_barcodes)
+	print(roi_dict.items())
 	'''
 	aberration_dir = chromosome_dir
 	for chrom in chromosome_dir.keys():
-	    # Get the weighted probabilities for the chromosome
-	    weighted_probs = get_weighted_probabilities(chrom, len(chromosome_dir.keys()), chromosome_weights)
-	    # Insert the weighted probabilities at index 1 of the value list associated with the chromosome key
-	    aberration_dir[chrom].insert(0, weighted_probs)
+		# Get the weighted probabilities for the chromosome
+		weighted_probs = get_weighted_probabilities(chrom, len(chromosome_dir.keys()), chromosome_weights)
+		# Insert the weighted probabilities at index 1 of the value list associated with the chromosome key
+		aberration_dir[chrom].insert(0, weighted_probs)
 
 	print(aberration_dir)
 	'''
@@ -526,19 +565,10 @@ elif mode == "ROI":
 	#create blocked regions file
 	blocked_bed = readbed(blocked_regions_bedpath, chromosome_dir.keys()) #barcoding should be default false
 	masked_regions = update_coordinates(blocked_bed, chromosome_dir, include_weights=True)
-
 	monosomie =["chr3"]
-	if monosomie and not masked_regions:
-		masked_regions={}
-	try:
-		for i in monosomie:
-			masked_regions[i] =  chromosome_dir[i]
-			chromsome_dir[i].insert(0, 0.5) #is not added yet
-	except:
-		print("no monosomie")
-
-	print(masked_regions)
+	masked_regions = add_monosomy_regions(monosomie, chromosome_dir, masked_regions=masked_regions, chromosome_weights=chromosome_weights)
 	sys.exit()
+	#
 
 
 
