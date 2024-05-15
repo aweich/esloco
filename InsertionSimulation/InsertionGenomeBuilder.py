@@ -21,13 +21,14 @@ sequenced_data_path = "/home/weichan/permanent/Projects/VIS/VIS_integration_site
 output_path = "./out/Test_SummaryTable.csv"
 insertion_probability = 1
 bedpath = "/home/weichan/permanent/Projects/VIS/dev/UCSC/intron_test.bed" #default setting to None #bed for insertions
-weights_dict = None#{"Barcode_0": 10, "Barcode_1": 5}
-chromosome_weights = {'chr3': 0.5} #0.5 means that its half as likely to be discarded, while 2 means its 2 as likely t be discarded
+#weights_dict = None#{"Barcode_0": 10, "Barcode_1": 5}
+barcode_weights = {"Barcode_0": 10, "Barcode_1": 5, "Barcode_2": 1}
+chromosome_weights = {'chr3': 0.5} 
 insertion_numbers=5
-n_barcodes=3 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false ## ONLY 1 to 9 work currently!!!!
-iterations=5
-parallel_jobs=5
-mode="ROI" # "I"or "ROI"
+n_barcodes=2 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false ## ONLY 1 to 9 work currently!!!!
+iterations=2
+parallel_jobs=2
+mode="I" # "I"or "ROI"
 #Combinations
 #coverages = [1, 5, 10, 15, 20] 
 #mean_read_lengths = [1000, 2000, 3000, 4000, 5000, 6000,7000,8000,9000,10000,15000,20000]
@@ -42,9 +43,9 @@ roi_bedpath = "/home/weichan/permanent/Projects/VIS/dev/Monosomie_Panel_Sim.bed"
 # Blocked from generating reads
 # path to bedfle with weights for probability!
 blocked_regions_bedpath = "/home/weichan/permanent/Projects/VIS/dev/Monosomie_Panel_Sim.bed"
-
-
-
+#link barcode and alternative genome
+barcodes_to_check_blocked_regions = ["Barcode_" + str(i) for i in range(n_barcodes)]# None #["Barcode_1"] #nested lost = all
+monosomie =["chr3"]
 
 #Part 1: Create an insertion-infiltrated chromosome and check where the insertions happen.
 
@@ -95,7 +96,7 @@ def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
 	except:
 		return None
 
-def update_coordinates(df, chromosome_dir, include_weights=False):
+def update_coordinates(df, input_chromosome_dict, include_weights=False):
 	'''
 	Uses a df (bed-based) and a dir of chromsome cooridnates in global format and returns the global cooridnates of the bed entries.
 	if return type dict, the thrid column will be used as keys.
@@ -105,8 +106,8 @@ def update_coordinates(df, chromosome_dir, include_weights=False):
 		for index, row in df.iterrows():
 			ID=row["ID"]
 			chrom = row['chrom']
-			start = row['start'] + chromosome_dir[chrom][0]
-			end = row['end'] + chromosome_dir[chrom][0]
+			start = row['start'] + input_chromosome_dict[chrom][0]
+			end = row['end'] + input_chromosome_dict[chrom][0]
 			if include_weights: #adds weights if there are any /// a weight of 1 means that the corresponding coordinates will be blocked with a probability of 1 
 				updated_coordinates[ID] = {row['weight'], start, end}
 			else:
@@ -115,7 +116,22 @@ def update_coordinates(df, chromosome_dir, include_weights=False):
 	except:
 		return None
 
-def add_monosomy_regions(monosomie, chromosome_dir, masked_regions=None, chromosome_weights=None):
+def convert_to_normal_bed(chromosome_dict, items_dict):
+	"""
+	Converts items dictionary to DataFrame in BED format using chromosome dictionary.
+	"""
+	bed_data = []
+	for item, coordinates in items_dict.items():
+		global_start, global_end = coordinates
+		for chrom, dimensions in chromosome_dict.items():
+			chr_start, chr_end = dimensions
+			if chr_start < global_start < chr_end:
+				bed_data.append([chrom, global_start - chr_start, chr_end - global_end, item])
+
+	bed_df = pd.DataFrame(bed_data, columns=['chrom', 'start', 'end', 'item'])
+	return bed_df
+
+def add_monosomy_regions(monosomie, input_chromosome_dict, masked_regions=None, chromosome_weights=None):
 	"""
 	Adds monosomy regions to the masked regions with optional weights.
 	"""
@@ -126,12 +142,12 @@ def add_monosomy_regions(monosomie, chromosome_dir, masked_regions=None, chromos
 		masked_regions = {}
 	try:
 		for chromosome in monosomie:
-			masked_regions[chromosome] = chromosome_dir[chromosome]
+			masked_regions[chromosome] = input_chromosome_dict[chromosome].copy()
 			if chromosome_weights and chromosome in chromosome_weights:
-				chromosome_dir[chromosome].insert(0, chromosome_weights[chromosome])
+				masked_regions[chromosome].insert(0, chromosome_weights[chromosome])
 			else:
 				print("No weight provided for %s. Added 0 probability." %chromosome)
-				chromosome_dir[chromosome].insert(0, 0)
+				masked_regions[chromosome].insert(0, 0)
 	except KeyError:
 		print("Chromosome names in monosomie list and reference genome do not overlap")
 
@@ -182,7 +198,8 @@ def roi_barcoding(roi_dict, n_barcodes):
 
 def get_chromosome(insert_position, chromosome_dir):
 	'Checks where the random insertion landed in the artifical one string full genome'
-	for chromosome, (start, end) in chromosome_dir.items():
+	for chromosome, coordinates in chromosome_dir.items():
+		start, end = coordinates
 		if start <= insert_position <= end:
 			return chromosome
 	return None
@@ -307,9 +324,10 @@ def create_barcoded_insertion_genome(reference_genome_path, bedpath, insertion_f
 	
 	fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
 	
-	#check blocking
+	#create blocked regions file
 	blocked_bed = readbed(blocked_regions_bedpath, chromosome_dir.keys()) #barcoding should be default false
 	masked_regions = update_coordinates(blocked_bed, chromosome_dir, include_weights=True)
+	masked_regions = add_monosomy_regions(monosomie, chromosome_dir, masked_regions=masked_regions, chromosome_weights=chromosome_weights)
 
 	for i in range(n_barcodes):
 		barcoded_chromosome_dir = barcode_genome(chromosome_dir, i)
@@ -319,7 +337,7 @@ def create_barcoded_insertion_genome(reference_genome_path, bedpath, insertion_f
 		#mod_fasta_dict.update({str(i): mod_fasta})
 		del barcoded_chromosome_dir, bed_df, insertion_dir
 	
-	return len(mod_fasta), insertion_dict, masked_regions #''.join( #_dict #now returns just one mod fasta
+	return len(mod_fasta), insertion_dict, masked_regions, chromosome_dir #''.join( #_dict #now returns just one mod fasta
 
 
 #Part 2: Create artifical reads
@@ -364,17 +382,41 @@ def generate_reads_based_on_coverage(fasta, read_length_distribution, coverage, 
 	total_length = fasta
 	#reads = [] #only a goodf idea if we are not testing high coverages, otherwise memory is floated
 	read_coordinates = {}
+	'''
 	while covered_length < coverage * total_length: #human genome size now #total_length: #6 seconds per 3x10^9 string length for mean read length of 1k
 		#read_length = random.choice(read_length_distribution)
 		#pseudo code: weighted selection of a barcode, then random start position, then check if blocked (somehow linked to barcode), then adding of read name with barcode
+		
+		random_barcode = random.choices(list(barcode_weights.keys()), [get_weighted_probabilities(i, n_barcodes, barcode_weights) for i in barcode_weights.keys()])[0] #randomly selects one barcode (weight based)
+		
 		read_length = PRECOMPUTE_RANDOM.pop()
 		start_position = random.randint(0, total_length - read_length)
 		if not check_if_blocked_region(start_position, read_length, masked_regions):
 			# If the start position is not blocked, record the read coordinates
-			read_coordinates[f"Read_{len(read_coordinates)}"] = [start_position, start_position + read_length]
+			#read_coordinates[f"Read_{len(read_coordinates)}"] = [start_position, start_position + read_length]
+			read_coordinates[f"Read_{len(read_coordinates)}_{random_barcode}"] = [start_position, start_position + read_length]
 			# Update the total covered length
 			covered_length += read_length
 	return read_coordinates #reads optional
+	'''
+	barcode_names = ["Barcode_" + str(i) for i in range(n_barcodes)]
+	while covered_length < coverage * total_length:
+		random_barcode = random.choices(barcode_names, [get_weighted_probabilities(i, n_barcodes, barcode_weights) for i in barcode_names])[0] #chooses one of the barcodes based on weighted probability
+		read_length = PRECOMPUTE_RANDOM.pop()
+		start_position = random.randint(0, total_length - read_length)
+		# Check if the random barcode is in the list of barcodes that require checking for blocked regions
+		if barcodes_to_check_blocked_regions and random_barcode in barcodes_to_check_blocked_regions:
+			# Check if the start position falls within a blocked region
+			if check_if_blocked_region(start_position, read_length, masked_regions):
+				# If the start position is in a blocked region, continue to the next iteration
+				#print("Read in masked region")
+				continue
+		
+		# Record the read coordinates
+		read_coordinates[f"Read_{len(read_coordinates)}_{random_barcode}"] = [start_position, start_position + read_length]
+		# Update the total covered length
+		covered_length += read_length
+	return read_coordinates
 
 
 
@@ -412,7 +454,7 @@ def get_weighted_probabilities(insertion_name,n_barcodes, weights_dict):
 		common_denominator = (sum(weights_dict.values()) + n_barcodes - len(weights_dict)) * n_barcodes
 		# Check if insertion_name contains any key in weights_dict
 		for key in weights_dict: 
-			if any(key == part for part in insertion_name.split("_")):
+			if any(key == part for part in insertion_name.split("_")) or key == insertion_name: #added the part after the or
 				#print((weights_dict[key] * n_barcodes) / common_denominator)
 				return (weights_dict[key] * n_barcodes) / common_denominator
 		# No weight provided, using 1/Number of barcodes for this barcode
@@ -423,9 +465,10 @@ def get_weighted_probabilities(insertion_name,n_barcodes, weights_dict):
 		#print("No weights provided, using equal weights.") # = probability that insertion/roi is from the right genome is 1/number of genomes 
 		return 1 / n_barcodes
 
+
 #Part 3: Simulate how many insertions can be found using our sequencing approach with different parameter settings
 @profile
-def count_insertions(insertion_dir, n_barcodes,weights_dict, read_dir):
+def count_insertions(insertion_dir, n_barcodes, read_dir):
 	"""
 	Count the number of full-length and partial insertions for each insertion.
 	"""
@@ -438,7 +481,7 @@ def count_insertions(insertion_dir, n_barcodes,weights_dict, read_dir):
 		insertion_start, insertion_end = insertion_positions
 		insertion_data = {'Insertion': insertion}
 
-		weight = get_weighted_probabilities(insertion, n_barcodes, weights_dict) #get probability of insertion/genome: This probability will then be used for eac read!
+		#weight = get_weighted_probabilities(insertion, n_barcodes, weights_dict) #get probability of insertion/genome: This probability will then be used for eac read!
 		
 
 		'''
@@ -449,7 +492,8 @@ def count_insertions(insertion_dir, n_barcodes,weights_dict, read_dir):
 		 #we have a certain probability that the read we pulled is from the correct genome. This probability is defined in the weighting function accoridng to the assigned weigths.
 
 		for read, read_positions in read_dir.items():
-			if weight >= random.random():
+			#if weight >= random.random():
+			if read.split("_")[-1] == insertion.split("_")[-1]: #if barcodes match
 				read_start, read_end = read_positions
 
 				if read_start <= insertion_start and insertion_end <= read_end:  # Full-length insertion
@@ -466,8 +510,20 @@ def count_insertions(insertion_dir, n_barcodes,weights_dict, read_dir):
 	return data
 
 
+
+def count_barcode_occurrences(dictionary):
+	'''
+	Counts how many reads are from which barcode. Verifies the weightes barcoding!
+	'''
+	suffix_count = {}
+	for key in dictionary.keys():
+		suffix = key.split("_")[-1]  # Get the last part of the key after "_"
+		suffix_count[suffix] = suffix_count.get(suffix, 0) + 1  # Increment count for the suffix
+	return suffix_count
+
+
 # Define a function to process each combination
-def process_combination(mean_read_length, coverage, weights_dict, length_mod_fasta, insertion_dir, iteration):
+def process_combination(mean_read_length, coverage, length_mod_fasta, insertion_dir, iteration):
 	
 	#Creates a read length distribution based mean read length and draws artificial reads from it based on coverage settings. Then it compares the coordinates of the previously created
 	#insertions in the reference fasta and checks whether they are partially or fully contained within the artificial reads.
@@ -478,15 +534,25 @@ def process_combination(mean_read_length, coverage, weights_dict, length_mod_fas
 	PRECOMPUTE_RANDOM = [random.choice(custom_read_length_distribution) for _ in range(100000000)]
 	#custom_cov_coordinates = generate_reads_based_on_coverage_parallel(mod_fasta, custom_read_length_distribution, coverage=coverage, num_processes=10)
 	custom_cov_coordinates = generate_reads_based_on_coverage(length_mod_fasta, custom_read_length_distribution, coverage, PRECOMPUTE_RANDOM)
+	
+	# Sanity check for barcoding
+	barcode_distribution = count_barcode_occurrences(custom_cov_coordinates)
+	print("Barcode distribution...")
+	barcode_distribution["cov"] = coverage
+	barcode_distribution["mean_read_length"] = mean_read_length
+	barcode_distribution["iteration"] = iteration	
+	print(barcode_distribution)
 	#detected, full, partial = count_insertions(insertion_dir, custom_cov_coordinates)
-	detected = count_insertions(insertion_dir, n_barcodes, weights_dict, custom_cov_coordinates)
+	
+	#Detections per ROI/Insertion
+	detected = count_insertions(insertion_dir, n_barcodes, custom_cov_coordinates)
 	suffix = "_" + str(iteration)
 	for insertion_data in detected:
 		insertion_data["mean_read_length"] = mean_read_length
 		insertion_data["coverage"] = coverage
 		insertion_data["Insertion"] += suffix
 	#return [mean_read_length, coverage, insertion_numbers, full, partial]
-	return detected
+	return detected, barcode_distribution
 	#save memory from overload
 	del custom_read_length_distribution
 	del custom_cov_coordinates
@@ -503,22 +569,59 @@ if mode == "I":
 	#insertion_fasta = collapse_fasta(vector_sequence_path)
 	insertion_fasta = 'X' * 5000 #artificial insertion
 
-	length_mod_fasta, insertion_dict, masked_regions = create_barcoded_insertion_genome(reference_genome_path=reference_genome_path, bedpath=bedpath, insertion_fasta=insertion_fasta, n_barcodes=n_barcodes)
+	length_mod_fasta, insertion_dict, masked_regions, chromosome_dir = create_barcoded_insertion_genome(reference_genome_path=reference_genome_path, bedpath=bedpath, insertion_fasta=insertion_fasta, n_barcodes=n_barcodes)
 	print("Number of insertions:")
 	print(len(insertion_dict.keys()))
 	print(insertion_dict)
+	print(chromosome_dir)
+	
+	#input variables
+	genome_size = length_mod_fasta
+	target_regions = insertion_dict
+
+	'''
 
 
 	def parallel_replicates(n_iterations): #x100 down to ~5.5h
 		results=[]
+		barcode_distributions=[]
 		print("Iteration number: %i" % n_iterations)
 		for mean_read_length, coverage in combinations:
-			out = process_combination(mean_read_length, coverage, weights_dict, length_mod_fasta, insertion_dict, n_iterations)
+			out, barcode_distribution = process_combination(mean_read_length, coverage, length_mod_fasta, insertion_dict, n_iterations)
 			results.append(out)
-		return results
+			barcode_distributions.append(barcode_distribution)
+		return results, barcode_distributions
 
 	parallel_results= Parallel(n_jobs=parallel_jobs)(delayed(parallel_replicates)(i) for i in range(iterations))
-	finaloutput = list(itertools.chain(*parallel_results))
+	print(parallel_results)
+	
+	#finaloutput = list(itertools.chain(*parallel_results))
+	###
+	results_list = []
+	barcode_distributions_list = []
+
+	# Iterate over parallel_results to extract results and barcode distributions
+	for iteration_results, barcode_distributions in parallel_results:
+		# Append results for this iteration to results_list
+		results_list.extend(iteration_results)
+		# Append barcode distributions for this iteration to barcode_distributions_list
+		barcode_distributions_list.append(barcode_distributions)
+
+	# Flatten the lists of dictionaries
+	flattened_results_list = [item for sublist in results_list for item in sublist]
+
+	# Convert the flattened results list into a DataFrame
+	results_df = pd.DataFrame(flattened_results_list)
+
+	# Flatten the list of dictionaries for barcode distributions
+	flattened_barcode_distributions_list = list(itertools.chain(*barcode_distributions_list))
+
+	# Convert the flattened barcode distributions list into a DataFrame
+	barcode_distributions_df = pd.DataFrame(flattened_barcode_distributions_list)
+	print(results_df)
+	print(barcode_distributions_df)
+	sys.exit()
+	###
 
 	#results=[]
 
@@ -538,9 +641,11 @@ if mode == "I":
 	print(finaloutput_df)
 	# Write DataFrame to CSV
 	finaloutput_df.to_csv(output_path, sep='\t', header=True, index=False)
+	print(insertions_per_chromosome(chromosome_dir, insertion_dict))
+	print(convert_to_normal_bed(chromosome_dir, insertion_dict))
 	print("Done.")
 	sys.exit()
-
+'''
 elif mode == "ROI":
 	print("Region of interest mode selected...")
 	t0 = time.time()
@@ -550,47 +655,112 @@ elif mode == "ROI":
 	roi_dict = update_coordinates(bed, chromosome_dir)
 	print(chromosome_dir)
 	roi_dict = roi_barcoding(roi_dict, n_barcodes)
-	print(roi_dict.items())
-	'''
-	aberration_dir = chromosome_dir
-	for chrom in chromosome_dir.keys():
-		# Get the weighted probabilities for the chromosome
-		weighted_probs = get_weighted_probabilities(chrom, len(chromosome_dir.keys()), chromosome_weights)
-		# Insert the weighted probabilities at index 1 of the value list associated with the chromosome key
-		aberration_dir[chrom].insert(0, weighted_probs)
-
-	print(aberration_dir)
-	'''
-
 	#create blocked regions file
 	blocked_bed = readbed(blocked_regions_bedpath, chromosome_dir.keys()) #barcoding should be default false
 	masked_regions = update_coordinates(blocked_bed, chromosome_dir, include_weights=True)
-	monosomie =["chr3"]
 	masked_regions = add_monosomy_regions(monosomie, chromosome_dir, masked_regions=masked_regions, chromosome_weights=chromosome_weights)
-	sys.exit()
+	
+	#input variables
+	genome_size = len(fasta)
+	target_regions = roi_dict
+
+	#sys.exit()
 	#
+	#new feature
+	
+
+
+#Shared processing: The input files differ between ROI and I, but the downstream handling is the same!
+
+def parallel_replicates(n_iterations): #x100 down to ~5.5h
+		results=[]
+		barcode_distributions=[]
+		print("Iteration number: %i" % n_iterations)
+		for mean_read_length, coverage in combinations:
+			out, barcode_distribution = process_combination(mean_read_length, coverage, genome_size, target_regions, n_iterations)
+			results.append(out)
+			barcode_distributions.append(barcode_distribution)
+		return results, barcode_distributions
+
+parallel_results= Parallel(n_jobs=parallel_jobs)(delayed(parallel_replicates)(i) for i in range(iterations))
+
+#finaloutput = list(itertools.chain(*parallel_results))
+###
+results_list = []
+barcode_distributions_list = []
+
+# Iterate over parallel_results to extract results and barcode distributions
+for iteration_results, barcode_distributions in parallel_results:
+	# Append results for this iteration to results_list
+	results_list.extend(iteration_results)
+	# Append barcode distributions for this iteration to barcode_distributions_list
+	barcode_distributions_list.append(barcode_distributions)
+
+# Flatten the lists of dictionaries
+flattened_results_list = [item for sublist in results_list for item in sublist]
+
+# Convert the flattened results list into a DataFrame
+results_df = pd.DataFrame(flattened_results_list)
+
+# Flatten the list of dictionaries for barcode distributions
+flattened_barcode_distributions_list = list(itertools.chain(*barcode_distributions_list))
+
+# Convert the flattened barcode distributions list into a DataFrame
+barcode_distributions_df = pd.DataFrame(flattened_barcode_distributions_list)
+print(mode)
+print(results_df)
+print(barcode_distributions_df)
+sys.exit()
+	###
 
 
 
+
+
+
+'''
 	#chromosomal aberrations check
 
 
 	def parallel_replicates(n_iterations): #x100 down to ~5.5h
 		results=[]
+		barcode_distributions=[]
 		print("Iteration number: %i" % n_iterations)
 		for mean_read_length, coverage in combinations:
-			out = process_combination(mean_read_length, coverage, weights_dict, len(fasta), roi_dict, n_iterations)
+			out, barcode_distribution = process_combination(mean_read_length, coverage, len(fasta), roi_dict, n_iterations)
 			results.append(out)
-		return results
+			barcode_distributions.append(barcode_distribution)
+		return results, barcode_distributions
 
 	parallel_results= Parallel(n_jobs=parallel_jobs)(delayed(parallel_replicates)(i) for i in range(iterations))
-	finaloutput = list(itertools.chain(*parallel_results))
+	#finaloutput = list(itertools.chain(*parallel_results))
+	print(parallel_results)
+	results_list = []
+	barcode_distributions_list = []
 
-	if any(isinstance(i, list) for i in finaloutput):
-		finaloutput_df = pd.DataFrame(sum(finaloutput, []))
+	# Iterate over parallel_results to extract results and barcode distributions
+	for iteration_results, barcode_distributions in parallel_results:
+		# Append results for this iteration to results_list
+		results_list.extend(iteration_results)
+		# Append barcode distributions for this iteration to barcode_distributions_list
+		barcode_distributions_list.append(barcode_distributions)
 
-	print(finaloutput_df)
-	
+	# Flatten the lists of dictionaries
+	flattened_results_list = [item for sublist in results_list for item in sublist]
+
+	# Convert the flattened results list into a DataFrame
+	results_df = pd.DataFrame(flattened_results_list)
+
+	# Flatten the list of dictionaries for barcode distributions
+	flattened_barcode_distributions_list = list(itertools.chain(*barcode_distributions_list))
+
+	# Convert the flattened barcode distributions list into a DataFrame
+	barcode_distributions_df = pd.DataFrame(flattened_barcode_distributions_list)
+	print(results_df)
+	print(barcode_distributions_df)
+	sys.exit()
+
+
 	t1 = time.time()
 	total = t1-t0
 	print(total)
@@ -601,3 +771,4 @@ elif mode == "ROI":
 else:
 	print("no valid mode selected.")
 	sys.exit()
+'''
