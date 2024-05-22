@@ -6,11 +6,13 @@ import pandas as pd
 import os
 import numpy as np
 import sys
+import scipy
+from matplotlib.patches import Patch
 
-out_dir="./out/ROI/"
-inputdata="./out/5Iterations_05_chr3_Test_SummaryTable.csv"
-prefix='5Iterations_05_chr3_Test_SummaryTable.' #sample name for output plot
-mode="ROI"
+out_dir="./out/DuplicatedInsertions/plots/"
+inputdata="./out/DuplicatedInsertions/Weight_5_I_DominanceSimulation_matches_table.csv"
+prefix='Weight_5_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
+mode="I"
 
 def plot_matches(data, out_dir):
 	"""
@@ -44,18 +46,18 @@ def plot_matches(data, out_dir):
 	g.savefig(partial_matches_plot_path)
  
 
-def lineplot_matches(data, value_column, out_dir):
+def lineplot_matches(data, value_column, x_axis="mean_read_length", hue="coverage", out_dir=out_dir):
 	"""
 	Plot partial and full matches over the mean read lengths with group ID being the coverage and save the plot as JPG files.
 	"""
 	# Create a line plot for full matches
 	plt.figure()
 	plt.title(prefix, y=1.1)
-	g = sns.lineplot(data=data, x='mean_read_length', y=value_column, hue='coverage', legend='full', errorbar='sd')
-	g.set_xticks(data['mean_read_length'].unique())
+	g = sns.lineplot(data=data, x=x_axis, y=value_column, hue=hue, legend='full', errorbar='sd')
+	g.set_xticks(data[x_axis].unique())
 	g.tick_params(axis='x', labelrotation=90)
-	g.set(xlabel='Mean Read Length', ylabel=value_column)
-	g.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title='Coverage')
+	g.set(xlabel=x_axis, ylabel=value_column)
+	g.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title=hue)
 
 	# Save the plot as a JPG file
 	#add experimental line
@@ -226,6 +228,64 @@ def plot_insertions(data, insertion_name, value_column_1, value_column_2, out_di
 	plt.savefig(plotpath, bbox_inches='tight')
 	plt.close()
 
+
+def combine_files_with_id(input_files):
+	combined_df = pd.DataFrame()
+	
+	for idx, file_path in enumerate(input_files):
+		df = pd.read_csv(file_path, sep='\t')
+		df['0_weight'] = idx +1
+		combined_df = pd.concat([combined_df, df], ignore_index=True)
+	
+	return combined_df
+
+def create_heatmap(df,id, value_column):
+
+	# Create a unique identifier for rows
+	df['identifier'] = df.apply(lambda x: f"{x['Barcode']}_{x[id]}", axis=1)
+	
+	# Create pivot tables
+	matches_pivot = df.pivot(index='identifier', columns=['coverage', 'mean_read_length'], values=value_column)
+	matches_pivot = matches_pivot.fillna(0)
+	print(matches_pivot)
+	# Create a DataFrame for row colors
+	row_colors_df = df[['identifier', 'Barcode', id]].drop_duplicates().set_index('identifier')
+	print(row_colors_df)
+
+	# Map colors to unique values of 'Barcode' and '0_weight'
+	unique_barcodes = row_colors_df['Barcode'].unique()
+	barcode_colors = sns.color_palette('hsv', len(unique_barcodes))
+	barcode_color_dict = dict(zip(unique_barcodes, barcode_colors))
+
+	unique_id = row_colors_df[id].unique()
+	id_colors = sns.color_palette('coolwarm', len(unique_id))
+	id_color_dict = dict(zip(unique_id, id_colors))
+
+	# Add color annotations
+	row_colors_df['Barcode_color'] = row_colors_df['Barcode'].map(barcode_color_dict)
+	row_colors_df['id_color'] = row_colors_df[id].map(id_color_dict)
+	row_colors = row_colors_df[['Barcode_color', 'id_color']]
+
+	# Create custom legend handles
+	barcode_handles = [Patch(facecolor=barcode_color_dict[bc], edgecolor='black', label=bc) for bc in unique_barcodes]
+	id_handles = [Patch(facecolor=id_color_dict[wt], edgecolor='black', label=f'{wt}') for wt in unique_id]
+
+	# Plot the heatmaps with annotations
+	sns.set(font_scale=0.7)
+	g = sns.clustermap(matches_pivot, row_colors=row_colors, cmap="viridis", figsize=(20, 10), dendrogram_ratio=0.02)
+	g.ax_heatmap.set_title(value_column)
+	g.ax_heatmap.set_xlabel('Coverage, Mean Read Length')
+	g.ax_heatmap.set_ylabel('Barcode, Weight')
+	
+	g.ax_cbar.set_position((-0.2,0.75,0.05,0.2))
+	g.ax_heatmap.legend(handles=barcode_handles + id_handles, title='Legends', bbox_to_anchor=(-0.2, 1), loc='upper left', ncol=1)
+	# Save plot
+	plotname = prefix + "_" + str(value_column) + '_heatmap.jpg'
+	plot_path = os.path.join(out_dir, plotname)
+	plt.savefig(plot_path, bbox_inches='tight')
+
+
+
 # Example usage:
 if mode == "I":
 	inputdata_df=pd.read_csv(inputdata, sep='\t')
@@ -239,8 +299,8 @@ if mode == "I":
 	print(summed_df)
 	#plot_matches(inputdata_df, out_dir)
 	#plot_combined_matches(finputdata_df, out_dir)
-	lineplot_matches(summed_df, "full_matches", out_dir)
-	lineplot_matches(summed_df, "partial_matches", out_dir)
+	lineplot_matches(summed_df, "full_matches", x_axis='mean_read_length', hue='coverage')
+	lineplot_matches(summed_df, "partial_matches", x_axis='mean_read_length', hue='coverage')
 	#lineplot_matches_barcode(summed_df, "full_matches", out_dir)
 	#lineplot_matches_barcode(summed_df, "partial_matches", out_dir)
 	#lineplot_matches(inputdata_df, "full_matches", out_dir)
@@ -252,6 +312,8 @@ if mode == "I":
 	print(mean_df)
 	plot_barcode_barplot(mean_df, "full_matches", out_dir, prefix)
 	plot_barcode_barplot(mean_df, "partial_matches", out_dir, prefix)
+	#
+	create_heatmap(mean_df, "coverage", "partial_matches")
 
 elif mode=="ROI":
 	inputdata_df=pd.read_csv(inputdata, sep='\t')
@@ -279,3 +341,22 @@ elif mode=="ROI":
 	#plot_combined_matches(finputdata_df, out_dir)
 	#lineplot_matches(summed_df, "full_matches", out_dir)
 	#lineplot_matches(summed_df, "partial_matches", out_dir)
+
+else:
+	input_files = ["./out/DuplicatedInsertions/Weight_%s_I_DominanceSimulation_matches_table.csv" %i for i in range(1,5)]
+	print(input_files)
+	combined = combine_files_with_id(input_files)
+	combined["Barcode"] = combined["Insertion"].str.split("_insertion").str[0]
+	combined["Iteration"] = combined["Insertion"].str.split("_").str[4]
+	print(combined)
+
+	#mean of the full matches and partial matches across the the iterations for the statistics int he plot
+	summed_df = combined.groupby(['coverage', 'mean_read_length','Barcode', '0_weight']).agg({'full_matches': 'mean', 'partial_matches': 'mean'}).reset_index()
+	#summed_df = summed_df.sort_values(by=['coverage', 'mean_read_length'])
+	summed_df['Coverage_ReadLength'] = summed_df['coverage'].astype(str) + "_" + summed_df['mean_read_length'].astype(str)
+	print(summed_df)
+	#not bad but also not good heatmaps
+	create_heatmap(summed_df, "0_weight", "full_matches")
+	create_heatmap(summed_df, "0_weight", "partial_matches")
+	#lineplot_matches(summed_df, "full_matches", x_axis='Coverage_ReadLength', hue='0_weight')
+	#lineplot_matches(summed_df.sort_values(by="mean_read_length"), "partial_matches", x_axis='Coverage_ReadLength', hue='0_weight')
