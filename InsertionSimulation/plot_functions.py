@@ -9,10 +9,10 @@ import sys
 import scipy
 from matplotlib.patches import Patch
 
-out_dir="./out/DuplicatedInsertions/plots/"
-inputdata="./out/DuplicatedInsertions/Weight_5_I_DominanceSimulation_matches_table.csv"
-prefix='Weight_5_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
-mode="I"
+out_dir="./out/DominanceSimulation/plots/"
+inputdata="./out/DominanceSimulation/Weight_1_I_DominanceSimulation_matches_table.csv"
+prefix="Combined" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
+mode=""
 
 def plot_matches(data, out_dir):
 	"""
@@ -163,39 +163,57 @@ def plot_barcode_barplot(df, match_type, out_dir, prefix):
 	plt.title(prefix, y=1.1)
 	plt.savefig(plot_path, bbox_inches='tight')
 
-def lineplot_matches_barcode(data, value_column, out_dir):
+def lineplot_matches_barcode(data, unique_column, value_column, x_axis="mean_read_length", hue="coverage", palette=None, out_dir=out_dir, prefix=prefix):
+	sns.set_style("ticks")
 	"""
-	Plot partial and full matches over the mean read lengths and coverages. This splits by barcodes, so we essentially get the each barcodes individual numbers (as mean per x iterations) as a single line. This shows that there are no preferred barcodes.
+	Plot partial and full matches over the mean read lengths and coverages. 
+	This splits by barcodes, so we essentially get each barcode's individual numbers (as mean per x iterations) as a single line. 
+	This shows that there are no preferred barcodes.
 	"""
-	# Create a line plot for full matches
-	plt.figure()
-	plt.title(prefix, y=1.1)
-	#data["Barcode"] = data["Insertion"].str.split("_insertion").str[0]
-	unique_barcodes = data["Iteration"].unique()
-	for n, barcode in enumerate(unique_barcodes):
-		barcode_data = data[data["Iteration"] == barcode]
+	# Create unique plots for each unique value in the unique_column
+	unique_values = data[unique_column].unique()
+	unique_values = unique_values[np.argsort(unique_values)]
+	num_unique = len(unique_values)
+	cols = 3  # Number of columns in the subplot grid
+	rows = (num_unique + cols - 1) // cols  # Number of rows in the subplot grid
+
+	fig, axes = plt.subplots(rows, cols, figsize=(20, rows * 5), sharey=True)
+	axes = axes.flatten()  # Flatten the 2D array of axes
+	handles=[]
+	labels=[]
+	ordered=data[hue].unique()[np.argsort(data[hue].unique())]
+	print(ordered)
+
+
+	for n, parameter in enumerate(unique_values):
+		ax = axes[n]
+		# Capture handles and labels for the legend from the first plot
+		parameter_data = data[data[unique_column] == parameter]
 		if n == 0:
-			g = sns.lineplot(data=barcode_data, x='mean_read_length', y=value_column, hue='coverage', legend=True,errorbar=None) #collapse multiple iterations
-		g = sns.lineplot(data=barcode_data, x='mean_read_length', y=value_column, hue='coverage', legend=False, errorbar=None) #collapsed 10
-	
-	g.set_xticks(data['mean_read_length'].unique())
-	g.tick_params(axis='x', labelrotation=90)
-	g.set(xlabel='Mean Read Length', ylabel=value_column)
-	g.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title='Coverage')
+			sns.lineplot(data=parameter_data, x=x_axis, y=value_column, hue=hue, hue_order=ordered,  palette=palette, legend=True, ax=ax, errorbar=None)
+			handles, labels = ax.get_legend_handles_labels()
+			ax.get_legend().remove()
+		else:
+			sns.lineplot(data=parameter_data, x=x_axis, y=value_column, hue=hue,hue_order=ordered,  palette=palette, legend=False, ax=ax, errorbar=None)
+		ax.set_xticks(data[x_axis].unique())
+		ax.tick_params(axis='x', labelrotation=90)
+		ax.set(xlabel=x_axis, ylabel=value_column)
+		ax.set_title(f"{unique_column}: {parameter}")
 
-	# add experimental line
-	#max value of data column
-	max_value = max(data[value_column].tolist())
-	print(max_value)
-	print(data.sort_values(by=[value_column]))
-	plt.axvline(x=5200, color='black', linestyle=':')
-	plt.text(5200,max_value, 'MK025', verticalalignment='bottom', horizontalalignment='center')
-	# Add point at y=5 on the vertical line
-	plot_points(MK025_data, option=value_column, color=sns.cubehelix_palette())
+	# Remove any unused subplots
+	for i in range(n + 1, len(axes)):
+		fig.delaxes(axes[i])
 
-	plotname = prefix + str(value_column) + '_barcode_lineplot.jpg'
-	full_matches_plot_path = os.path.join(out_dir, plotname)
-	plt.savefig(full_matches_plot_path, bbox_inches='tight')
+	# Create a single legend for the hue
+	fig.legend(handles, labels, bbox_to_anchor=(0.9, 1), loc='upper left', title=hue)
+
+	# Adjust layout
+	plt.tight_layout(rect=[0, 0, 0.85, 1])
+
+	# Save the figure
+	plotname = f"{prefix}_{unique_column}_{value_column}_barcode_lineplot.jpg"
+	plot_path = os.path.join(out_dir, plotname)
+	plt.savefig(plot_path, bbox_inches='tight')
 
 def plot_insertions(data, insertion_name, value_column_1, value_column_2, out_dir, prefix=""):
 	"""
@@ -247,10 +265,8 @@ def create_heatmap(df,id, value_column):
 	# Create pivot tables
 	matches_pivot = df.pivot(index='identifier', columns=['coverage', 'mean_read_length'], values=value_column)
 	matches_pivot = matches_pivot.fillna(0)
-	print(matches_pivot)
 	# Create a DataFrame for row colors
 	row_colors_df = df[['identifier', 'Barcode', id]].drop_duplicates().set_index('identifier')
-	print(row_colors_df)
 
 	# Map colors to unique values of 'Barcode' and '0_weight'
 	unique_barcodes = row_colors_df['Barcode'].unique()
@@ -343,7 +359,7 @@ elif mode=="ROI":
 	#lineplot_matches(summed_df, "partial_matches", out_dir)
 
 else:
-	input_files = ["./out/DuplicatedInsertions/Weight_%s_I_DominanceSimulation_matches_table.csv" %i for i in range(1,5)]
+	input_files = ["./out/DominanceSimulation/Weight_%s_I_DominanceSimulation_matches_table.csv" %i for i in range(1,4)]
 	print(input_files)
 	combined = combine_files_with_id(input_files)
 	combined["Barcode"] = combined["Insertion"].str.split("_insertion").str[0]
@@ -351,12 +367,15 @@ else:
 	print(combined)
 
 	#mean of the full matches and partial matches across the the iterations for the statistics int he plot
-	summed_df = combined.groupby(['coverage', 'mean_read_length','Barcode', '0_weight']).agg({'full_matches': 'mean', 'partial_matches': 'mean'}).reset_index()
+	mean_df = combined.groupby(['coverage', 'mean_read_length','Barcode', '0_weight']).agg({'full_matches': 'mean', 'partial_matches': 'mean'}).reset_index()
 	#summed_df = summed_df.sort_values(by=['coverage', 'mean_read_length'])
-	summed_df['Coverage_ReadLength'] = summed_df['coverage'].astype(str) + "_" + summed_df['mean_read_length'].astype(str)
-	print(summed_df)
+	mean_df['Coverage_ReadLength'] = mean_df['coverage'].astype(str) + "_" + mean_df['mean_read_length'].astype(str)
+	print(mean_df)
 	#not bad but also not good heatmaps
-	create_heatmap(summed_df, "0_weight", "full_matches")
-	create_heatmap(summed_df, "0_weight", "partial_matches")
-	#lineplot_matches(summed_df, "full_matches", x_axis='Coverage_ReadLength', hue='0_weight')
-	#lineplot_matches(summed_df.sort_values(by="mean_read_length"), "partial_matches", x_axis='Coverage_ReadLength', hue='0_weight')
+	create_heatmap(mean_df, "0_weight", "full_matches")
+	create_heatmap(mean_df, "0_weight", "partial_matches")
+	lineplot_matches(mean_df, "full_matches", x_axis='Coverage_ReadLength', hue='Barcode') #all matches per weight: "full_matches", x_axis='Coverage_ReadLength', hue='0_weight'
+	lineplot_matches(mean_df.sort_values(by="mean_read_length"), "partial_matches", x_axis='Coverage_ReadLength', hue='0_weight')
+	#
+	lineplot_matches_barcode(mean_df, "0_weight", "full_matches", x_axis='Coverage_ReadLength', hue='Barcode',palette=sns.color_palette("deep"))
+	lineplot_matches_barcode(mean_df.sort_values(by="mean_read_length"), "0_weight", "partial_matches", x_axis='Coverage_ReadLength', hue='Barcode', palette=sns.color_palette("deep"))
