@@ -11,7 +11,7 @@ from matplotlib.patches import Patch
 
 out_dir="./out/DominanceSimulation/plots/"
 inputdata="./out/DominanceSimulation/Weight_1_I_DominanceSimulation_matches_table.csv"
-prefix="Combined" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
+prefix="Combined_full_" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
 mode=""
 
 def plot_matches(data, out_dir):
@@ -174,10 +174,10 @@ def lineplot_matches_barcode(data, unique_column, value_column, x_axis="mean_rea
 	unique_values = data[unique_column].unique()
 	unique_values = unique_values[np.argsort(unique_values)]
 	num_unique = len(unique_values)
-	cols = 3  # Number of columns in the subplot grid
+	cols = 5  # Number of columns in the subplot grid
 	rows = (num_unique + cols - 1) // cols  # Number of rows in the subplot grid
 
-	fig, axes = plt.subplots(rows, cols, figsize=(20, rows * 5), sharey=True)
+	fig, axes = plt.subplots(rows, cols, figsize=(25, rows * 5), sharey=True)
 	axes = axes.flatten()  # Flatten the 2D array of axes
 	handles=[]
 	labels=[]
@@ -359,7 +359,7 @@ elif mode=="ROI":
 	#lineplot_matches(summed_df, "partial_matches", out_dir)
 
 else:
-	input_files = ["./out/DominanceSimulation/Weight_%s_I_DominanceSimulation_matches_table.csv" %i for i in range(1,4)]
+	input_files = ["./out/DominanceSimulation/Weight_%s_I_DominanceSimulation_matches_table.csv" %i for i in range(1,6)]
 	print(input_files)
 	combined = combine_files_with_id(input_files)
 	combined["Barcode"] = combined["Insertion"].str.split("_insertion").str[0]
@@ -375,7 +375,7 @@ else:
 	create_heatmap(mean_df, "0_weight", "full_matches")
 	create_heatmap(mean_df, "0_weight", "partial_matches")
 	lineplot_matches(mean_df, "full_matches", x_axis='Coverage_ReadLength', hue='Barcode') #all matches per weight: "full_matches", x_axis='Coverage_ReadLength', hue='0_weight'
-	lineplot_matches(mean_df.sort_values(by="mean_read_length"), "partial_matches", x_axis='Coverage_ReadLength', hue='0_weight')
+	lineplot_matches(mean_df.sort_values(by="mean_read_length"), "partial_matches", x_axis='Coverage_ReadLength', hue='Barcode')
 	#
 	lineplot_matches_barcode(mean_df, "0_weight", "full_matches", x_axis='Coverage_ReadLength', hue='Barcode',palette=sns.color_palette("deep"))
 	lineplot_matches_barcode(mean_df.sort_values(by="mean_read_length"), "0_weight", "partial_matches", x_axis='Coverage_ReadLength', hue='Barcode', palette=sns.color_palette("deep"))
