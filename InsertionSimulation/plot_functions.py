@@ -10,8 +10,8 @@ import scipy
 from matplotlib.patches import Patch
 
 out_dir="./out/DominanceSimulation/plots/"
-inputdata="./out/DominanceSimulation/Weight_1_I_DominanceSimulation_matches_table.csv"
-prefix="Combined_full_" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
+inputdata="./out/DominanceSimulation/RandomInsertions_Weight_5_I_DominanceSimulation"
+prefix="Random_Combined_full_" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
 mode=""
 
 def plot_matches(data, out_dir):
@@ -359,7 +359,7 @@ elif mode=="ROI":
 	#lineplot_matches(summed_df, "partial_matches", out_dir)
 
 else:
-	input_files = ["./out/DominanceSimulation/Weight_%s_I_DominanceSimulation_matches_table.csv" %i for i in range(1,6)]
+	input_files = ["./out/DominanceSimulation/RandomInsertions_Weight_%s_I_DominanceSimulation_matches_table.csv" %i for i in range(1,6)]#RandomInsertions_Weight_5_I_DominanceSimulation
 	print(input_files)
 	combined = combine_files_with_id(input_files)
 	combined["Barcode"] = combined["Insertion"].str.split("_insertion").str[0]
