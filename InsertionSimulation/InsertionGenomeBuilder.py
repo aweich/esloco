@@ -19,14 +19,14 @@ reference_genome_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_
 vector_sequence_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/pSLCAR-CD19-28z.fasta"#vector #currently 8866 - 42000 (not observed in data): 5kb long should be enough!
 sequenced_data_path = "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/FullRunAfterModulaization_BUFFERMODE100_CD19_cd247_Vector_integration_site/FASTA/Full_MK025_GFP+.fa"
 output_path = "./out/DominanceSimulation/"
-experiment_name="RandomInsertions_Weight_10_I_DominanceSimulation"
+experiment_name="Homogeneous_I_DominanceSimulation"
 insertion_probability = 1
 chr_restriction = None #"unrestricted"
-bedpath = None#"/home/weichan/permanent/Projects/VIS/dev/Simulation/FixedInsertions.bed" #for fixed insertions, start and end must be 1 apart! #Special: If num insertions and num of bed entries match, each entry will be chosen once, disregaridng its length!#None#"/home/weichan/permanent/Projects/VIS/dev/UCSC/intron_test.bed" #default setting to None #bed for insertions
-barcode_weights = {"Barcode_0": 10} #, "Barcode_1": 5, "Barcode_2": 1
+bedpath = "/home/weichan/permanent/Projects/VIS/dev/Simulation/FixedInsertions.bed" #for fixed insertions, start and end must be 1 apart! #Special: If num insertions and num of bed entries match, each entry will be chosen once, disregaridng its length!#None#"/home/weichan/permanent/Projects/VIS/dev/UCSC/intron_test.bed" #default setting to None #bed for insertions
+barcode_weights = None #{"Barcode_0": 20} #, "Barcode_1": 5, "Barcode_2": 1
 chromosome_weights = None#{'chr3': 0.5} #if not defined, the monosomy list will default to blocking 100%
 insertion_numbers=5
-n_barcodes=10 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false ## ONLY 1 to 9 work currently!!!!
+n_barcodes=1#0 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false ## ONLY 1 to 9 work currently!!!!
 iterations=10
 parallel_jobs=10
 mode="I" # "I"or "ROI"

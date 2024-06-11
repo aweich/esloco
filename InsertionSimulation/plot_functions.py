@@ -8,11 +8,12 @@ import numpy as np
 import sys
 import scipy
 from matplotlib.patches import Patch
+import re
 
 out_dir="./out/DominanceSimulation/plots/"
-inputdata="./out/DominanceSimulation/RandomInsertions_Weight_5_I_DominanceSimulation"
-prefix="Random_Combined_full_" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
-mode=""
+inputdata="./out/DominanceSimulation/Homogeneous_I_DominanceSimulation_matches_table.csv"
+prefix="Homogeneous_Fixed_" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
+mode="I"
 
 def plot_matches(data, out_dir):
 	"""
@@ -174,7 +175,7 @@ def lineplot_matches_barcode(data, unique_column, value_column, x_axis="mean_rea
 	unique_values = data[unique_column].unique()
 	unique_values = unique_values[np.argsort(unique_values)]
 	num_unique = len(unique_values)
-	cols = 5  # Number of columns in the subplot grid
+	cols = 7  # Number of columns in the subplot grid
 	rows = (num_unique + cols - 1) // cols  # Number of rows in the subplot grid
 
 	fig, axes = plt.subplots(rows, cols, figsize=(25, rows * 5), sharey=True)
@@ -246,13 +247,23 @@ def plot_insertions(data, insertion_name, value_column_1, value_column_2, out_di
 	plt.savefig(plotpath, bbox_inches='tight')
 	plt.close()
 
+def extract_numbers_from_filename(filename):
+	numbers = re.findall(r'\d+', filename)
+	if len(numbers) > 1:
+		print("more than one int in filename")
+		sys.exit()
+	else:
+		return int(numbers[0])
 
 def combine_files_with_id(input_files):
 	combined_df = pd.DataFrame()
 	
 	for idx, file_path in enumerate(input_files):
+		print(file_path)
 		df = pd.read_csv(file_path, sep='\t')
-		df['0_weight'] = idx +1
+		numbers = extract_numbers_from_filename(file_path)
+		print(numbers)
+		df['0_weight'] = numbers
 		combined_df = pd.concat([combined_df, df], ignore_index=True)
 	
 	return combined_df
@@ -326,10 +337,19 @@ if mode == "I":
 	print(inputdata_df)
 	mean_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
 	print(mean_df)
-	plot_barcode_barplot(mean_df, "full_matches", out_dir, prefix)
-	plot_barcode_barplot(mean_df, "partial_matches", out_dir, prefix)
-	#
+	#plot_barcode_barplot(mean_df, "full_matches", out_dir, prefix)
+	#plot_barcode_barplot(mean_df, "partial_matches", out_dir, prefix)
 	create_heatmap(mean_df, "coverage", "partial_matches")
+
+	#mean
+	#mean of the full matches and partial matches across the the iterations for the statistics int he plot
+	mean_df = inputdata_df.groupby(['coverage', 'mean_read_length','Barcode']).agg({'full_matches': 'mean', 'partial_matches': 'mean'}).reset_index()
+	#summed_df = summed_df.sort_values(by=['coverage', 'mean_read_length'])
+	mean_df['Coverage_ReadLength'] = mean_df['coverage'].astype(str) + "_" + mean_df['mean_read_length'].astype(str)
+	print(mean_df)
+	#not bad but also not good heatmaps
+	lineplot_matches(mean_df, "full_matches", x_axis='Coverage_ReadLength', hue='Barcode')
+	lineplot_matches(mean_df.sort_values(by="mean_read_length"), "partial_matches", x_axis='Coverage_ReadLength', hue='Barcode')
 
 elif mode=="ROI":
 	inputdata_df=pd.read_csv(inputdata, sep='\t')
@@ -359,7 +379,8 @@ elif mode=="ROI":
 	#lineplot_matches(summed_df, "partial_matches", out_dir)
 
 else:
-	input_files = ["./out/DominanceSimulation/RandomInsertions_Weight_%s_I_DominanceSimulation_matches_table.csv" %i for i in range(1,6)]#RandomInsertions_Weight_5_I_DominanceSimulation
+	#input_files = ["./out/DominanceSimulation/RandomInsertions_Weight_%s_I_DominanceSimulation_matches_table.csv" %i for i in range(1,6)]#
+	input_files = ["./out/DominanceSimulation/Weight_%s_I_DominanceSimulation_matches_table.csv" %i for i in [1,2,3,4,5,10,20]]
 	print(input_files)
 	combined = combine_files_with_id(input_files)
 	combined["Barcode"] = combined["Insertion"].str.split("_insertion").str[0]
