@@ -11,8 +11,8 @@ from matplotlib.patches import Patch
 import re
 
 out_dir="./out/DominanceSimulation/plots/"
-inputdata="./out/DominanceSimulation/Homogeneous_I_DominanceSimulation_matches_table.csv"
-prefix="Homogeneous_Fixed_" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
+inputdata="./out/DominanceSimulation/mediumCov_Homogeneous_I_DominanceSimulation_matches_table.csv"
+prefix="mediumCov_Homogeneous" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
 mode="I"
 
 def plot_matches(data, out_dir):
@@ -268,6 +268,10 @@ def combine_files_with_id(input_files):
 	
 	return combined_df
 
+def combine_value_columns(df, value_column_1, value_column_2):
+	df["combined_values"] = df[value_column_1] + df[value_column_2]
+	return df
+
 def create_heatmap(df,id, value_column):
 
 	# Create a unique identifier for rows
@@ -321,25 +325,31 @@ if mode == "I":
 	inputdata_df["Barcode"] = inputdata_df["Insertion"].str.split("_insertion").str[0]
 	inputdata_df["Iteration"] = inputdata_df["Insertion"].str.split("_").str[4]
 
+	#combined full and partial matches
+	combined_df = combine_value_columns(inputdata_df, "full_matches", "partial_matches")
+	print(combined_df.head())
+	combined_mean_df = combined_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'combined_values': 'mean'}).reset_index()
+	print(combined_mean_df.head())
+	combined_mean_df['Coverage_ReadLength'] = combined_mean_df['coverage'].astype(str) + "_" + combined_mean_df['mean_read_length'].astype(str)
+	print(combined_mean_df.head())
+	#not bad but also not good heatmaps
+	lineplot_matches(combined_mean_df, "combined_values", x_axis='Coverage_ReadLength', hue='Barcode')
+	sys.exit()
 	#sums up the full matches and partial matches across the barcodes but keeps the iterations for the statistics int he plot! = This means that the plot shows all detected insertions across the barcodes, irrespective of the barcode
 	summed_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Iteration']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
 	print(summed_df)
-	#plot_matches(inputdata_df, out_dir)
-	#plot_combined_matches(finputdata_df, out_dir)
-	lineplot_matches(summed_df, "full_matches", x_axis='mean_read_length', hue='coverage')
-	lineplot_matches(summed_df, "partial_matches", x_axis='mean_read_length', hue='coverage')
-	#lineplot_matches_barcode(summed_df, "full_matches", out_dir)
-	#lineplot_matches_barcode(summed_df, "partial_matches", out_dir)
-	#lineplot_matches(inputdata_df, "full_matches", out_dir)
-	#lineplot_matches(inputdata_df, "partial_matches", out_dir)
+
+	#lineplot_matches(summed_df, "full_matches", x_axis='mean_read_length', hue='coverage')
+	#lineplot_matches(summed_df, "partial_matches", x_axis='mean_read_length', hue='coverage')
 
 	#calculates the mean value for each barcode across the iterations
 	print(inputdata_df)
-	mean_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
+	mean_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'full_matches': 'mean', 'partial_matches': 'mean'}).reset_index()
 	print(mean_df)
 	#plot_barcode_barplot(mean_df, "full_matches", out_dir, prefix)
 	#plot_barcode_barplot(mean_df, "partial_matches", out_dir, prefix)
 	create_heatmap(mean_df, "coverage", "partial_matches")
+	create_heatmap(mean_df, "coverage", "full_matches")
 
 	#mean
 	#mean of the full matches and partial matches across the the iterations for the statistics int he plot
@@ -349,7 +359,7 @@ if mode == "I":
 	print(mean_df)
 	#not bad but also not good heatmaps
 	lineplot_matches(mean_df, "full_matches", x_axis='Coverage_ReadLength', hue='Barcode')
-	lineplot_matches(mean_df.sort_values(by="mean_read_length"), "partial_matches", x_axis='Coverage_ReadLength', hue='Barcode')
+	lineplot_matches(mean_df.sort_values(by="mean_read_length"),"partial_matches", x_axis='Coverage_ReadLength', hue='Barcode')
 
 elif mode=="ROI":
 	inputdata_df=pd.read_csv(inputdata, sep='\t')

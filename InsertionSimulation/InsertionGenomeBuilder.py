@@ -19,7 +19,7 @@ reference_genome_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_
 vector_sequence_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/pSLCAR-CD19-28z.fasta"#vector #currently 8866 - 42000 (not observed in data): 5kb long should be enough!
 sequenced_data_path = "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/FullRunAfterModulaization_BUFFERMODE100_CD19_cd247_Vector_integration_site/FASTA/Full_MK025_GFP+.fa"
 output_path = "./out/DominanceSimulation/"
-experiment_name="Homogeneous_I_DominanceSimulation"
+experiment_name="verylowCov_Homogeneous_I_DominanceSimulation"
 insertion_probability = 1
 chr_restriction = None #"unrestricted"
 bedpath = "/home/weichan/permanent/Projects/VIS/dev/Simulation/FixedInsertions.bed" #for fixed insertions, start and end must be 1 apart! #Special: If num insertions and num of bed entries match, each entry will be chosen once, disregaridng its length!#None#"/home/weichan/permanent/Projects/VIS/dev/UCSC/intron_test.bed" #default setting to None #bed for insertions
@@ -31,7 +31,7 @@ iterations=10
 parallel_jobs=10
 mode="I" # "I"or "ROI"
 #Combinations
-coverages = [1, 5, 10, 15, 20] 
+coverages = [0.25,0.5,0.75,1]#, 10, 15, 20] 
 mean_read_lengths = [1000, 2000, 3000, 4000, 5000, 6000,7000,8000,9000,10000,15000,20000]
 #mean_read_lengths = [5000, 8000, 12000]
 #coverages=[1,5,10,15] #* 10 #,5,10] #* 10 #coverage with some influence on the runtime
@@ -276,15 +276,15 @@ def add_insertions_to_genome_sequence_with_bed(reference_sequence, insertion_seq
 	'''
 	position = {}
 	if bed_df is not None:
-		if random.random() < insertion_probability: 
-			print("BED guided insertion pattern...")
-			# Step 1: Calculate probabilities based on region lengths
-			print("Calculating insertion probabilities (region length / sum of all regions lengths)...")
-			region_lengths = bed_df['end'] - bed_df['start']
-			region_probabilities = region_lengths / region_lengths.sum()
-			updated_reference_sequence = reference_sequence
+		print("BED guided insertion pattern...")
+		# Step 1: Calculate probabilities based on region lengths
+		print("Calculating insertion probabilities (region length / sum of all regions lengths)...")
+		region_lengths = bed_df['end'] - bed_df['start']
+		region_probabilities = region_lengths / region_lengths.sum()
+		updated_reference_sequence = reference_sequence
 
-			for i in range(num_insertions):
+		for i in range(num_insertions):
+			if random.random() < insertion_probability: 
 				# Step 2: Randomly select insertion regions #so that each region is selected once!
 				if len(bed_df.index) == num_insertions:
 					selected_region = bed_df.iloc[i]
