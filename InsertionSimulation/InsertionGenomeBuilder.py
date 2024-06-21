@@ -19,19 +19,19 @@ reference_genome_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_
 vector_sequence_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/pSLCAR-CD19-28z.fasta"#vector #currently 8866 - 42000 (not observed in data): 5kb long should be enough!
 sequenced_data_path = "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/FullRunAfterModulaization_BUFFERMODE100_CD19_cd247_Vector_integration_site/FASTA/Full_MK025_GFP+.fa"
 output_path = "./out/DominanceSimulation/"
-experiment_name="verylowCov_Homogeneous_I_DominanceSimulation"
+experiment_name="MK025_based_5I_GenomeScaled_verylowCov_Homogeneous_I_DominanceSimulation"
 insertion_probability = 1
 chr_restriction = None #"unrestricted"
 bedpath = "/home/weichan/permanent/Projects/VIS/dev/Simulation/FixedInsertions.bed" #for fixed insertions, start and end must be 1 apart! #Special: If num insertions and num of bed entries match, each entry will be chosen once, disregaridng its length!#None#"/home/weichan/permanent/Projects/VIS/dev/UCSC/intron_test.bed" #default setting to None #bed for insertions
 barcode_weights = None #{"Barcode_0": 20} #, "Barcode_1": 5, "Barcode_2": 1
 chromosome_weights = None#{'chr3': 0.5} #if not defined, the monosomy list will default to blocking 100%
-insertion_numbers=5
+insertion_numbers=10
 n_barcodes=1#0 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false ## ONLY 1 to 9 work currently!!!!
 iterations=10
 parallel_jobs=10
 mode="I" # "I"or "ROI"
 #Combinations
-coverages = [0.25,0.5,0.75,1]#, 10, 15, 20] 
+coverages = [0.1,0.2,0.25,0.5,0.75,1,2,3,4,5]#, 10, 15, 20] 
 mean_read_lengths = [1000, 2000, 3000, 4000, 5000, 6000,7000,8000,9000,10000,15000,20000]
 #mean_read_lengths = [5000, 8000, 12000]
 #coverages=[1,5,10,15] #* 10 #,5,10] #* 10 #coverage with some influence on the runtime
@@ -501,10 +501,14 @@ def get_weighted_probabilities(insertion_name,n_barcodes, weights_dict):
 @profile
 def count_insertions(insertion_dir, n_barcodes, read_dir):
 	'''
-	Counts the number of full-length and partial insertions for each insertion/roi. 
+	Counts the number of full-length and partial insertions for each insertion/roi. Genome scale factor due to diploidy of the human genome. 
 	'''
 	data = []
 	print("Counting...")
+	if mode == "I":
+		genome_scale_facor = 0.5 #temporarily changed to 1
+	else:
+		genome_scale_facor = 1
 
 	for insertion, insertion_positions in insertion_dir.items():
 		full_length_count = 0
@@ -517,10 +521,12 @@ def count_insertions(insertion_dir, n_barcodes, read_dir):
 				read_start, read_end = read_positions
 
 				if read_start <= insertion_start and insertion_end <= read_end:  # Full-length insertion
-					full_length_count += 1
+					if random.random() <= genome_scale_facor:
+						full_length_count += 1
 				elif (insertion_start < read_start and insertion_end > read_start) or \
 					 (insertion_start < read_end and insertion_end > read_end):  # Partial insertion
-					partial_count += 1
+					if random.random() <= genome_scale_facor:
+						partial_count += 1
 				
 		insertion_data['full_matches'] = full_length_count
 		insertion_data['partial_matches'] = partial_count
@@ -593,9 +599,13 @@ def process_combination(mean_read_length, coverage, length_mod_fasta, insertion_
 	Then it compares the coordinates of the target regions (ROI or I) with the coordinates of artifical reads of each barcode and checks whether they are partially or fully contained.
 	Masking is optional and is performed during the read generation step.
 	'''
-	#custom_read_length_distribution = get_read_length_distribution_from_real_data(sequenced_data_path) #for experimental data
-	print('Calculating for:' + str(mean_read_length))
-	custom_read_length_distribution = generate_read_length_distribution(1000000, mean_read_length=mean_read_length, distribution='lognormal')
+	try:
+		custom_read_length_distribution = get_read_length_distribution_from_real_data(sequenced_data_path) #for experimental data
+	except:
+		print("No custom read length distribution provided... Generating artificial one...")
+		custom_read_length_distribution = generate_read_length_distribution(1000000, mean_read_length=mean_read_length, distribution='lognormal')
+		print('Calculating for:' + str(mean_read_length))
+	
 	PRECOMPUTE_RANDOM = [random.choice(custom_read_length_distribution) for _ in range(100000000)]
 	custom_cov_coordinates = generate_reads_based_on_coverage(length_mod_fasta, custom_read_length_distribution, coverage, PRECOMPUTE_RANDOM)
 	

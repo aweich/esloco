@@ -11,8 +11,8 @@ from matplotlib.patches import Patch
 import re
 
 out_dir="./out/DominanceSimulation/plots/"
-inputdata="./out/DominanceSimulation/mediumCov_Homogeneous_I_DominanceSimulation_matches_table.csv"
-prefix="mediumCov_Homogeneous" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
+inputdata="./out/DominanceSimulation/MK025_based_5I_GenomeScaled_verylowCov_Homogeneous_I_DominanceSimulation_matches_table.csv"
+prefix="MK025_based_5I_GenomeScaled_verylowCov_Homogeneous_I_DominanceSimulation" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
 mode="I"
 
 def plot_matches(data, out_dir):
@@ -52,14 +52,20 @@ def lineplot_matches(data, value_column, x_axis="mean_read_length", hue="coverag
 	Plot partial and full matches over the mean read lengths with group ID being the coverage and save the plot as JPG files.
 	"""
 	# Create a line plot for full matches
-	plt.figure()
+	plt.figure(figsize=(16,9))
 	plt.title(prefix, y=1.1)
+	print(data[x_axis])
 	g = sns.lineplot(data=data, x=x_axis, y=value_column, hue=hue, legend='full', errorbar='sd')
 	g.set_xticks(data[x_axis].unique())
 	g.tick_params(axis='x', labelrotation=90)
 	g.set(xlabel=x_axis, ylabel=value_column)
 	g.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title=hue)
 
+	# Add a regression line
+	try:
+		sns.regplot(data=data, x=x_axis, y=value_column, scatter=False, color='black')
+	except:
+		print("no regression possible")
 	# Save the plot as a JPG file
 	#add experimental line
 	#plt.axvline(x=5200, color='black', linestyle=':')
@@ -334,7 +340,7 @@ if mode == "I":
 	print(combined_mean_df.head())
 	#not bad but also not good heatmaps
 	lineplot_matches(combined_mean_df, "combined_values", x_axis='Coverage_ReadLength', hue='Barcode')
-	sys.exit()
+	lineplot_matches(combined_mean_df, "combined_values", x_axis='coverage', hue='mean_read_length')
 	#sums up the full matches and partial matches across the barcodes but keeps the iterations for the statistics int he plot! = This means that the plot shows all detected insertions across the barcodes, irrespective of the barcode
 	summed_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Iteration']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
 	print(summed_df)
