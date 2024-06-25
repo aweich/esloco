@@ -10,9 +10,9 @@ import scipy
 from matplotlib.patches import Patch
 import re
 
-out_dir="./out/DominanceSimulation/plots/"
-inputdata="./out/DominanceSimulation/MK025_based_5I_GenomeScaled_verylowCov_Homogeneous_I_DominanceSimulation_matches_table.csv"
-prefix="MK025_based_5I_GenomeScaled_verylowCov_Homogeneous_I_DominanceSimulation" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
+out_dir="./out/Debugging/plots/"
+inputdata="./out/Debugging/introns_cov_MK025_5I_GenomeScaled_Barcodes10_matches_table.csv"
+prefix="introns_cov_MK025_5I_GenomeScaled_Barcodes10" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
 mode="I"
 
 def plot_matches(data, out_dir):
@@ -333,13 +333,14 @@ if mode == "I":
 
 	#combined full and partial matches
 	combined_df = combine_value_columns(inputdata_df, "full_matches", "partial_matches")
-	print(combined_df.head())
-	combined_mean_df = combined_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'combined_values': 'mean'}).reset_index()
-	print(combined_mean_df.head())
+	print(combined_df)
+	combined_mean_df = combined_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'combined_values': 'mean'}).reset_index() #mean over iterations
+	combined_mean_df = combined_mean_df.groupby(['coverage', 'mean_read_length']).agg({'combined_values': 'sum'}).reset_index() #sum over barcode
+	print(combined_mean_df)
 	combined_mean_df['Coverage_ReadLength'] = combined_mean_df['coverage'].astype(str) + "_" + combined_mean_df['mean_read_length'].astype(str)
 	print(combined_mean_df.head())
 	#not bad but also not good heatmaps
-	lineplot_matches(combined_mean_df, "combined_values", x_axis='Coverage_ReadLength', hue='Barcode')
+	#lineplot_matches(combined_mean_df, "combined_values", x_axis='Coverage_ReadLength', hue='Barcode')
 	lineplot_matches(combined_mean_df, "combined_values", x_axis='coverage', hue='mean_read_length')
 	#sums up the full matches and partial matches across the barcodes but keeps the iterations for the statistics int he plot! = This means that the plot shows all detected insertions across the barcodes, irrespective of the barcode
 	summed_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Iteration']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
@@ -354,8 +355,9 @@ if mode == "I":
 	print(mean_df)
 	#plot_barcode_barplot(mean_df, "full_matches", out_dir, prefix)
 	#plot_barcode_barplot(mean_df, "partial_matches", out_dir, prefix)
-	create_heatmap(mean_df, "coverage", "partial_matches")
-	create_heatmap(mean_df, "coverage", "full_matches")
+	
+	#create_heatmap(mean_df, "coverage", "partial_matches")
+	#create_heatmap(mean_df, "coverage", "full_matches")
 
 	#mean
 	#mean of the full matches and partial matches across the the iterations for the statistics int he plot

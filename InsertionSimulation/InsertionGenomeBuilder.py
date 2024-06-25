@@ -18,21 +18,23 @@ from joblib import Parallel, delayed
 reference_genome_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38.fa" #reads will be created based on this reference
 vector_sequence_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/pSLCAR-CD19-28z.fasta"#vector #currently 8866 - 42000 (not observed in data): 5kb long should be enough!
 sequenced_data_path = "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/FullRunAfterModulaization_BUFFERMODE100_CD19_cd247_Vector_integration_site/FASTA/Full_MK025_GFP+.fa"
-output_path = "./out/DominanceSimulation/"
-experiment_name="MK025_based_5I_GenomeScaled_verylowCov_Homogeneous_I_DominanceSimulation"
+output_path = "./out/Debugging/"
+experiment_name="cov_plot_test"#"introns_cov_MK025_5I_GenomeScaled_Barcodes10"
+output_path_plots=output_path + "/plots/"
 insertion_probability = 1
 chr_restriction = None #"unrestricted"
-bedpath = "/home/weichan/permanent/Projects/VIS/dev/Simulation/FixedInsertions.bed" #for fixed insertions, start and end must be 1 apart! #Special: If num insertions and num of bed entries match, each entry will be chosen once, disregaridng its length!#None#"/home/weichan/permanent/Projects/VIS/dev/UCSC/intron_test.bed" #default setting to None #bed for insertions
+bedpath = "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE_V44_Introns_04_24" #Simulation/FixedInsertions.bed" #for fixed insertions, start and end must be 1 apart! #Special: If num insertions and num of bed entries match, each entry will be chosen once, disregaridng its length!#None#"/home/weichan/permanent/Projects/VIS/dev/UCSC/intron_test.bed" #default setting to None #bed for insertions
 barcode_weights = None #{"Barcode_0": 20} #, "Barcode_1": 5, "Barcode_2": 1
 chromosome_weights = None#{'chr3': 0.5} #if not defined, the monosomy list will default to blocking 100%
-insertion_numbers=10
-n_barcodes=1#0 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false ## ONLY 1 to 9 work currently!!!!
-iterations=10
+insertion_numbers=5
+n_barcodes=1 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false ## ONLY 1 to 9 work currently!!!!
+iterations=5
+scaling=True
 parallel_jobs=10
 mode="I" # "I"or "ROI"
 #Combinations
-coverages = [0.1,0.2,0.25,0.5,0.75,1,2,3,4,5]#, 10, 15, 20] 
-mean_read_lengths = [1000, 2000, 3000, 4000, 5000, 6000,7000,8000,9000,10000,15000,20000]
+coverages = [0.25]#, 10, 15, 20] 
+mean_read_lengths = [5128]#[1000, 2000, 3000, 4000, 5000, 6000,7000,8000,9000,10000,15000,20000]
 #mean_read_lengths = [5000, 8000, 12000]
 #coverages=[1,5,10,15] #* 10 #,5,10] #* 10 #coverage with some influence on the runtime
 #coverages=[2,5]
@@ -465,13 +467,13 @@ def generate_read_length_distribution(num_reads, mean_read_length, distribution=
 		read_lengths = np.random.normal(mean_read_length, mean_read_length / 10, num_reads)
 	elif distribution == 'lognormal':
 		# Generate read lengths from a log-normal distribution
-		read_lengths = np.random.lognormal(mean=np.log(mean_read_length), sigma=1.0, size=num_reads)
+		#adjust the mean so it matches the lognormal case
+		read_lengths = np.random.lognormal(mean=np.log(mean_read_length) - 0.5, sigma=1.0, size=num_reads)
 	else:
 		raise ValueError("Unsupported distribution. Supported options: 'normal', 'lognormal'.")
 	
-	# Ensure that all read lengths are positive integers
-	read_lengths = np.round(np.abs(read_lengths)).astype(int)
 	# Filter out zero-length reads
+	read_lengths = np.round(read_lengths).astype(int)
 	read_lengths = read_lengths[read_lengths > 0]
 	
 	return read_lengths #not returning list
@@ -505,7 +507,7 @@ def count_insertions(insertion_dir, n_barcodes, read_dir):
 	'''
 	data = []
 	print("Counting...")
-	if mode == "I":
+	if scaling == True:
 		genome_scale_facor = 0.5 #temporarily changed to 1
 	else:
 		genome_scale_facor = 1
@@ -590,6 +592,82 @@ def normalize_ROI_by_length(roi_input_bed, roi_counted_insertions, scaling_facto
 	
 	return roi_counted_insertions
 
+def save_histogram(data, bins, mean_read_length, coverage):
+	"""
+	Generates a histogram from a list of numbers and saves it as a PNG file.
+	"""
+	mean_value = np.mean(data)
+	median_value = np.median(data)
+	print(len(data))
+	print(mean_value)
+	print(median_value)
+	# Create the histogram
+	plt.figure(figsize=(10, 6))
+	plt.hist(data, bins=bins, edgecolor='black', alpha=0.7)
+	
+	# Add a vertical line for the mean
+	plt.axvline(mean_value, color='red', linestyle='dashed', linewidth=1)
+	plt.text(mean_value, plt.ylim()[1]*0.9, f'Mean: {mean_value:.2f}', color='red')
+	plt.axvline(median_value, color='blue', linestyle='dashed', linewidth=1)
+	plt.text(median_value, plt.ylim()[1]*0.8, f'Median: {median_value:.2f}', color='blue')
+	# Add labels and title
+	plt.xlabel('Value')
+	plt.ylabel('Frequency')
+	plt.title('Histogram with Mean and Median')
+	
+	# Save the histogram as a PNG file
+	output_file = f"{output_path_plots}/{mean_read_length}_{coverage}_histogram.png"
+	plt.savefig(output_file, format='png', dpi=300)
+	plt.close()
+
+def bin_coverage(coverage, bin_size):
+	"""
+	Aggregate coverage data into bins of a specified size.
+	"""
+	num_bins = int(np.ceil(len(coverage) / bin_size))
+	binned_coverage = np.zeros(num_bins)
+	
+	for i in range(num_bins):
+		start = i * bin_size
+		end = start + bin_size
+		binned_coverage[i] = np.mean(coverage[start:end])
+	
+	return binned_coverage
+
+def plot_reads_coverage(reference_genome_length,bin_size, reads_dict, mean_read_length, current_coverage):
+	"""
+	Plots a coverage-like plot using the reference genome and reads information.
+	"""
+	ref_length = reference_genome_length
+	
+	# Initialize coverage array
+	coverage = np.zeros(ref_length)
+	
+	# Populate coverage array based on reads
+	for read_id, (start, stop) in reads_dict.items():
+		coverage[start:stop] += 1
+	
+	# Bin the coverage
+	binned_coverage = bin_coverage(coverage, bin_size)
+	bin_positions = np.arange(0, ref_length, bin_size)
+	
+	# Plot the binned coverage
+	plt.figure(figsize=(20, 6))
+	plt.plot(bin_positions[:len(binned_coverage)], binned_coverage, drawstyle='steps-pre')
+	#plt.plot(bin_positions[:len(binned_coverage)], binned_coverage, color='r', marker='o')
+
+	
+	plt.xlabel('Position on Reference Genome (binned)')
+	plt.ylabel('Read Coverage')
+	plt.title('Read Coverage Plot')
+	
+	# Save the plot
+	output_file = f"{output_path_plots}/{mean_read_length}_{current_coverage}_coverage.png"
+	plt.savefig(output_file)
+	plt.close()
+	
+	print(f"Plot saved as {output_file}")
+
 
 def process_combination(mean_read_length, coverage, length_mod_fasta, insertion_dir, iteration):
 	'''
@@ -601,14 +679,19 @@ def process_combination(mean_read_length, coverage, length_mod_fasta, insertion_
 	'''
 	try:
 		custom_read_length_distribution = get_read_length_distribution_from_real_data(sequenced_data_path) #for experimental data
+		save_histogram(custom_read_length_distribution, 200, mean_read_length, coverage)
 	except:
 		print("No custom read length distribution provided... Generating artificial one...")
-		custom_read_length_distribution = generate_read_length_distribution(1000000, mean_read_length=mean_read_length, distribution='lognormal')
+		custom_read_length_distribution = generate_read_length_distribution(num_reads=1000000, mean_read_length=mean_read_length, distribution='lognormal')
+		print(custom_read_length_distribution)
+		save_histogram(custom_read_length_distribution, 200, mean_read_length, coverage)
 		print('Calculating for:' + str(mean_read_length))
 	
 	PRECOMPUTE_RANDOM = [random.choice(custom_read_length_distribution) for _ in range(100000000)]
 	custom_cov_coordinates = generate_reads_based_on_coverage(length_mod_fasta, custom_read_length_distribution, coverage, PRECOMPUTE_RANDOM)
 	
+	#plot coverage
+	plot_reads_coverage(length_mod_fasta, 1000000, custom_cov_coordinates, mean_read_length, coverage)
 	# Sanity check for barcoding
 	barcode_distribution = count_barcode_occurrences(custom_cov_coordinates)
 	barcode_distribution["coverage"] = coverage
