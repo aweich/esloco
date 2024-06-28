@@ -3,6 +3,9 @@
 from Bio import SeqIO
 import random
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+from matplotlib.lines import Line2D
+from scipy.ndimage import gaussian_filter1d
 import numpy as np
 import pandas as pd
 import sys
@@ -14,27 +17,28 @@ import os #wrapper
 from functools import partial
 from joblib import Parallel, delayed
 
+
 #will at some point be changes into argparse or sth similar
 reference_genome_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38.fa" #reads will be created based on this reference
 vector_sequence_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/pSLCAR-CD19-28z.fasta"#vector #currently 8866 - 42000 (not observed in data): 5kb long should be enough!
-sequenced_data_path = "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/FullRunAfterModulaization_BUFFERMODE100_CD19_cd247_Vector_integration_site/FASTA/Full_MK025_GFP+.fa"
+sequenced_data_path = None#"/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/FullRunAfterModulaization_BUFFERMODE100_CD19_cd247_Vector_integration_site/FASTA/Full_MK025_GFP+.fa"
 output_path = "./out/Debugging/"
-experiment_name="cov_plot_test"#"introns_cov_MK025_5I_GenomeScaled_Barcodes10"
+experiment_name="5I_homo_variable_cov_notMK025"#"introns_cov_MK025_5I_GenomeScaled_Barcodes10"
 output_path_plots=output_path + "/plots/"
 insertion_probability = 1
 chr_restriction = None #"unrestricted"
 bedpath = "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE_V44_Introns_04_24" #Simulation/FixedInsertions.bed" #for fixed insertions, start and end must be 1 apart! #Special: If num insertions and num of bed entries match, each entry will be chosen once, disregaridng its length!#None#"/home/weichan/permanent/Projects/VIS/dev/UCSC/intron_test.bed" #default setting to None #bed for insertions
-barcode_weights = None #{"Barcode_0": 20} #, "Barcode_1": 5, "Barcode_2": 1
+barcode_weights = None#{"Barcode_0": 2} #, "Barcode_1": 5, "Barcode_2": 1
 chromosome_weights = None#{'chr3': 0.5} #if not defined, the monosomy list will default to blocking 100%
 insertion_numbers=5
-n_barcodes=1 #add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false ## ONLY 1 to 9 work currently!!!!
-iterations=5
+n_barcodes=1#add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false ## ONLY 1 to 9 work currently!!!!
+iterations=3
 scaling=True
 parallel_jobs=10
 mode="I" # "I"or "ROI"
 #Combinations
-coverages = [0.25]#, 10, 15, 20] 
-mean_read_lengths = [5128]#[1000, 2000, 3000, 4000, 5000, 6000,7000,8000,9000,10000,15000,20000]
+coverages = [0.25,2, 4, 6]#, 10, 15, 20] 
+mean_read_lengths = [5128,7000,10000]#[1000, 2000, 3000, 4000, 5000, 6000,7000,8000,9000,10000,15000,20000]
 #mean_read_lengths = [5000, 8000, 12000]
 #coverages=[1,5,10,15] #* 10 #,5,10] #* 10 #coverage with some influence on the runtime
 #coverages=[2,5]
@@ -634,30 +638,57 @@ def bin_coverage(coverage, bin_size):
 	
 	return binned_coverage
 
-def plot_reads_coverage(reference_genome_length,bin_size, reads_dict, mean_read_length, current_coverage):
+def plot_reads_coverage(reference_genome_length,bin_size, reads_dict, mean_read_length, current_coverage, insertion_dict):
 	"""
 	Plots a coverage-like plot using the reference genome and reads information.
 	"""
 	ref_length = reference_genome_length
-	
+	smooth_sigma = 3
 	# Initialize coverage array
 	coverage = np.zeros(ref_length)
 	
+	# Extract unique suffixes and assign colors
+	unique_suffixes = set(read_id.split('_')[-1] for read_id in reads_dict.keys())
+	colors = list(mcolors.TABLEAU_COLORS.keys())
+	suffix_color_map = {suffix: colors[i % len(colors)] for i, suffix in enumerate(unique_suffixes)}
+	
 	# Populate coverage array based on reads
 	for read_id, (start, stop) in reads_dict.items():
+		suffix = read_id.split('_')[-1]
 		coverage[start:stop] += 1
 	
 	# Bin the coverage
 	binned_coverage = bin_coverage(coverage, bin_size)
 	bin_positions = np.arange(0, ref_length, bin_size)
 	
+	# Smooth the binned coverage using a Gaussian filter
+	smoothed_binned_coverage = gaussian_filter1d(binned_coverage, sigma=smooth_sigma)
+
 	# Plot the binned coverage
 	plt.figure(figsize=(20, 6))
-	plt.plot(bin_positions[:len(binned_coverage)], binned_coverage, drawstyle='steps-pre')
+	plt.plot(bin_positions[:len(smoothed_binned_coverage)], smoothed_binned_coverage, drawstyle='steps-pre', color='gray', alpha=0.5)
 	#plt.plot(bin_positions[:len(binned_coverage)], binned_coverage, color='r', marker='o')
+	# Plot individual reads with different colors based on suffix
+	for suffix in unique_suffixes:
+		coverage_suffix = np.zeros(ref_length)
+		for read_id, (start, stop) in reads_dict.items():
+			if read_id.endswith(suffix):
+				coverage_suffix[start:stop] += 1
+		binned_coverage_suffix = bin_coverage(coverage_suffix, bin_size)
+		smoothed_binned_coverage_suffix = gaussian_filter1d(binned_coverage_suffix, sigma=smooth_sigma)
+		plt.plot(bin_positions[:len(smoothed_binned_coverage_suffix)], smoothed_binned_coverage_suffix, drawstyle='steps-pre', color=suffix_color_map[suffix], label=suffix, alpha=0.5)
 
+	# Add vertical lines at specified positions
+	for key, positions in insertion_dict.items():
+		suffix = key.split('_')[1]
+		for pos in positions:
+			plt.axvline(x=pos, color=suffix_color_map[suffix], linestyle='--')
 	
-	plt.xlabel('Position on Reference Genome (binned)')
+	# Create custom legend
+	legend_handles = [Line2D([0], [0], color=suffix_color_map[suffix], lw=2, label=suffix) for suffix in unique_suffixes]
+	plt.legend(handles=legend_handles, title='Barcode', bbox_to_anchor=(1.05, 1), loc='upper left')
+	
+	plt.xlabel('Position on "one-string" Reference Genome (1e6 binned)')
 	plt.ylabel('Read Coverage')
 	plt.title('Read Coverage Plot')
 	
@@ -691,7 +722,7 @@ def process_combination(mean_read_length, coverage, length_mod_fasta, insertion_
 	custom_cov_coordinates = generate_reads_based_on_coverage(length_mod_fasta, custom_read_length_distribution, coverage, PRECOMPUTE_RANDOM)
 	
 	#plot coverage
-	plot_reads_coverage(length_mod_fasta, 1000000, custom_cov_coordinates, mean_read_length, coverage)
+	plot_reads_coverage(length_mod_fasta, 1000000, custom_cov_coordinates, mean_read_length, coverage, insertion_dir)
 	# Sanity check for barcoding
 	barcode_distribution = count_barcode_occurrences(custom_cov_coordinates)
 	barcode_distribution["coverage"] = coverage
@@ -821,6 +852,14 @@ if mode == "ROI":
 
 
 print(results_df)
+
+#### test for I 
+results_df["Barcode"] = results_df["Insertion"].str.split("_insertion").str[0]
+results_df["Iteration"] = results_df["Insertion"].str.split("_").str[4]
+combined_mean_df = results_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'full_matches': 'mean', 'partial_matches': 'mean'}).reset_index() #mean over iterations
+print("mean overview:")
+print(combined_mean_df)
+
 print(barcode_distributions_df)
 
 t1 = time.time()
