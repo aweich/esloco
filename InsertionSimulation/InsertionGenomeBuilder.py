@@ -21,24 +21,24 @@ from joblib import Parallel, delayed
 #will at some point be changes into argparse or sth similar
 reference_genome_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/hg38.fa" #reads will be created based on this reference
 vector_sequence_path = "/home/weichan/permanent/Projects/VIS/dev/VIS_Magdeburg_withBasecalling/pSLCAR-CD19-28z.fasta"#vector #currently 8866 - 42000 (not observed in data): 5kb long should be enough!
-sequenced_data_path = None#"/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/FullRunAfterModulaization_BUFFERMODE100_CD19_cd247_Vector_integration_site/FASTA/Full_MK025_GFP+.fa"
+sequenced_data_path = "/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/FullRunAfterModulaization_BUFFERMODE100_CD19_cd247_Vector_integration_site/FASTA/Full_MK025_GFP+.fa"
 output_path = "./out/Debugging/"
-experiment_name="5I_homo_variable_cov_notMK025"#"introns_cov_MK025_5I_GenomeScaled_Barcodes10"
+experiment_name="High_Cov_50I_MK025_NothingBlocked_1Barcode"#"introns_cov_MK025_5I_GenomeScaled_Barcodes10"
 output_path_plots=output_path + "/plots/"
 insertion_probability = 1
-chr_restriction = None #"unrestricted"
-bedpath = "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE_V44_Introns_04_24" #Simulation/FixedInsertions.bed" #for fixed insertions, start and end must be 1 apart! #Special: If num insertions and num of bed entries match, each entry will be chosen once, disregaridng its length!#None#"/home/weichan/permanent/Projects/VIS/dev/UCSC/intron_test.bed" #default setting to None #bed for insertions
+chr_restriction = None #"unrestricted" #checks for chr names in ref genome
+bedpath =  "/home/weichan/permanent/Projects/VIS/dev/UCSC/UCSC_GENCODE_V44_Introns_04_24" #Simulation/FixedInsertions.bed" #for fixed insertions, start and end must be 1 apart! #Special: If num insertions and num of bed entries match, each entry will be chosen once, disregaridng its length!#None#"/home/weichan/permanent/Projects/VIS/dev/UCSC/intron_test.bed" #default setting to None #bed for insertions
 barcode_weights = None#{"Barcode_0": 2} #, "Barcode_1": 5, "Barcode_2": 1
-chromosome_weights = None#{'chr3': 0.5} #if not defined, the monosomy list will default to blocking 100%
-insertion_numbers=5
+chromosome_weights = None#{'chr2': 0} #if not defined, the monosomy list will default to blocking 100%
+insertion_numbers=50
 n_barcodes=1#add function to set the default to 1 if barcoding = FALSE #doesn't work: barcoding is either tgrue and > 1 or false ## ONLY 1 to 9 work currently!!!!
 iterations=3
 scaling=True
 parallel_jobs=10
 mode="I" # "I"or "ROI"
 #Combinations
-coverages = [0.25,2, 4, 6]#, 10, 15, 20] 
-mean_read_lengths = [5128,7000,10000]#[1000, 2000, 3000, 4000, 5000, 6000,7000,8000,9000,10000,15000,20000]
+coverages = [0.25,2, 4, 6,10,20]#, 10, 15, 20] 
+mean_read_lengths = [5128]#[1000, 2000, 3000, 4000, 5000, 6000,7000,8000,9000,10000,15000,20000]
 #mean_read_lengths = [5000, 8000, 12000]
 #coverages=[1,5,10,15] #* 10 #,5,10] #* 10 #coverage with some influence on the runtime
 #coverages=[2,5]
@@ -50,10 +50,10 @@ roi_bedpath = "/home/weichan/permanent/Projects/VIS/dev/Monosomie_Panel_Sim.bed"
 
 # Blocked from generating reads
 # path to bedfle with weights for probability!
-blocked_regions_bedpath = None#"/home/weichan/permanent/Projects/VIS/dev/Monosomie_Panel_Sim.bed"
+blocked_regions_bedpath = None#"./out/Debugging/plots/Merged_mod_NoCov_100kbMK025.bed" #None "/home/weichan/permanent/Projects/VIS/dev/Monosomie_Panel_Sim.bed"
 #link barcode and alternative genome
-barcodes_to_check_blocked_regions = None#["Barcode_0"] #["Barcode_" + str(i) for i in range(n_barcodes)]# None #["Barcode_1"] #nested lost = all
-monosomie = None#["chr3"]
+barcodes_to_check_blocked_regions = None#["Barcode_" + str(i) for i in range(n_barcodes)]# None #["Barcode_1"] #nested lost = all 
+monosomie = None#["chr2","chr4","chr5", "chr7", "chr8","chr9","chr12", "chrX","chrY"]
 
 
 ### WRAPPER START
@@ -374,7 +374,6 @@ def create_barcoded_insertion_genome(reference_genome_path, bedpath, insertion_f
 	blocked_bed = readbed(blocked_regions_bedpath, chromosome_dir.keys()) #barcoding should be default false
 	masked_regions = update_coordinates(blocked_bed, chromosome_dir, include_weights=True)
 	masked_regions = add_monosomy_regions(monosomie, chromosome_dir, masked_regions=masked_regions, chromosome_weights=chromosome_weights)
-
 	#3
 	for i in range(n_barcodes):
 		barcoded_chromosome_dir = barcode_genome(chromosome_dir, i)
@@ -512,7 +511,7 @@ def count_insertions(insertion_dir, n_barcodes, read_dir):
 	data = []
 	print("Counting...")
 	if scaling == True:
-		genome_scale_facor = 0.5 #temporarily changed to 1
+		genome_scale_facor = 0.5 
 	else:
 		genome_scale_facor = 1
 
@@ -620,7 +619,7 @@ def save_histogram(data, bins, mean_read_length, coverage):
 	plt.title('Histogram with Mean and Median')
 	
 	# Save the histogram as a PNG file
-	output_file = f"{output_path_plots}/{mean_read_length}_{coverage}_histogram.png"
+	output_file = f"{output_path_plots}/{experiment_name}_{mean_read_length}_{coverage}_histogram.png"
 	plt.savefig(output_file, format='png', dpi=300)
 	plt.close()
 
@@ -693,7 +692,7 @@ def plot_reads_coverage(reference_genome_length,bin_size, reads_dict, mean_read_
 	plt.title('Read Coverage Plot')
 	
 	# Save the plot
-	output_file = f"{output_path_plots}/{mean_read_length}_{current_coverage}_coverage.png"
+	output_file = f"{output_path_plots}/{experiment_name}_{mean_read_length}_{current_coverage}_coverage.png"
 	plt.savefig(output_file)
 	plt.close()
 	
@@ -778,7 +777,10 @@ if mode == "I":
 	print(len(insertion_dict.keys()))
 	print(insertion_dict)
 	print(chromosome_dir)
-	
+	if masked_regions:
+		masked_regions = {k: v for k, v in masked_regions.items() if len(v) == 3}
+		print("Masked regions:")
+		print(masked_regions)
 	#get locations of the insertions
 	insertion_locations_bed = convert_to_normal_bed(chromosome_dir, insertion_dict)
 	print(insertion_locations_bed)

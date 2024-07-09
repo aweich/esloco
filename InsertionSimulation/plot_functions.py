@@ -9,10 +9,13 @@ import sys
 import scipy
 from matplotlib.patches import Patch
 import re
+#coverage plot
+import pysam
+
 
 out_dir="./out/Debugging/plots/"
-inputdata="./out/Debugging/introns_cov_MK025_5I_GenomeScaled_Barcodes10_matches_table.csv"
-prefix="introns_cov_MK025_5I_GenomeScaled_Barcodes10" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
+inputdata="./out/Debugging/High_Cov_10I_MK025_100kbwithNoCovRegionsBlocked_1Barcode_matches_table.csv"
+prefix="High_Cov_10I_MK025_100kbwithNoCovRegionsBlocked_1Barcode" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
 mode="I"
 
 def plot_matches(data, out_dir):
@@ -321,8 +324,93 @@ def create_heatmap(df,id, value_column):
 	plot_path = os.path.join(out_dir, plotname)
 	plt.savefig(plot_path, bbox_inches='tight')
 
+'''
+# Function to bin coverage data based on genomic positions
+def bin_coverage(chrom_data, bin_size):
+	"""
+	Aggregate coverage data into bins of a specified genomic size.
+	"""
+	min_pos = chrom_data['start'].min()
+	max_pos = chrom_data['end'].max()
+	bins = np.arange(min_pos, max_pos, bin_size)
+	
+	bin_labels = bins[:-1] + bin_size // 2  # Labels for the bins
+	chrom_data['bin'] = pd.cut(chrom_data['start'], bins, labels=bin_labels, include_lowest=True)
+	
+	binned_coverage = chrom_data.groupby('bin')['cov'].mean().reset_index()
+	binned_coverage['bin'] = binned_coverage['bin'].astype(int)  # Convert bin labels to int
+	
+	return binned_coverage
 
+# Read coverage data and filter out unwanted chromosomes
+bed_file = '/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/All_28z/MAPPING/MK025_bga__genomecov.bed'
+coverage_data = pd.read_csv(bed_file, sep='\t', header=None, names=['chrom', 'start', 'end', 'cov'])
+coverage_data = coverage_data[~coverage_data.chrom.str.contains("_")]
+'''
+'''
+nocov = coverage_data.loc[coverage_data['cov'] == 0]
+nocov['ID'] = ['noCov_' + str(i + 1) for i in range(len(nocov))]
+nocov = nocov[['chrom', 'start', 'end', 'ID', 'cov']]
+nocov.to_csv(out_dir+"NoCov_MK025.bed", sep='\t', header=False, index=False)
+print(nocov.head())
 
+bed_merged_data = pd.read_csv(out_dir+"NoCov_MK025_50000merged.bed", sep='\t', header=None)
+print(bed_merged_data.head())
+bed_merged_data["ID"] = ['noCov_' + str(i + 1) for i in range(len(bed_merged_data))]
+bed_merged_data["Cov"] = 0
+bed_merged_data.to_csv(out_dir+"50kbMerged_mod_NoCov_MK025.bed", sep='\t', header=False, index=False)
+print(bed_merged_data.head())
+sys.exit()
+# Read the BED file with regions to mark
+regions_file = '/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/All_28z/LOCALIZATION/ExactInsertions_MK025_GFP+.bed'
+regions_data = pd.read_csv(regions_file, sep='\t', header=None, names=['chrom', 'start', 'end', 'read', 'trash', 'trash2'])
+
+# Process each chromosome group
+grouped_data = coverage_data.groupby('chrom')
+
+for chrom, group in grouped_data:
+	group = group.sort_values(by='start')
+	
+	# Calculate bin positions and binned coverage for the chromosome
+	bin_size = 100000  # Define your bin size in genomic length
+	binned_coverage = bin_coverage(group, bin_size)
+	print(binned_coverage)
+	bin_positions = binned_coverage['bin'].values
+	coverage_values = binned_coverage['cov'].values
+	
+	# Plot coverage for the chromosome
+	plt.figure(figsize=(15, 5))
+	plt.plot(bin_positions, coverage_values, label='Coverage')
+	plt.xlabel('Position (100kb binned)')
+	plt.ylabel('Coverage')
+	plt.title(f'Coverage Plot - Chromosome {chrom}')
+	plt.legend()
+	
+	# Calculate and plot the median coverage line
+	median_coverage = np.median(group['cov'].values)
+	plt.axhline(y=median_coverage, color='red', linestyle='-', linewidth=1)
+	plt.text(0, plt.ylim()[1]*0.8, f'Median: {median_coverage}', color='red')
+	# Calculate and plot the median coverage line
+	mean_coverage = np.mean(group['cov'].values)
+	plt.axhline(y=mean_coverage, color='purple', linestyle='-', linewidth=1)
+	plt.text(0, plt.ylim()[1]*0.7, f'Mean: {mean_coverage}', color='purple')
+
+	roi_chrom = regions_data[regions_data['chrom'] == chrom]
+	# Plot regions of interest
+	for _, row in roi_chrom.iterrows():
+		start_pos = row['start']
+		region_coverage = group[(group['start'] <= start_pos) & (group['end'] >= start_pos)]['cov']
+		mean_cov = region_coverage.mean() if not region_coverage.empty else 0
+		plt.axvline(x=start_pos, color='green', linestyle='dotted')
+		plt.text(start_pos, plt.ylim()[1]*0.5, f'Cov: {mean_cov:.3f}', color='green', rotation=90)
+	
+	# Save the plot
+	plotname = f'MK025_bam_coverage_{chrom}.jpg'
+	plot_path = os.path.join(out_dir, plotname)
+	plt.savefig(plot_path)
+	plt.close()  # Close the plot to free memory
+sys.exit()
+'''
 # Example usage:
 if mode == "I":
 	inputdata_df=pd.read_csv(inputdata, sep='\t')
