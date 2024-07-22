@@ -496,7 +496,7 @@ def main():
 					continue
 			
 			# Record the read coordinates
-			read_coordinates[f"Read_{len(read_coordinates)}_{random_barcode}"] = [start_position, start_position + read_length]
+			read_coordinates[f"Read_{len(read_coordinates)}_{random_barcode}"] = (start_position, start_position + read_length)
 			# Update the total covered length
 			covered_length += read_length
 		return read_coordinates
@@ -679,6 +679,7 @@ def main():
 		
 		return binned_coverage
 
+	@profile
 	def plot_reads_coverage(reference_genome_length,bin_size, reads_dict, mean_read_length, current_coverage, insertion_dict):
 		"""
 		Plots a coverage-like plot using the reference genome and reads information.
@@ -749,6 +750,8 @@ def main():
 		Then it compares the coordinates of the target regions (ROI or I) with the coordinates of artifical reads of each barcode and checks whether they are partially or fully contained.
 		Masking is optional and is performed during the read generation step.
 		'''
+		#to prevent memory overfloat
+
 		try:
 			custom_read_length_distribution = get_read_length_distribution_from_real_data(sequenced_data_path) #for experimental data
 			save_histogram(custom_read_length_distribution, 200, mean_read_length, coverage)
@@ -763,7 +766,7 @@ def main():
 		custom_cov_coordinates = generate_reads_based_on_coverage(length_mod_fasta, custom_read_length_distribution, coverage, PRECOMPUTE_RANDOM)
 		
 		#plot coverage
-		plot_reads_coverage(length_mod_fasta, 1000000, custom_cov_coordinates, mean_read_length, coverage, insertion_dir)
+		#plot_reads_coverage(length_mod_fasta, 1000000, custom_cov_coordinates, mean_read_length, coverage, insertion_dir)
 		# Sanity check for barcoding
 		barcode_distribution = count_barcode_occurrences(custom_cov_coordinates)
 		barcode_distribution["coverage"] = coverage
@@ -797,6 +800,7 @@ def main():
 				results.append(out)
 				barcode_distributions.append(barcode_distribution)
 			return results, barcode_distributions
+
 
 	#insertion mode
 	if mode == "I":

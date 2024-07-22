@@ -14,8 +14,8 @@ import pysam
 
 
 out_dir="./out/Debugging/plots/"
-inputdata="./out/Debugging/High_Cov_10I_MK025_100kbwithNoCovRegionsBlocked_1Barcode_matches_table.csv"
-prefix="High_Cov_10I_MK025_100kbwithNoCovRegionsBlocked_1Barcode" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
+inputdata="./out/Debugging/5I_10barc_Scaling_MK025_Reads_introns_10Iterations_highCov_matches_table.csv"
+prefix="5I_10barc_Scaling_MK025_Reads_introns_10Iterations_highCov" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
 mode="I"
 
 def plot_matches(data, out_dir):
@@ -419,6 +419,24 @@ if mode == "I":
 	inputdata_df["Barcode"] = inputdata_df["Insertion"].str.split("_insertion").str[0]
 	inputdata_df["Iteration"] = inputdata_df["Insertion"].str.split("_").str[4]
 
+
+	#1 first combine the detections of an iteration across all barcodes (SUM)
+	inputdata_df = combine_value_columns(inputdata_df, "full_matches", "partial_matches")
+	print(inputdata_df.head())
+	barcodes_summed_up = inputdata_df.groupby(['coverage', 'mean_read_length', 'Iteration']).agg({'full_matches': 'sum', 'partial_matches': 'sum', 'combined_values': 'sum'}).reset_index() #barcodes summed
+	print(barcodes_summed_up.head())
+	#2 second calculate the mean
+	mean_per_iteration = barcodes_summed_up.groupby(['coverage', 'mean_read_length']).agg({'full_matches': 'mean', 'partial_matches': 'mean', 'combined_values': 'mean'}).reset_index()
+	print(mean_per_iteration.head())
+	lineplot_matches(mean_per_iteration, "combined_values", x_axis='coverage', hue='mean_read_length')
+
+	#3 deal with barcodes
+	#combined_mean_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'combined_values': 'mean'}).reset_index() #mean over iterations
+	#print(combined_mean_df.head())
+	lineplot_matches(inputdata_df, "partial_matches", x_axis='coverage', hue='Barcode')
+
+	#old
+	sys.exit()
 	#combined full and partial matches
 	combined_df = combine_value_columns(inputdata_df, "full_matches", "partial_matches")
 	print(combined_df)
@@ -433,14 +451,13 @@ if mode == "I":
 	#sums up the full matches and partial matches across the barcodes but keeps the iterations for the statistics int he plot! = This means that the plot shows all detected insertions across the barcodes, irrespective of the barcode
 	summed_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Iteration']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
 	print(summed_df)
-
 	#lineplot_matches(summed_df, "full_matches", x_axis='mean_read_length', hue='coverage')
 	#lineplot_matches(summed_df, "partial_matches", x_axis='mean_read_length', hue='coverage')
 
 	#calculates the mean value for each barcode across the iterations
-	print(inputdata_df)
-	mean_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'full_matches': 'mean', 'partial_matches': 'mean'}).reset_index()
+	mean_df = summed_df.groupby(['coverage', 'mean_read_length']).agg({'full_matches': 'mean', 'partial_matches': 'mean'}).reset_index()
 	print(mean_df)
+	sys.exit()
 	#plot_barcode_barplot(mean_df, "full_matches", out_dir, prefix)
 	#plot_barcode_barplot(mean_df, "partial_matches", out_dir, prefix)
 	
