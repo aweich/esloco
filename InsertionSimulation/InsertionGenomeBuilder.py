@@ -22,7 +22,7 @@ from joblib import Parallel, delayed
 def get_config():
 	config=configparser.ConfigParser()
 	config.read("sim_config.ini")
-	return config["INSERTION"]
+	return config["I"] #INSERTION or ROI
 
 def get_arguments():
 	parser = argparse.ArgumentParser(description='Simulation of insertions (I) or regions-of-interests (ROI).')
@@ -136,30 +136,44 @@ def main():
 
 	def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
 		'''
-		Reads the bed file and only keeps entries from chromosomes from the reference. Barcoding only becomes true for the bed-guided insertion placement.
+		Reads the bed file and only keeps entries from chromosomes in the reference.
+		If the weights column is missing, it adds a weights column with 0 for each row.
+		Barcoding only becomes true for the bed-guided insertion placement.
 		'''
 		try:
-			bed = pd.read_csv(bedpath, sep='\t', header=None, usecols=[0,1,2,3,4], names=['chrom', 'start', 'end','ID','weight'])
+			# Attempt to read the bed file with the weight column
+			bed = pd.read_csv(bedpath, sep='\t', header=None, usecols=[0, 1, 2, 3, 4], names=['chrom', 'start', 'end', 'ID', 'weight'])
+		except ValueError as e:
+			# If the weight column is missing, read without it and add a weight column with 0
+			if "Too many columns specified: expected 5 and found 4" in str(e):
+				print("Weight column not found but ID exists. Adding a default weight of 0.")
+				bed = pd.read_csv(bedpath, sep='\t', header=None, usecols=[0, 1, 2, 3],names=['chrom', 'start', 'end', 'ID'])
+				bed['weight'] = 0  # Add the weight column with 0 as default
+			else:
+				raise e  # Raise other exceptions
 		except:
 			try: 
 				print("Try reading BED minimally...")
-				bed = pd.read_csv(bedpath, sep='\t', header=None, usecols=[0,1,2], names=['chrom', 'start', 'end']) 
-			except:
-				print("Could not read the BED or no BED provided.")
+				bed = pd.read_csv(bedpath, sep='\t', header=None, usecols=[0, 1, 2], names=['chrom', 'start', 'end'])
+				bed['ID'] = ''  # Add a placeholder ID if missing
+				bed['weight'] = 0  # Add the weight column with 0 as default
+			except Exception as e:
+				print("Could not read the BED or no BED provided:", e)
 				return None 
 
+		# Handling barcoding if required
 		if barcoding:
 			print('Barcoding selected: Transforming the names in the bed... Adding the following barcode...')
 			print('_'.join(list(list_of_chromosomes_in_reference)[0].split("_")[:-1]))
-			barcode='_'.join(list(list_of_chromosomes_in_reference)[0].split("_")[:-1])
-			bed['chrom'] = barcode + '_'+ bed['chrom'].astype(str)
+			barcode = '_'.join(list(list_of_chromosomes_in_reference)[0].split("_")[:-1])
+			bed['chrom'] = barcode + '_' + bed['chrom'].astype(str)
 			bed = bed[bed["chrom"].isin(list_of_chromosomes_in_reference)]
 		else:
 			print('Only keeping the following chromosomes...')
 			print(list_of_chromosomes_in_reference)
 			bed = bed[bed["chrom"].isin(list_of_chromosomes_in_reference)]
-		return bed
 		
+		return bed
 
 	def update_coordinates(df, input_chromosome_dict, include_weights=False):
 		'''
@@ -489,7 +503,9 @@ def main():
 			read_length = PRECOMPUTE_RANDOM.pop()
 			start_position = random.randint(0, total_length - read_length)
 			# Check if the random barcode is in the list of barcodes that require checking for blocked regions
-			if barcodes_to_check_blocked_regions and random_barcode in barcodes_to_check_blocked_regions:
+			random_barcode_number = random_barcode.split('_')[-1] #otherwise user input needs to be weird
+
+			if barcodes_to_check_blocked_regions and random_barcode_number in barcodes_to_check_blocked_regions:
 				# Check if the start position falls within a blocked region
 				if check_if_blocked_region(start_position, read_length, masked_regions):
 					# If the start position is in a blocked region, continue to the next iteration
@@ -499,7 +515,7 @@ def main():
 			read_coordinates[f"Read_{len(read_coordinates)}_{random_barcode}"] = (start_position, start_position + read_length)
 			# Update the total covered length
 			covered_length += read_length
-		return read_coordinates
+		return read_coordinates, covered_length
 
 
 
@@ -643,9 +659,7 @@ def main():
 		"""
 		mean_value = np.mean(data)
 		median_value = np.median(data)
-		print(len(data))
-		print(mean_value)
-		print(median_value)
+		nreads = len(data)
 		# Create the histogram
 		plt.figure(figsize=(10, 6))
 		plt.hist(data, bins=bins, edgecolor='black', alpha=0.7)
@@ -655,6 +669,7 @@ def main():
 		plt.text(mean_value, plt.ylim()[1]*0.9, f'Mean: {mean_value:.2f}', color='red')
 		plt.axvline(median_value, color='blue', linestyle='dashed', linewidth=1)
 		plt.text(median_value, plt.ylim()[1]*0.8, f'Median: {median_value:.2f}', color='blue')
+		plt.text(plt.xlim()[1]*0.8, plt.ylim()[1]*0.8, f'N reads: {nreads}', color='blue')
 		# Add labels and title
 		plt.xlabel('Value')
 		plt.ylabel('Frequency')
@@ -754,24 +769,26 @@ def main():
 
 		try:
 			custom_read_length_distribution = get_read_length_distribution_from_real_data(sequenced_data_path) #for experimental data
-			save_histogram(custom_read_length_distribution, 200, mean_read_length, coverage)
+			print("Custom FASTA data provided.")
+			save_histogram(custom_read_length_distribution, 20, mean_read_length, coverage)
 		except:
 			print("No custom read length distribution provided... Generating artificial one...")
 			custom_read_length_distribution = generate_read_length_distribution(num_reads=1000000, mean_read_length=mean_read_length, distribution='lognormal')
 			print(custom_read_length_distribution)
-			save_histogram(custom_read_length_distribution, 200, mean_read_length, coverage)
+			save_histogram(custom_read_length_distribution, 20, mean_read_length, coverage)
 			print('Calculating for:' + str(mean_read_length))
 		
 		PRECOMPUTE_RANDOM = [random.choice(custom_read_length_distribution) for _ in range(100000000)]
-		custom_cov_coordinates = generate_reads_based_on_coverage(length_mod_fasta, custom_read_length_distribution, coverage, PRECOMPUTE_RANDOM)
+		custom_cov_coordinates, covered_length = generate_reads_based_on_coverage(length_mod_fasta, custom_read_length_distribution, coverage, PRECOMPUTE_RANDOM)
 		
 		#plot coverage
-		#plot_reads_coverage(length_mod_fasta, 1000000, custom_cov_coordinates, mean_read_length, coverage, insertion_dir)
+		#plot_reads_coverage(length_mod_fasta, 1000000, custom_cov_coordinates, mean_read_length, coverage, insertion_dir) #might need to be commented out for high coverage runs! otherwise, the plot cannot be drawn!
 		# Sanity check for barcoding
 		barcode_distribution = count_barcode_occurrences(custom_cov_coordinates)
 		barcode_distribution["coverage"] = coverage
 		barcode_distribution["mean_read_length"] = mean_read_length
 		barcode_distribution["iteration"] = iteration   
+		barcode_distribution["N_bases"] = covered_length  #new, check if this works for roi too, although I'd be very surprised if not
 		
 		#Detections per ROI/Insertion
 		detected = count_insertions(insertion_dir, n_barcodes, custom_cov_coordinates)
@@ -846,14 +863,19 @@ def main():
 		#create global cooridnates from bed based on provided genome ref to adjust ROIs to string-like genome
 		fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
 		bed = readbed(roi_bedpath, chromosome_dir.keys())
+		print(bed.head())
 		roi_dict = update_coordinates(bed, chromosome_dir)
+		print(roi_dict)
 		roi_dict = roi_barcoding(roi_dict, n_barcodes)
 		
 		#create blocked regions file
-		blocked_bed = readbed(blocked_regions_bedpath, chromosome_dir.keys()) #barcoding should be default false
-		masked_regions = update_coordinates(blocked_bed, chromosome_dir, include_weights=True)
-		masked_regions = add_monosomy_regions(monosomie, chromosome_dir, masked_regions=masked_regions, chromosome_weights=chromosome_weights)
+		if blocked_regions_bedpath is not None:
+			blocked_bed = readbed(blocked_regions_bedpath, chromosome_dir.keys()) #barcoding should be default false
+			masked_regions = update_coordinates(blocked_bed, chromosome_dir, include_weights=True)
 		
+		masked_regions = add_monosomy_regions(monosomie, chromosome_dir, masked_regions=masked_regions, chromosome_weights=chromosome_weights)
+		print("masking...")
+		print(masked_regions)
 		#input variables
 		genome_size = len(fasta)
 		target_regions = roi_dict
@@ -896,34 +918,29 @@ def main():
 		barcode_distributions_df['Total_Reads'] = barcode_distributions_df.iloc[:, :n_barcodes].sum(axis=1)
 		#barcode_distributions_df = barcode_distributions_df.drop(columns=barcode_distributions_df.columns[:n_barcodes])
 		results_df = pd.merge(results_df, barcode_distributions_df, on=['coverage', 'mean_read_length', 'iteration'], how='inner')
-		results_df = normalize_ROI_by_length(bed, results_df, scaling_factor=1000000) #ROIPKB
+		results_df = normalize_ROI_by_length(bed, results_df, scaling_factor=0) #ROIPKB
 
-
-	print(results_df)
-
-	#### test for I 
-	results_df["Barcode"] = results_df["Insertion"].str.split("_insertion").str[0]
-	results_df["Iteration"] = results_df["Insertion"].str.split("_").str[4]
-	combined_mean_df = results_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'full_matches': 'mean', 'partial_matches': 'mean'}).reset_index() #mean over iterations
-	print("mean overview:")
-	print(combined_mean_df)
-
-	print(barcode_distributions_df)
 
 	t1 = time.time()
 	total = t1-t0
 	print(total)
 	print("Done.")
 
-	#output file writing
+	#output file writing: Insertions have one mor eoutput file: The location bed of the random insertions
 	try:
 		insertion_locations_bed.to_csv(output_path+experiment_name+"_"+"insertion_locations.bed", sep='\t', header=True, index=False)
 		print("Insertion mode: Writing files...")
 		print(insertion_locations_bed.head())
-		barcode_distributions_df.to_csv(output_path+experiment_name+"_"+"barcode_distribution_table.csv", sep='\t', header=True, index=False)
+		#### I pre processing
+		results_df["Barcode"] = results_df["Insertion"].str.split("_").str[0] #changed, maybe causes problems with insertions?
+		results_df["Iteration"] = results_df["Insertion"].str.split("_").str[4]
+		combined_mean_df = results_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'full_matches': 'mean', 'partial_matches': 'mean'}).reset_index() #mean over iterations
+		print("mean overview:")
+		print(combined_mean_df)
 	except:
 		print("ROI mode: Writing files...")
 
+	barcode_distributions_df.to_csv(output_path+experiment_name+"_"+"barcode_distribution_table.csv", sep='\t', header=True, index=False)
 	results_df.to_csv(output_path+experiment_name+"_"+"matches_table.csv", sep='\t', header=True, index=False)
 
 	print(f"Reference Genome Path: {reference_genome_path}")

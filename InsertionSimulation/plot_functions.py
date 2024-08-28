@@ -13,10 +13,10 @@ import re
 import pysam
 
 
-out_dir="./out/Debugging/plots/"
-inputdata="./out/Debugging/5I_10barc_Scaling_MK025_Reads_introns_10Iterations_highCov_matches_table.csv"
-prefix="5I_10barc_Scaling_MK025_Reads_introns_10Iterations_highCov" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
-mode="I"
+out_dir="./out/Noise_Simulation/plots/"
+inputdata="./out/Noise_Simulation/Barcodes_1_Introns_with_50kb_blocked_matches_table.csv"
+prefix="Combined_Simulations" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
+mode=""
 
 def plot_matches(data, out_dir):
 	"""
@@ -54,31 +54,47 @@ def lineplot_matches(data, value_column, x_axis="mean_read_length", hue="coverag
 	"""
 	Plot partial and full matches over the mean read lengths with group ID being the coverage and save the plot as JPG files.
 	"""
-	# Create a line plot for full matches
-	plt.figure(figsize=(16,9))
+		# Create a line plot for the original data
+	plt.figure(figsize=(16, 9))
 	plt.title(prefix, y=1.1)
-	print(data[x_axis])
-	g = sns.lineplot(data=data, x=x_axis, y=value_column, hue=hue, legend='full', errorbar='sd')
+	
+	# Plot the original data with a line plot
+	g = sns.lineplot(data=data, x=x_axis, y=value_column, hue=hue, legend='full', errorbar='sd', linewidth = 3, palette=sns.color_palette("viridis"), alpha=0.5)
 	g.set_xticks(data[x_axis].unique())
 	g.tick_params(axis='x', labelrotation=90)
 	g.set(xlabel=x_axis, ylabel=value_column)
-	g.legend(bbox_to_anchor=(1.05, 1), loc='upper left', title=hue)
 
-	# Add a regression line
+	# Add a regression line for the original data
 	try:
-		sns.regplot(data=data, x=x_axis, y=value_column, scatter=False, color='black')
+		sns.regplot(data=data, x=x_axis, y=value_column, scatter=False, color='black', line_kws={'linewidth':3, 'linestyle':'--', "alpha":0.8})
 	except:
 		print("no regression possible")
-	# Save the plot as a JPG file
-	#add experimental line
-	#plt.axvline(x=5200, color='black', linestyle=':')
-	#plt.text(5200, plt.ylim()[1], 'MK025', verticalalignment='bottom', horizontalalignment='center')
-	# Add point at y=5 on the vertical line
-	#plot_points(MK025_data, option=value_column, color=sns.cubehelix_palette())
 
-	plotname = prefix + "_" + value_column + '_lineplot.jpg'
+	# Add the additional points from your table
+	new_points_x = [0.51, 6.34, 0.54, 0.79, 0.36, 0.6]
+	new_points_y = [4, 44, 5, 3, 3, 4]
+	
+	# Plot the additional points
+	plt.scatter(new_points_x, new_points_y, color='red', label='Approximated from sequencing data.', zorder=5)
+
+	# Add a regression line for the new points
+	try:
+		sns.regplot(x=new_points_x, y=new_points_y, scatter=False, color='red', ci=None, line_kws={'linewidth':3, 'linestyle':'--', "alpha":0.8})
+	except:
+		print("no regression possible for new points")
+
+	# Add the legend
+	# Add the legend with all labels (original and added regression lines)
+	handles, labels = g.get_legend_handles_labels()
+	plt.legend(handles=handles + [plt.Line2D([0], [0],linestyle='--', color="black", lw=3, label="Regression based on simulation"), 
+	                              plt.Line2D([0], [0],linestyle='--', color="red", lw=3, label="Regression based on sequencing data")],
+	           bbox_to_anchor=(1.05, 1), loc='upper left')
+
+	# Save the plot as a JPG file
+	plotname = prefix + "_" + value_column + '_lineplot_with_additional_regression.jpg'
 	plot_path = os.path.join(out_dir, plotname)
 	plt.savefig(plot_path, bbox_inches='tight')
+
 
 def plot_points(data, option, color):
 	mean_data = data.groupby('coverage')[['full_matches', 'partial_matches']].mean().reset_index()
@@ -259,8 +275,11 @@ def plot_insertions(data, insertion_name, value_column_1, value_column_2, out_di
 def extract_numbers_from_filename(filename):
 	numbers = re.findall(r'\d+', filename)
 	if len(numbers) > 1:
-		print("more than one int in filename")
-		sys.exit()
+		print(numbers)
+		print(int(numbers[0]))
+		print("more than one int in filename. Using the first one...")
+		return int(numbers[0])
+		#sys.exit()
 	else:
 		return int(numbers[0])
 
@@ -272,7 +291,7 @@ def combine_files_with_id(input_files):
 		df = pd.read_csv(file_path, sep='\t')
 		numbers = extract_numbers_from_filename(file_path)
 		print(numbers)
-		df['0_weight'] = numbers
+		df['id'] = numbers
 		combined_df = pd.concat([combined_df, df], ignore_index=True)
 	
 	return combined_df
@@ -281,140 +300,38 @@ def combine_value_columns(df, value_column_1, value_column_2):
 	df["combined_values"] = df[value_column_1] + df[value_column_2]
 	return df
 
-def create_heatmap(df,id, value_column):
+def roi_plot_clustermap(df):
+	# Step 1: Process the sample names to extract the part before the first '_'
+	print(df['Insertion'])
+	df['Sample'] = df['Insertion'].str.split("_").str[0]
 
-	# Create a unique identifier for rows
-	df['identifier'] = df.apply(lambda x: f"{x['Barcode']}_{x[id]}", axis=1)
-	
-	# Create pivot tables
-	matches_pivot = df.pivot(index='identifier', columns=['coverage', 'mean_read_length'], values=value_column)
-	matches_pivot = matches_pivot.fillna(0)
-	# Create a DataFrame for row colors
-	row_colors_df = df[['identifier', 'Barcode', id]].drop_duplicates().set_index('identifier')
+	# Step 2: Sum full_matches and partial_matches
+	df['Total_Matches'] = df['full_matches'] + df['partial_matches']
+	df["Normalized_Matches"] = df["Total_Matches"] / df["Length"]
+	df_grouped = df.groupby(['Sample', 'coverage']).agg({'Normalized_Matches': 'mean'}).reset_index()
 
-	# Map colors to unique values of 'Barcode' and '0_weight'
-	unique_barcodes = row_colors_df['Barcode'].unique()
-	barcode_colors = sns.color_palette('hsv', len(unique_barcodes))
-	barcode_color_dict = dict(zip(unique_barcodes, barcode_colors))
-
-	unique_id = row_colors_df[id].unique()
-	id_colors = sns.color_palette('coolwarm', len(unique_id))
-	id_color_dict = dict(zip(unique_id, id_colors))
-
-	# Add color annotations
-	row_colors_df['Barcode_color'] = row_colors_df['Barcode'].map(barcode_color_dict)
-	row_colors_df['id_color'] = row_colors_df[id].map(id_color_dict)
-	row_colors = row_colors_df[['Barcode_color', 'id_color']]
-
-	# Create custom legend handles
-	barcode_handles = [Patch(facecolor=barcode_color_dict[bc], edgecolor='black', label=bc) for bc in unique_barcodes]
-	id_handles = [Patch(facecolor=id_color_dict[wt], edgecolor='black', label=f'{wt}') for wt in unique_id]
-
-	# Plot the heatmaps with annotations
-	sns.set(font_scale=0.7)
-	g = sns.clustermap(matches_pivot, row_colors=row_colors, cmap="viridis", figsize=(20, 10), dendrogram_ratio=0.02)
-	g.ax_heatmap.set_title(value_column)
-	g.ax_heatmap.set_xlabel('Coverage, Mean Read Length')
-	g.ax_heatmap.set_ylabel('Barcode, Weight')
-	
-	g.ax_cbar.set_position((-0.2,0.75,0.05,0.2))
-	g.ax_heatmap.legend(handles=barcode_handles + id_handles, title='Legends', bbox_to_anchor=(-0.2, 1), loc='upper left', ncol=1)
+	# Step 4: Pivot the table to have samples as rows and coverage as columns
+	df_pivot = df_grouped.pivot(index='Sample', columns='coverage', values='Normalized_Matches')
+	print(df_grouped.head())
+	print(df_pivot.head())
+	# Step 5: Plot the clustermap
+	g = sns.clustermap(df_pivot, cmap='viridis', annot=True, dendrogram_ratio=(0.05, 0.05),cbar_kws={'label': 'Mean value across all iterations (sum of matches / length of panel region)'}, row_cluster=False,)
+	g.ax_heatmap.set_xlabel('Genome-wide coverage n*6e9')
+	g.ax_heatmap.set_ylabel('Panel regions')
+	g.ax_row_dendrogram.set_visible(False) #suppress row dendrogram
+	g.cax.set_position([1.05, .2, .03, .45])
 	# Save plot
-	plotname = prefix + "_" + str(value_column) + '_heatmap.jpg'
+	plotname = prefix + "_roi" + '_heatmap.jpg'
 	plot_path = os.path.join(out_dir, plotname)
-	plt.savefig(plot_path, bbox_inches='tight')
+	plt.savefig(plot_path, bbox_inches='tight', dpi=300)
 
-'''
-# Function to bin coverage data based on genomic positions
-def bin_coverage(chrom_data, bin_size):
-	"""
-	Aggregate coverage data into bins of a specified genomic size.
-	"""
-	min_pos = chrom_data['start'].min()
-	max_pos = chrom_data['end'].max()
-	bins = np.arange(min_pos, max_pos, bin_size)
-	
-	bin_labels = bins[:-1] + bin_size // 2  # Labels for the bins
-	chrom_data['bin'] = pd.cut(chrom_data['start'], bins, labels=bin_labels, include_lowest=True)
-	
-	binned_coverage = chrom_data.groupby('bin')['cov'].mean().reset_index()
-	binned_coverage['bin'] = binned_coverage['bin'].astype(int)  # Convert bin labels to int
-	
-	return binned_coverage
 
-# Read coverage data and filter out unwanted chromosomes
-bed_file = '/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/All_28z/MAPPING/MK025_bga__genomecov.bed'
-coverage_data = pd.read_csv(bed_file, sep='\t', header=None, names=['chrom', 'start', 'end', 'cov'])
-coverage_data = coverage_data[~coverage_data.chrom.str.contains("_")]
-'''
-'''
-nocov = coverage_data.loc[coverage_data['cov'] == 0]
-nocov['ID'] = ['noCov_' + str(i + 1) for i in range(len(nocov))]
-nocov = nocov[['chrom', 'start', 'end', 'ID', 'cov']]
-nocov.to_csv(out_dir+"NoCov_MK025.bed", sep='\t', header=False, index=False)
-print(nocov.head())
 
-bed_merged_data = pd.read_csv(out_dir+"NoCov_MK025_50000merged.bed", sep='\t', header=None)
-print(bed_merged_data.head())
-bed_merged_data["ID"] = ['noCov_' + str(i + 1) for i in range(len(bed_merged_data))]
-bed_merged_data["Cov"] = 0
-bed_merged_data.to_csv(out_dir+"50kbMerged_mod_NoCov_MK025.bed", sep='\t', header=False, index=False)
-print(bed_merged_data.head())
-sys.exit()
-# Read the BED file with regions to mark
-regions_file = '/home/weichan/permanent/Projects/VIS/VIS_integration_site/Results/All_28z/LOCALIZATION/ExactInsertions_MK025_GFP+.bed'
-regions_data = pd.read_csv(regions_file, sep='\t', header=None, names=['chrom', 'start', 'end', 'read', 'trash', 'trash2'])
 
-# Process each chromosome group
-grouped_data = coverage_data.groupby('chrom')
-
-for chrom, group in grouped_data:
-	group = group.sort_values(by='start')
-	
-	# Calculate bin positions and binned coverage for the chromosome
-	bin_size = 100000  # Define your bin size in genomic length
-	binned_coverage = bin_coverage(group, bin_size)
-	print(binned_coverage)
-	bin_positions = binned_coverage['bin'].values
-	coverage_values = binned_coverage['cov'].values
-	
-	# Plot coverage for the chromosome
-	plt.figure(figsize=(15, 5))
-	plt.plot(bin_positions, coverage_values, label='Coverage')
-	plt.xlabel('Position (100kb binned)')
-	plt.ylabel('Coverage')
-	plt.title(f'Coverage Plot - Chromosome {chrom}')
-	plt.legend()
-	
-	# Calculate and plot the median coverage line
-	median_coverage = np.median(group['cov'].values)
-	plt.axhline(y=median_coverage, color='red', linestyle='-', linewidth=1)
-	plt.text(0, plt.ylim()[1]*0.8, f'Median: {median_coverage}', color='red')
-	# Calculate and plot the median coverage line
-	mean_coverage = np.mean(group['cov'].values)
-	plt.axhline(y=mean_coverage, color='purple', linestyle='-', linewidth=1)
-	plt.text(0, plt.ylim()[1]*0.7, f'Mean: {mean_coverage}', color='purple')
-
-	roi_chrom = regions_data[regions_data['chrom'] == chrom]
-	# Plot regions of interest
-	for _, row in roi_chrom.iterrows():
-		start_pos = row['start']
-		region_coverage = group[(group['start'] <= start_pos) & (group['end'] >= start_pos)]['cov']
-		mean_cov = region_coverage.mean() if not region_coverage.empty else 0
-		plt.axvline(x=start_pos, color='green', linestyle='dotted')
-		plt.text(start_pos, plt.ylim()[1]*0.5, f'Cov: {mean_cov:.3f}', color='green', rotation=90)
-	
-	# Save the plot
-	plotname = f'MK025_bam_coverage_{chrom}.jpg'
-	plot_path = os.path.join(out_dir, plotname)
-	plt.savefig(plot_path)
-	plt.close()  # Close the plot to free memory
-sys.exit()
-'''
 # Example usage:
 if mode == "I":
 	inputdata_df=pd.read_csv(inputdata, sep='\t')
-	MK025_data = pd.read_csv("./out/MK025_experimental_data.csv", sep='\t')
+	#MK025_data = pd.read_csv("./out/MK025_experimental_data.csv", sep='\t')
 
 	inputdata_df["Barcode"] = inputdata_df["Insertion"].str.split("_insertion").str[0]
 	inputdata_df["Iteration"] = inputdata_df["Insertion"].str.split("_").str[4]
@@ -427,7 +344,8 @@ if mode == "I":
 	print(barcodes_summed_up.head())
 	#2 second calculate the mean
 	mean_per_iteration = barcodes_summed_up.groupby(['coverage', 'mean_read_length']).agg({'full_matches': 'mean', 'partial_matches': 'mean', 'combined_values': 'mean'}).reset_index()
-	print(mean_per_iteration.head())
+	print("mean per iteration")
+	print(mean_per_iteration)
 	lineplot_matches(mean_per_iteration, "combined_values", x_axis='coverage', hue='mean_read_length')
 
 	#3 deal with barcodes
@@ -460,9 +378,6 @@ if mode == "I":
 	sys.exit()
 	#plot_barcode_barplot(mean_df, "full_matches", out_dir, prefix)
 	#plot_barcode_barplot(mean_df, "partial_matches", out_dir, prefix)
-	
-	#create_heatmap(mean_df, "coverage", "partial_matches")
-	#create_heatmap(mean_df, "coverage", "full_matches")
 
 	#mean
 	#mean of the full matches and partial matches across the the iterations for the statistics int he plot
@@ -477,47 +392,31 @@ if mode == "I":
 elif mode=="ROI":
 	inputdata_df=pd.read_csv(inputdata, sep='\t')
 	print(inputdata_df.head())
-	#inputdata_df["Barcode"] = inputdata_df["Insertion"].str.rsplit(pat="_", n=2).str[1]
-	inputdata_df["ROI"] = inputdata_df["Insertion"].str.rsplit(pat="_", n=2).str[0]
-	inputdata_df["Barcode"] = inputdata_df["Insertion"].str.rsplit(pat="_", n=2).str[1]
-	print(inputdata_df)
-	#aggregate over iterations (=replications)
-	grouped = inputdata_df.groupby(['ROI','Barcode', 'coverage', 'mean_read_length']).agg({
-		'full_matches': 'sum',
-		'partial_matches': 'sum'
-	}).reset_index()
-	print(grouped)
-	#plot_barcode_barplot(grouped, "full_matches", out_dir, prefix)
-	#plot_barcode_barplot(grouped, "partial_matches", out_dir, prefix)
-	#does not work and needs a better plan!
-	plot_insertions(grouped,"BAP1", "partial_matches", "full_matches", out_dir)
+	roi_plot_clustermap(inputdata_df) #qucik chatgpt function
 
-	#sums up the full matches and partial matches across the barcodes but keeps the iterations for the statistics int he plot! = This means that the plot shows all detected insertions across the barcodes, irrespective of the barcode
-	#inputdata_df["Iteration"] = inputdata_df["Insertion"].str.rsplit(pat="_", n=1).str[1]
-	#summed_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Iteration']).agg({'full_matches': 'sum', 'partial_matches': 'sum'}).reset_index()
-	#print(summed_df)
-	#plot_matches(inputdata_df, out_dir)
-	#plot_combined_matches(finputdata_df, out_dir)
-	#lineplot_matches(summed_df, "full_matches", out_dir)
-	#lineplot_matches(summed_df, "partial_matches", out_dir)
 
+#if combined weighted plot
 else:
 	#input_files = ["./out/DominanceSimulation/RandomInsertions_Weight_%s_I_DominanceSimulation_matches_table.csv" %i for i in range(1,6)]#
-	input_files = ["./out/DominanceSimulation/Weight_%s_I_DominanceSimulation_matches_table.csv" %i for i in [1,2,3,4,5,10,20]]
+	input_files = ["./out/Noise_Simulation/Barcodes_%i_Introns_with_50kb_blocked_matches_table.csv" %i for i in [1,10,100,1000]]
 	print(input_files)
 	combined = combine_files_with_id(input_files)
 	combined["Barcode"] = combined["Insertion"].str.split("_insertion").str[0]
 	combined["Iteration"] = combined["Insertion"].str.split("_").str[4]
-	print(combined)
 
-	#mean of the full matches and partial matches across the the iterations for the statistics int he plot
-	mean_df = combined.groupby(['coverage', 'mean_read_length','Barcode', '0_weight']).agg({'full_matches': 'mean', 'partial_matches': 'mean'}).reset_index()
-	#summed_df = summed_df.sort_values(by=['coverage', 'mean_read_length'])
-	mean_df['Coverage_ReadLength'] = mean_df['coverage'].astype(str) + "_" + mean_df['mean_read_length'].astype(str)
-	print(mean_df)
-	#not bad but also not good heatmaps
-	create_heatmap(mean_df, "0_weight", "full_matches")
-	create_heatmap(mean_df, "0_weight", "partial_matches")
+	#combine for total matches and then sum up n barcodes per iteration and cov
+	combined_df = combine_value_columns(combined, "full_matches", "partial_matches")
+	print(combined_df.tail())
+	barcodes_summed_up = combined_df.groupby(['coverage', 'mean_read_length', 'Iteration', 'id']).agg({'full_matches': 'sum', 'partial_matches': 'sum', 'combined_values': 'sum'}).reset_index() #barcodes summed
+	print(barcodes_summed_up.tail())
+
+	#2 second calculate the mean over iterations
+	mean_per_iteration = barcodes_summed_up.groupby(['coverage', 'mean_read_length', 'id']).agg({'full_matches': 'mean', 'partial_matches': 'mean', 'combined_values': 'mean'}).reset_index()
+	print("mean per iteration")
+	print(mean_per_iteration)
+	
+	lineplot_matches(mean_per_iteration, "combined_values", x_axis='coverage', hue='id')
+	sys.exit()
 	lineplot_matches(mean_df, "full_matches", x_axis='Coverage_ReadLength', hue='Barcode') #all matches per weight: "full_matches", x_axis='Coverage_ReadLength', hue='0_weight'
 	lineplot_matches(mean_df.sort_values(by="mean_read_length"), "partial_matches", x_axis='Coverage_ReadLength', hue='Barcode')
 	#
