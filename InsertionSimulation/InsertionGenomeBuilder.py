@@ -22,7 +22,7 @@ from joblib import Parallel, delayed
 def get_config():
 	config=configparser.ConfigParser()
 	config.read("sim_config.ini")
-	return config["I"] #INSERTION or ROI
+	return config["ROI"] #INSERTION or ROI
 
 def get_arguments():
 	parser = argparse.ArgumentParser(description='Simulation of insertions (I) or regions-of-interests (ROI).')
@@ -32,7 +32,8 @@ def get_arguments():
 	parser.add_argument('--output_path', type=str, help='Output path')
 	parser.add_argument('--experiment_name', type=str, help='Experiment name')
 	parser.add_argument('--output_path_plots', type=str, help='Output path for plots')
-	parser.add_argument('--insertion_probability', type=float, help='Insertion probability: [0-1]')
+	parser.add_argument('--insertion_number_fixed', type=int, help='insertion_number_fixed: If 0, n insertions will be used. Otherwise, n insertions will be used as the mean number of insertions drawn from a poisson distribution.')
+	parser.add_argument('--min_overlap_for_detection', type=float, help='Minimum overlap between a read and an insertion required to be detected')
 	parser.add_argument('--chr_restriction', type=str, help='Chromosome restriction. If "unrestricted", all chromosomes from the reference are used and "_" are changed to "-" in the gene names".')
 	parser.add_argument('--bedpath', type=str, help='Path to BED file for insertions. Insertions are randomly spread into the respective intervals. Interval-size is considered. Special: If num insertions and num of bed entries match, each entry will be chosen once, disregaridng its length. This allows for fixed insertions!')
 	parser.add_argument('--barcode_weights', type=str, help='Barcode weights. E.g. {"Barcode_0: 5, "Barcode_1: 2"}: A read will be be five times more likely to be from Barcode 0 than from Barcode 2,3,...n. ')
@@ -76,7 +77,8 @@ def main():
 	output_path = args.output_path or config.get('output_path')
 	experiment_name = args.experiment_name or config.get('experiment_name')
 	output_path_plots = args.output_path_plots or config.get('output_path_plots')
-	insertion_probability = args.insertion_probability or float(config.get('insertion_probability'))
+	insertion_number_fixed = args.insertion_number_fixed or config.get('insertion_number_fixed')
+	min_overlap_for_detection = args.min_overlap_for_detection or float(config.get('min_overlap_for_detection'))
 	chr_restriction = args.chr_restriction or config.get('chr_restriction')
 	bedpath = args.bedpath or config.get('bedpath')
 	barcode_weights = parse_stringified_dict(args.barcode_weights) if args.barcode_weights else parse_stringified_dict(config.get('barcode_weights'))
@@ -337,6 +339,15 @@ def main():
 		In case of a bed-guided insertion, each region in the file is assigned a probability according to its length.
 		'''
 		position = {}
+		
+		print(f"insertion_number_fixed: {insertion_number_fixed}")
+
+		if insertion_number_fixed != '0': 
+			num_insertions = np.random.poisson(num_insertions)
+			print(f"Number of insertions drawn from Poisson distribution: {num_insertions}")
+		else:
+			print(f"Using exactly {num_insertions}.")
+
 		if bed_df is not None:
 			print("BED guided insertion pattern...")
 			# Step 1: Calculate probabilities based on region lengths
@@ -346,68 +357,66 @@ def main():
 			updated_reference_sequence = reference_sequence
 
 			for i in range(num_insertions):
-				if random.random() < insertion_probability: 
-					# Step 2: Randomly select insertion regions #so that each region is selected once!
-					if len(bed_df.index) == num_insertions:
-						selected_region = bed_df.iloc[i]
-					else:
-						selected_region_index = np.random.choice(bed_df.index, p=region_probabilities)
-						selected_region = bed_df.iloc[selected_region_index]
+				# Step 2: Randomly select insertion regions #so that each region is selected once!
+				if len(bed_df.index) == num_insertions:
+					selected_region = bed_df.iloc[i]
+				else:
+					selected_region_index = np.random.choice(bed_df.index, p=region_probabilities)
+					selected_region = bed_df.iloc[selected_region_index]
 
-					# Step 3: Perform insertions within selected regions
-					chromosome = selected_region['chrom']
-					chromosome_range = chromosome_dir[chromosome]
+				# Step 3: Perform insertions within selected regions
+				chromosome = selected_region['chrom']
+				chromosome_range = chromosome_dir[chromosome]
 
-					insert_position = random.randint(selected_region['start'], selected_region['end'])
-					# Adjust insertion position to the global genomic coordinates
-					global_insert_position = chromosome_range[0] + insert_position
+				insert_position = random.randint(selected_region['start'], selected_region['end'])
+				# Adjust insertion position to the global genomic coordinates
+				global_insert_position = chromosome_range[0] + insert_position
 
-					# Insert the insertion sequence into the reference sequence
-					updated_reference_sequence = (
-						updated_reference_sequence[:global_insert_position] +
-						insertion_sequence +
-						updated_reference_sequence[global_insert_position:]
-					)
+				# Insert the insertion sequence into the reference sequence
+				updated_reference_sequence = (
+					updated_reference_sequence[:global_insert_position] +
+					insertion_sequence +
+					updated_reference_sequence[global_insert_position:]
+				)
 
-					# Update position table
-					for key, value in position.items():
-					# If the insertion is after the current position, update the position
-						if value[0] >= global_insert_position:
-							position[key][0] += len(insertion_sequence)
-							position[key][1] += len(insertion_sequence)
+				# Update position table
+				for key, value in position.items():
+				# If the insertion is after the current position, update the position
+					if value[0] >= global_insert_position:
+						position[key][0] += len(insertion_sequence)
+						position[key][1] += len(insertion_sequence)
 
-					# Add the new insertion position and (barcoded) name
-					insertion_name = chromosome.split('chr')[0] + "insertion_%s" %i
-					position[insertion_name] = [global_insert_position, global_insert_position + len(insertion_sequence)]
+				# Add the new insertion position and (barcoded) name
+				insertion_name = chromosome.split('chr')[0] + "insertion_%s" %i
+				position[insertion_name] = [global_insert_position, global_insert_position + len(insertion_sequence)]
 
 
 			return updated_reference_sequence, position
 		
 		#if no bed is provided
 		for i in range(num_insertions):
-			if random.random() < insertion_probability:
-				# Choose a random position to insert the smaller sequence
-				insert_position = random.randint(0, len(reference_sequence))
-				
-				#check in which chr it landed
-				chromosome = get_chromosome(insert_position, chromosome_dir)
-				
-				# Insert the insertion sequence at the chosen position
-				updated_reference_sequence = (
-					reference_sequence[:insert_position] +
-					insertion_sequence +
-					reference_sequence[insert_position:]
-				)
-				# Update position table
-				for key, value in position.items():
-				# If the insertion is after the current position, update the position
-					if value[0] >= insert_position:
-						position[key][0] += len(insertion_sequence)
-						position[key][1] += len(insertion_sequence)
+			# Choose a random position to insert the smaller sequence
+			insert_position = random.randint(0, len(reference_sequence))
+			
+			#check in which chr it landed
+			chromosome = get_chromosome(insert_position, chromosome_dir)
+			
+			# Insert the insertion sequence at the chosen position
+			updated_reference_sequence = (
+				reference_sequence[:insert_position] +
+				insertion_sequence +
+				reference_sequence[insert_position:]
+			)
+			# Update position table
+			for key, value in position.items():
+			# If the insertion is after the current position, update the position
+				if value[0] >= insert_position:
+					position[key][0] += len(insertion_sequence)
+					position[key][1] += len(insertion_sequence)
 
-				# Add the new insertion position and (barcoded) name
-				insertion_name = chromosome.split('chr')[0] + "insertion_%s" %i
-				position[insertion_name]= [insert_position, insert_position + len(insertion_sequence)]
+			# Add the new insertion position and (barcoded) name
+			insertion_name = chromosome.split('chr')[0] + "insertion_%s" %i
+			position[insertion_name]= [insert_position, insert_position + len(insertion_sequence)]
 
 		return updated_reference_sequence, position
 
@@ -560,11 +569,12 @@ def main():
 			return 1 / n_barcodes
 
 
-	#Part 3: Simulate how many insertions can be found using our sequencing approach with different parameter settings
 	@profile
 	def count_insertions(insertion_dir, n_barcodes, read_dir):
 		'''
-		Counts the number of full-length and partial insertions for each insertion/roi. Genome scale factor due to diploidy of the human genome. 
+		Counts the number of full-length and partial insertions for each insertion/roi.
+		Requires at least 'min_overlap' between the insertion and read intervals
+		Genome scale factor due to diploidy of the human genome.
 		'''
 		data = []
 		print("Counting...")
@@ -578,24 +588,41 @@ def main():
 			partial_count = 0
 			insertion_start, insertion_end = insertion_positions
 			insertion_data = {'Insertion': insertion}
+			overlaps=[]
 
 			for read, read_positions in read_dir.items():
-				if read.split("_")[-1] == insertion.split("_")[1]: #if barcodes match
+				if read.split("_")[-1] == insertion.split("_")[1]:  # If barcodes match
 					read_start, read_end = read_positions
 
-					if read_start <= insertion_start and insertion_end <= read_end:  # Full-length insertion
-						if random.random() <= genome_scale_facor:
-							full_length_count += 1
-					elif (insertion_start < read_start and insertion_end > read_start) or \
-						 (insertion_start < read_end and insertion_end > read_end):  # Partial insertion
-						if random.random() <= genome_scale_facor:
-							partial_count += 1
-					
+					# Check if there is overlap first
+					if max(insertion_start, read_start) < min(insertion_end, read_end):
+						
+						# Calculate overlap between the insertion and the read
+						overlap = min(insertion_end, read_end) - max(insertion_start, read_start)
+						
+						# Full-length insertion: check if the read fully covers the insertion
+						if read_start <= insertion_start and insertion_end <= read_end:
+							if overlap >= min_overlap_for_detection:  # Ensure the overlap is at least 'x'
+								if random.random() <= genome_scale_facor:
+									full_length_count += 1
+									overlaps.append(overlap)
+
+
+						# Partial insertion: check if the read partially overlaps with the insertion
+						elif (insertion_start < read_start and insertion_end > read_start) or \
+							 (insertion_start < read_end and insertion_end > read_end):
+							if overlap >= min_overlap_for_detection:  # Ensure the overlap is at least 'x'
+								if random.random() <= genome_scale_facor:
+									partial_count += 1
+									overlaps.append(overlap)
+
+
 			insertion_data['full_matches'] = full_length_count
 			insertion_data['partial_matches'] = partial_count
+			insertion_data['overlap'] = overlaps
 			data.append(insertion_data)
-		return data
 
+		return data
 
 
 	def count_barcode_occurrences(dictionary):
@@ -770,7 +797,7 @@ def main():
 		try:
 			custom_read_length_distribution = get_read_length_distribution_from_real_data(sequenced_data_path) #for experimental data
 			print("Custom FASTA data provided.")
-			save_histogram(custom_read_length_distribution, 20, mean_read_length, coverage)
+			###save_histogram(custom_read_length_distribution, 20, mean_read_length, coverage)
 		except:
 			print("No custom read length distribution provided... Generating artificial one...")
 			custom_read_length_distribution = generate_read_length_distribution(num_reads=1000000, mean_read_length=mean_read_length, distribution='lognormal')
@@ -780,7 +807,6 @@ def main():
 		
 		PRECOMPUTE_RANDOM = [random.choice(custom_read_length_distribution) for _ in range(100000000)]
 		custom_cov_coordinates, covered_length = generate_reads_based_on_coverage(length_mod_fasta, custom_read_length_distribution, coverage, PRECOMPUTE_RANDOM)
-		
 		#plot coverage
 		#plot_reads_coverage(length_mod_fasta, 1000000, custom_cov_coordinates, mean_read_length, coverage, insertion_dir) #might need to be commented out for high coverage runs! otherwise, the plot cannot be drawn!
 		# Sanity check for barcoding
@@ -833,7 +859,7 @@ def main():
 		#run once
 		#1 Creates the vector in the right format
 		#insertion_fasta = collapse_fasta(vector_sequence_path)
-		insertion_fasta = 'X' * 5000 #artificial insertion
+		insertion_fasta = 'X' * 5000 #artificial insertionf
 
 		length_mod_fasta, insertion_dict, masked_regions, chromosome_dir = create_barcoded_insertion_genome(reference_genome_path=reference_genome_path, bedpath=bedpath, insertion_fasta=insertion_fasta, n_barcodes=n_barcodes)
 		print("Number of insertions:")
@@ -934,9 +960,7 @@ def main():
 		#### I pre processing
 		results_df["Barcode"] = results_df["Insertion"].str.split("_").str[0] #changed, maybe causes problems with insertions?
 		results_df["Iteration"] = results_df["Insertion"].str.split("_").str[4]
-		combined_mean_df = results_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'full_matches': 'mean', 'partial_matches': 'mean'}).reset_index() #mean over iterations
-		print("mean overview:")
-		print(combined_mean_df)
+		print(results_df.tail())
 	except:
 		print("ROI mode: Writing files...")
 
@@ -949,7 +973,8 @@ def main():
 	print(f"Output Path: {output_path}")
 	print(f"Experiment Name: {experiment_name}")
 	print(f"Output Path Plots: {output_path_plots}")
-	print(f"Insertion Probability: {insertion_probability}")
+	print(f"insertion_number_fixed: {insertion_number_fixed}")
+	print(f"min_overlap_for_detection: {min_overlap_for_detection}")
 	print(f"Chromosome Restriction: {chr_restriction}")
 	print(f"Bed Path: {bedpath}")
 	print(f"Barcode Weights: {barcode_weights}")

@@ -11,12 +11,13 @@ from matplotlib.patches import Patch
 import re
 #coverage plot
 import pysam
+import ast
 
 
 out_dir="./out/Noise_Simulation/plots/"
-inputdata="./out/Noise_Simulation/Barcodes_1_Introns_with_50kb_blocked_matches_table.csv"
-prefix="Combined_Simulations" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
-mode=""
+inputdata="./out/Noise_Simulation/Barcodes_100_Introns_with_50kb_blocked_AND_200_Overlap_AND_Poisson5_matches_table.csv"
+prefix="Barcodes_100_Introns_with_50kb_blocked_AND_200_Overlap_AND_Poisson5" #'Weight_1_I_DominanceSimulation' #"Combined_" #'Weight_4_I_DominanceSimulation' #sample name for output plot
+mode="I"
 
 def plot_matches(data, out_dir):
 	"""
@@ -48,6 +49,7 @@ def plot_matches(data, out_dir):
 	plotname = prefix + 'partial_matches_plot.jpg'
 	partial_matches_plot_path = os.path.join(out_dir, plotname)
 	g.savefig(partial_matches_plot_path)
+	plt.close()
  
 
 def lineplot_matches(data, value_column, x_axis="mean_read_length", hue="coverage", out_dir=out_dir):
@@ -94,6 +96,7 @@ def lineplot_matches(data, value_column, x_axis="mean_read_length", hue="coverag
 	plotname = prefix + "_" + value_column + '_lineplot_with_additional_regression.jpg'
 	plot_path = os.path.join(out_dir, plotname)
 	plt.savefig(plot_path, bbox_inches='tight')
+	plt.close()
 
 
 def plot_points(data, option, color):
@@ -163,6 +166,7 @@ def plot_barcode_barplot_panel(df, match_type, out_dir, prefix):
 	plotname = f"{prefix}_{match_type.capitalize()}_stacked_bar_panel.jpg"
 	plot_path = os.path.join(out_dir, plotname)
 	plt.savefig(plot_path, bbox_inches='tight')
+	plt.close()
 
 
 def plot_barcode_barplot(df, match_type, out_dir, prefix):
@@ -188,6 +192,7 @@ def plot_barcode_barplot(df, match_type, out_dir, prefix):
 	plot_path = os.path.join(out_dir, plotname)
 	plt.title(prefix, y=1.1)
 	plt.savefig(plot_path, bbox_inches='tight')
+	plt.close()
 
 def lineplot_matches_barcode(data, unique_column, value_column, x_axis="mean_read_length", hue="coverage", palette=None, out_dir=out_dir, prefix=prefix):
 	sns.set_style("ticks")
@@ -240,6 +245,7 @@ def lineplot_matches_barcode(data, unique_column, value_column, x_axis="mean_rea
 	plotname = f"{prefix}_{unique_column}_{value_column}_barcode_lineplot.jpg"
 	plot_path = os.path.join(out_dir, plotname)
 	plt.savefig(plot_path, bbox_inches='tight')
+	plt.close()
 
 def plot_insertions(data, insertion_name, value_column_1, value_column_2, out_dir, prefix=""):
 	"""
@@ -324,7 +330,30 @@ def roi_plot_clustermap(df):
 	plotname = prefix + "_roi" + '_heatmap.jpg'
 	plot_path = os.path.join(out_dir, plotname)
 	plt.savefig(plot_path, bbox_inches='tight', dpi=300)
+	plt.close()
 
+def overlap_plot(df):
+	"""
+	Plots a histogram of the overlaps between read and I/ROI 
+	"""
+	
+	#transform into lists of integers and not lists of chracters
+	df['overlap'] = df['overlap'].apply(lambda x: ast.literal_eval(x))
+	overlap_values = [item for sublist in df['overlap'] for item in sublist]
+	sns.histplot(overlap_values, bins=50, kde=False)
+	plt.axvline(200, color='black', linestyle="--")
+	plt.text(200, plt.ylim()[1]*0.8, f'Min. overlap: 200', color='black', fontsize='xx-small')
+	plt.axvline(5000, color='black', linestyle="--")
+	plt.text(5000, plt.ylim()[1]*0.8, f'Max. overlap (I/ROI size): 5000', color='black', fontsize='xx-small')
+	plt.xlabel('Overlap Values')
+	plt.ylabel('Frequency')
+	plt.title('Histogram of Overlap Values')
+
+	# Save plot
+	plotname = prefix + "_overlap_hist.jpg"
+	plot_path = os.path.join(out_dir, plotname)
+	plt.savefig(plot_path, bbox_inches='tight', dpi=300)
+	plt.close()
 
 
 
@@ -353,6 +382,9 @@ if mode == "I":
 	#print(combined_mean_df.head())
 	lineplot_matches(inputdata_df, "partial_matches", x_axis='coverage', hue='Barcode')
 
+	### plot overlap
+	print(inputdata_df.head())
+	overlap_plot(inputdata_df)
 	#old
 	sys.exit()
 	#combined full and partial matches
@@ -393,6 +425,8 @@ elif mode=="ROI":
 	inputdata_df=pd.read_csv(inputdata, sep='\t')
 	print(inputdata_df.head())
 	roi_plot_clustermap(inputdata_df) #qucik chatgpt function
+	#overlap plot
+	overlap_plot(inputdata_df)
 
 
 #if combined weighted plot
