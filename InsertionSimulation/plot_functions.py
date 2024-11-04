@@ -1,3 +1,4 @@
+#%%
 #!/usr/bin/env python3
 
 import seaborn as sns
@@ -10,9 +11,7 @@ import scipy
 from matplotlib.patches import Patch
 import re
 #coverage plot
-import pysam
 import ast
-
 
 out_dir="./out/Noise_Simulation/plots/"
 inputdata="./out/Noise_Simulation/Barcodes_100_Introns_with_50kb_blocked_AND_200_Overlap_AND_Poisson5_matches_table.csv"
@@ -61,7 +60,7 @@ def lineplot_matches(data, value_column, x_axis="mean_read_length", hue="coverag
 	plt.title(prefix, y=1.1)
 	
 	# Plot the original data with a line plot
-	g = sns.lineplot(data=data, x=x_axis, y=value_column, hue=hue, legend='full', errorbar='sd', linewidth = 3, palette=sns.color_palette("viridis"), alpha=0.5)
+	g = sns.lineplot(data=data, x=x_axis, y=value_column, hue=hue, legend='full', errorbar='sd', linewidth = 3, alpha=0.5)
 	g.set_xticks(data[x_axis].unique())
 	g.tick_params(axis='x', labelrotation=90)
 	g.set(xlabel=x_axis, ylabel=value_column)
@@ -81,7 +80,7 @@ def lineplot_matches(data, value_column, x_axis="mean_read_length", hue="coverag
 
 	# Add a regression line for the new points
 	try:
-		sns.regplot(x=new_points_x, y=new_points_y, scatter=False, color='red', ci=None, line_kws={'linewidth':3, 'linestyle':'--', "alpha":0.8})
+		sns.regplot(x=new_points_x, y=new_points_y, scatter=False, color='red', ci=None, line_kws={'linewidth':5, 'linestyle':'--', "alpha":0.8})
 	except:
 		print("no regression possible for new points")
 
@@ -96,6 +95,7 @@ def lineplot_matches(data, value_column, x_axis="mean_read_length", hue="coverag
 	plotname = prefix + "_" + value_column + '_lineplot_with_additional_regression.jpg'
 	plot_path = os.path.join(out_dir, plotname)
 	plt.savefig(plot_path, bbox_inches='tight')
+	plt.show()
 	plt.close()
 
 
@@ -376,6 +376,7 @@ if mode == "I":
 	print("mean per iteration")
 	print(mean_per_iteration)
 	lineplot_matches(mean_per_iteration, "combined_values", x_axis='coverage', hue='mean_read_length')
+	sys.exit()
 
 	#3 deal with barcodes
 	#combined_mean_df = inputdata_df.groupby(['coverage', 'mean_read_length', 'Barcode']).agg({'combined_values': 'mean'}).reset_index() #mean over iterations
@@ -451,8 +452,5 @@ else:
 	
 	lineplot_matches(mean_per_iteration, "combined_values", x_axis='coverage', hue='id')
 	sys.exit()
-	lineplot_matches(mean_df, "full_matches", x_axis='Coverage_ReadLength', hue='Barcode') #all matches per weight: "full_matches", x_axis='Coverage_ReadLength', hue='0_weight'
-	lineplot_matches(mean_df.sort_values(by="mean_read_length"), "partial_matches", x_axis='Coverage_ReadLength', hue='Barcode')
-	#
-	lineplot_matches_barcode(mean_df, "0_weight", "full_matches", x_axis='Coverage_ReadLength', hue='Barcode',palette=sns.color_palette("deep"))
-	lineplot_matches_barcode(mean_df.sort_values(by="mean_read_length"), "0_weight", "partial_matches", x_axis='Coverage_ReadLength', hue='Barcode', palette=sns.color_palette("deep"))
+
+# %%

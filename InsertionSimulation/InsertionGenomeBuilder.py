@@ -1,3 +1,4 @@
+#%%
 #!/usr/bin/env python3
 
 import configparser
@@ -50,6 +51,7 @@ def get_arguments():
 	parser.add_argument('--blocked_regions_bedpath', type=str, help='Path to blocked regions BED file')
 	parser.add_argument('--barcodes_to_check_blocked_regions', type=str, help='Barcodes to check blocked regions. Only these Barcodes will be affected by the blocking.')
 	parser.add_argument('--monosomie', type=str, help='Monosomy. Same as chromosome weigths set to 0.')
+	parser.add_argument("-f", "--fff", help="a dummy argument to fool ipython", default="1")
 	
 	return parser.parse_args()
 
@@ -702,6 +704,7 @@ def main():
 		plt.ylabel('Frequency')
 		plt.title('Histogram with Mean and Median')
 		
+		plt.show()
 		# Save the histogram as a PNG file
 		output_file = f"{output_path_plots}/{experiment_name}_{mean_read_length}_{coverage}_histogram.png"
 		plt.savefig(output_file, format='png', dpi=300)
@@ -775,7 +778,7 @@ def main():
 		plt.xlabel('Position on "one-string" Reference Genome (1e6 binned)')
 		plt.ylabel('Read Coverage')
 		plt.title('Read Coverage Plot')
-		
+		plt.show()
 		# Save the plot
 		output_file = f"{output_path_plots}/{experiment_name}_{mean_read_length}_{current_coverage}_coverage.png"
 		plt.savefig(output_file)
@@ -797,7 +800,7 @@ def main():
 		try:
 			custom_read_length_distribution = get_read_length_distribution_from_real_data(sequenced_data_path) #for experimental data
 			print("Custom FASTA data provided.")
-			###save_histogram(custom_read_length_distribution, 20, mean_read_length, coverage)
+			save_histogram(custom_read_length_distribution, 20, mean_read_length, coverage)
 		except:
 			print("No custom read length distribution provided... Generating artificial one...")
 			custom_read_length_distribution = generate_read_length_distribution(num_reads=1000000, mean_read_length=mean_read_length, distribution='lognormal')
@@ -994,3 +997,6 @@ def main():
 
 if __name__ == "__main__":
 	main()
+
+# %%
+
