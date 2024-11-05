@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.lines import Line2D
 from scipy.ndimage import gaussian_filter1d
+import math
 import numpy as np
 import pandas as pd
 import sys
@@ -28,7 +29,7 @@ def get_config():
 def get_arguments():
 	parser = argparse.ArgumentParser(description='Simulation of insertions (I) or regions-of-interests (ROI).')
 	parser.add_argument('--reference_genome_path', type=str, help='Path to reference genome')
-	parser.add_argument('--vector_sequence_path', type=str, help='Path to vector sequence/ not really used currently')
+	parser.add_argument('--insertion_length', type=int, help='Length of the simulated insertion')
 	parser.add_argument('--sequenced_data_path', type=str, help='Path to sequenced data for custom read length distribution')
 	parser.add_argument('--output_path', type=str, help='Output path')
 	parser.add_argument('--experiment_name', type=str, help='Experiment name')
@@ -38,7 +39,6 @@ def get_arguments():
 	parser.add_argument('--chr_restriction', type=str, help='Chromosome restriction. If "unrestricted", all chromosomes from the reference are used and "_" are changed to "-" in the gene names".')
 	parser.add_argument('--bedpath', type=str, help='Path to BED file for insertions. Insertions are randomly spread into the respective intervals. Interval-size is considered. Special: If num insertions and num of bed entries match, each entry will be chosen once, disregaridng its length. This allows for fixed insertions!')
 	parser.add_argument('--barcode_weights', type=str, help='Barcode weights. E.g. {"Barcode_0: 5, "Barcode_1: 2"}: A read will be be five times more likely to be from Barcode 0 than from Barcode 2,3,...n. ')
-	parser.add_argument('--chromosome_weights', type=str, help='Chromosome weights. E.g. {"chr2":0}: There will be no reads drawn from chromosome 2. Resembles monosomy option with 0.')
 	parser.add_argument('--insertion_numbers', type=int, help='Number of insertions')
 	parser.add_argument('--n_barcodes', type=int, help='Number of barcodes, i.e. number of genomes')
 	parser.add_argument('--iterations', type=int, help='Number of iterations')
@@ -49,8 +49,6 @@ def get_arguments():
 	parser.add_argument('--mean_read_lengths', type=str, help='Mean read lengths. Only if no custom read length distirbution is used.')
 	parser.add_argument('--roi_bedpath', type=str, help='Path to ROI BED file')
 	parser.add_argument('--blocked_regions_bedpath', type=str, help='Path to blocked regions BED file')
-	parser.add_argument('--barcodes_to_check_blocked_regions', type=str, help='Barcodes to check blocked regions. Only these Barcodes will be affected by the blocking.')
-	parser.add_argument('--monosomie', type=str, help='Monosomy. Same as chromosome weigths set to 0.')
 	parser.add_argument("-f", "--fff", help="a dummy argument to fool ipython", default="1")
 	
 	return parser.parse_args()
@@ -74,7 +72,7 @@ def main():
 	args = get_arguments()
 
 	reference_genome_path = args.reference_genome_path or config.get('reference_genome_path')
-	vector_sequence_path = args.vector_sequence_path or config.get('vector_sequence_path')
+	insertion_length = args.insertion_length if args.insertion_length is not None else int(config.get('insertion_length')) if config.get('insertion_length') is not None else None
 	sequenced_data_path = args.sequenced_data_path or config.get('sequenced_data_path')
 	output_path = args.output_path or config.get('output_path')
 	experiment_name = args.experiment_name or config.get('experiment_name')
@@ -84,7 +82,6 @@ def main():
 	chr_restriction = args.chr_restriction or config.get('chr_restriction')
 	bedpath = args.bedpath or config.get('bedpath')
 	barcode_weights = parse_stringified_dict(args.barcode_weights) if args.barcode_weights else parse_stringified_dict(config.get('barcode_weights'))
-	chromosome_weights = parse_stringified_dict(args.chromosome_weights) if args.chromosome_weights else parse_stringified_dict(config.get('chromosome_weights'))
 	insertion_numbers = args.insertion_numbers or int(config.get('insertion_numbers'))
 	n_barcodes = args.n_barcodes or int(config.get('n_barcodes'))
 	iterations = args.iterations or int(config.get('iterations'))
@@ -95,8 +92,6 @@ def main():
 	mean_read_lengths = parse_comma_separated_list(args.mean_read_lengths, int) if args.mean_read_lengths else parse_comma_separated_list(config.get('mean_read_lengths'), int)
 	roi_bedpath = args.roi_bedpath or config.get('roi_bedpath')
 	blocked_regions_bedpath = args.blocked_regions_bedpath or config.get('blocked_regions_bedpath')
-	barcodes_to_check_blocked_regions = parse_comma_separated_list(args.barcodes_to_check_blocked_regions, str) if args.barcodes_to_check_blocked_regions else parse_comma_separated_list(config.get('barcodes_to_check_blocked_regions'), str)
-	monosomie = parse_comma_separated_list(args.monosomie, str) if args.monosomie else parse_comma_separated_list(config.get('monosomie'), str)
 
 	
 	#combinations
@@ -138,64 +133,97 @@ def main():
 			return True
 		return False
 
-	def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
-		'''
-		Reads the bed file and only keeps entries from chromosomes in the reference.
-		If the weights column is missing, it adds a weights column with 0 for each row.
-		Barcoding only becomes true for the bed-guided insertion placement.
-		'''
-		try:
-			# Attempt to read the bed file with the weight column
-			bed = pd.read_csv(bedpath, sep='\t', header=None, usecols=[0, 1, 2, 3, 4], names=['chrom', 'start', 'end', 'ID', 'weight'])
-		except ValueError as e:
-			# If the weight column is missing, read without it and add a weight column with 0
-			if "Too many columns specified: expected 5 and found 4" in str(e):
-				print("Weight column not found but ID exists. Adding a default weight of 0.")
-				bed = pd.read_csv(bedpath, sep='\t', header=None, usecols=[0, 1, 2, 3],names=['chrom', 'start', 'end', 'ID'])
-				bed['weight'] = 0  # Add the weight column with 0 as default
-			else:
-				raise e  # Raise other exceptions
-		except:
-			try: 
-				print("Try reading BED minimally...")
-				bed = pd.read_csv(bedpath, sep='\t', header=None, usecols=[0, 1, 2], names=['chrom', 'start', 'end'])
-				bed['ID'] = ''  # Add a placeholder ID if missing
-				bed['weight'] = 0  # Add the weight column with 0 as default
-			except Exception as e:
-				print("Could not read the BED or no BED provided:", e)
-				return None 
-
-		# Handling barcoding if required
-		if barcoding:
-			print('Barcoding selected: Transforming the names in the bed... Adding the following barcode...')
-			print('_'.join(list(list_of_chromosomes_in_reference)[0].split("_")[:-1]))
-			barcode = '_'.join(list(list_of_chromosomes_in_reference)[0].split("_")[:-1])
-			bed['chrom'] = barcode + '_' + bed['chrom'].astype(str)
-			bed = bed[bed["chrom"].isin(list_of_chromosomes_in_reference)]
+	def bedcheck(bed):
+		"""
+		Check if the first column of a df contains the string "chr" and if the second and thirs column contain an integer.  
+		"""
+		if bed.iloc[:, 0].str.startswith("chr").all() and \
+			bed.iloc[:, 1].apply(lambda x: isinstance(x, int)).all() and \
+			bed.iloc[:, 2].apply(lambda x: isinstance(x, int)).all():
+			return True
+		
 		else:
-			print('Only keeping the following chromosomes...')
-			print(list_of_chromosomes_in_reference)
+			print("The file does not seem to be in BED format. Make sure the data looks like: chrN integer integer")
+			return False
+
+	def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
+		"""
+		Reads bed files in a flexible manner. Adds None fr columns that are non-existent. 
+		"""
+		bed = None
+		print(bedpath)
+
+		try:
+			# Read only the available columns initially
+			bed = pd.read_csv(bedpath, sep='\t', header=0)
+			print(bed.head())
+			if not bedcheck(bed):
+				return None
+			
+			all_cols = ["chrom", "start", "end", "ID", "Barcode", "weight"]
+			missing_cols = list(set(all_cols) - set(bed.columns))
+			print("Your BED is missing the following columns. Trying to fill in default values where possible...")
+			print(missing_cols)
+			for missing_col in missing_cols: 
+				if missing_col == "weight":
+					bed[missing_col] = 1 
+				elif missing_col == "ID":
+					bed[missing_col] = bed["chrom"].astype(str) + "_" + bed["start"].astype(str) + "_" + bed["end"].astype(str) + "_" + bed["weight"] .astype(str)
+				else:
+					bed[missing_col] = [[]] * len(bed)
+			
+			# Fill empty or NaN values in the 'weight' column with the default value of 1
+			bed['weight'] = bed['weight'].apply(lambda x: 1 if x in ["", None] or (isinstance(x, float) and math.isnan(x)) else x)
+		
+			# Fill NaN values in the 'Barcode' column with an empty list
+			bed['Barcode'] = bed['Barcode'].apply(lambda x: [] if x in ["", None] or (isinstance(x, float) and math.isnan(x)) else x)
+			
+			
+			# Apply barcoding transformation if required
+			if barcoding:
+				print('Barcoding selected: Transforming the chromosome names in the bed...')
+				barcode = '_'.join(list(list_of_chromosomes_in_reference)[0].split("_")[:-1])
+				bed['chrom'] = barcode + '_' + bed['chrom'].astype(str)
+
+			# Filter out chromosomes not in the reference list
+			print('Only keeping the following chromosomes:', list_of_chromosomes_in_reference)
 			bed = bed[bed["chrom"].isin(list_of_chromosomes_in_reference)]
+					
+		except Exception as e:
+			print("Error reading the BED file:", e)
+			return None
 		
 		return bed
 
-	def update_coordinates(df, input_chromosome_dict, include_weights=False):
+	def update_coordinates(df, input_chromosome_dict):
 		'''
 		Uses a df (bed-like) and a dict of chromosome broders in global format and returns the global cooridnates of the bed entries.
+		Checks if start and stop are 0s and if so, sets the coordinates to the full chromosome length for this row. 
 		'''
 		try:
+			
 			updated_coordinates = {}
+			barcode_exists = 'Barcode' in df.columns
+			weight_exists = 'weight' in df.columns
+			
 			for index, row in df.iterrows():
 				ID=row["ID"]
 				chrom = row['chrom']
-				start = row['start'] + input_chromosome_dict[chrom][0]
-				end = row['end'] + input_chromosome_dict[chrom][0]
-				if include_weights: #adds weights if there are any /// a weight of 1 means that the corresponding coordinates will be blocked with a probability of 1 
-					updated_coordinates[ID] = {row['weight'], start, end}
+				
+				if row["start"] == row["end"] == 0: #full chromosome mode
+					print(f"Whole {chrom} will be used for {ID}.")
+					start = input_chromosome_dict[chrom][0]
+					end = input_chromosome_dict[chrom][1]
 				else:
-					updated_coordinates[ID] = {start, end}
+					start = row['start'] + input_chromosome_dict[chrom][0]
+					end = row['end'] + input_chromosome_dict[chrom][0]
+
+				# Prepare the entry for updated_coordinates based on conditions
+				entry = {'start': start, 'end': end, 'weight': row['weight'], 'Barcode': row['Barcode']}
+				updated_coordinates[ID] = entry
 			return updated_coordinates
 		except:
+			print("BED coordinates could not be updated.")
 			return None
 
 	def convert_to_normal_bed(chromosome_dict, items_dict):
@@ -212,29 +240,6 @@ def main():
 
 		bed_df = pd.DataFrame(bed_data, columns=['chrom', 'start', 'end', 'item'])
 		return bed_df
-
-	def add_monosomy_regions(monosomie, input_chromosome_dict, masked_regions=None, chromosome_weights=None):
-		'''
-		Adds monosomy regions to the masked regions with optional weights.
-		'''
-		if monosomie is None:
-			return masked_regions
-
-		if not masked_regions:
-			masked_regions = {}
-		try:
-			for chromosome in monosomie:
-				masked_regions[chromosome] = input_chromosome_dict[chromosome].copy()
-				if chromosome_weights and chromosome in chromosome_weights:
-					masked_regions[chromosome].insert(0, chromosome_weights[chromosome])
-				else:
-					print("No weight provided for %s. Added 0 probability." %chromosome)
-					masked_regions[chromosome].insert(0, 0)
-		except KeyError:
-			print("Chromosome names in monosomie list and reference genome do not overlap")
-
-		return masked_regions
-
 
 	def collapse_fasta(path_to_fasta):
 		'''
@@ -298,14 +303,14 @@ def main():
 				return chromosome
 		return None
 
-	def insertions_per_chromosome(chromosome_dir, insertion_dir):
+	def insertions_per_chromosome(chromosome_dir, insertion_dict):
 		'''
 		Creates a table that lists the number of insertions per chromosome.
 		'''
 		
-		# Convert chromosome_dir and insertion_dir to sets for faster lookups
+		# Convert chromosome_dir and insertion_dict to sets for faster lookups
 		chromosome_set = {chromosome: tuple(coordinates) for chromosome, coordinates in chromosome_dir.items()}
-		insertion_set = {insertion: tuple(coordinates) for insertion, coordinates in insertion_dir.items()}
+		insertion_set = {insertion: tuple(coordinates) for insertion, coordinates in insertion_dict.items()}
 		chromosome_lengths = {}
 		
 		# Iterate through chromosome_dir to get chromosome lengths
@@ -352,6 +357,7 @@ def main():
 
 		if bed_df is not None:
 			print("BED guided insertion pattern...")
+			print(bed_df.head())
 			# Step 1: Calculate probabilities based on region lengths
 			print("Calculating insertion probabilities (region length / sum of all regions lengths)...")
 			region_lengths = bed_df['end'] - bed_df['start']
@@ -420,6 +426,8 @@ def main():
 			insertion_name = chromosome.split('chr')[0] + "insertion_%s" %i
 			position[insertion_name]= [insert_position, insert_position + len(insertion_sequence)]
 
+		print(updated_reference_sequence)
+		print(position)
 		return updated_reference_sequence, position
 
 	@profile
@@ -433,24 +441,29 @@ def main():
 		4.) The length of the reference genome (for coverage estimation), the insertion cooridnates, the masked regions, and the chromosome border dict are returned
 		''' 
 		print("Create Barcoded Genome...")
-		insertion_dict={}
+		collected_insertion_dict={}
 		#1
 		fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
 		
 		#2 #create blocked regions file
-		blocked_bed = readbed(blocked_regions_bedpath, chromosome_dir.keys()) #barcoding should be default false
-		masked_regions = update_coordinates(blocked_bed, chromosome_dir, include_weights=True)
-		masked_regions = add_monosomy_regions(monosomie, chromosome_dir, masked_regions=masked_regions, chromosome_weights=chromosome_weights)
+		if blocked_regions_bedpath is not None:
+			blocked_bed = readbed(blocked_regions_bedpath, chromosome_dir.keys())
+			masked_regions = update_coordinates(blocked_bed, chromosome_dir)
+		else:
+			masked_regions = None
+		
+		print(masked_regions)
+
 		#3
 		for i in range(n_barcodes):
 			barcoded_chromosome_dir = barcode_genome(chromosome_dir, i)
 			#optional bed-guided insertion
 			bed_df = readbed(bedpath, barcoded_chromosome_dir.keys(), barcoding=check_barcoding(n_barcodes))
-			mod_fasta, insertion_dir = add_insertions_to_genome_sequence_with_bed(fasta, insertion_fasta, insertion_numbers, barcoded_chromosome_dir, bed_df)
-			insertion_dict.update(insertion_dir)
-			del barcoded_chromosome_dir, bed_df, insertion_dir
+			mod_fasta, insertion_dict = add_insertions_to_genome_sequence_with_bed(fasta, insertion_fasta, insertion_numbers, barcoded_chromosome_dir, bed_df)
+			collected_insertion_dict.update(insertion_dict)
+			del barcoded_chromosome_dir, bed_df, insertion_dict
 		#4
-		return len(mod_fasta), insertion_dict, masked_regions, chromosome_dir
+		return len(mod_fasta), collected_insertion_dict, masked_regions, chromosome_dir
 
 	def get_read_length_distribution_from_real_data(path_to_sequenced_fasta):
 		'''
@@ -472,33 +485,30 @@ def main():
 			reads.append(read)
 		return reads
 
-	def check_if_blocked_region(start_position, read_length, blocked_region_coordinates=None):
+	def check_if_blocked_region(random_barcode_number, start_position, read_length, masked_regions=None):
 		'''
 		Checks whether the start position is inside the coordinates of a masked/blocked region.
 		Blocked can mean that no reads are obtained from there or only with a certain probability.
-		This is useful to simulate chromosomal aberrations or targeted sequencing
-		Probability of 0 means all reads with a start or end position in the respective interval are discarded! (0,5: Half of them are discarded, 1: None are discarded)
 		'''
-		if blocked_region_coordinates:
-			for values in blocked_region_coordinates.values():
-				probability, start, stop = values
+		for key, values in masked_regions.items():
+			# Convert Barcode string to list if needed (e.g., '[]' to [])
+			barcodes = eval(values["Barcode"]) if isinstance(values["Barcode"], str) else values["Barcode"]
+			if barcodes is None:
+				barcodes = []
+			if int(random_barcode_number) in barcodes or not barcodes:
+				start = values["start"]
+				stop = values["end"]
+				weight = values["weight"] #full blockage if weight not provided
+				
 				if (start < start_position < stop) or (start < start_position + read_length < stop): #checks if start lays in the blocked region or if the end lays in a blocked region
 					# The start position falls within a blocked region
-					if random.random() >= probability:
+					if random.random() < weight:
 						return True  # position is blocked 
 
 	@profile
 	def generate_reads_based_on_coverage(fasta, read_length_distribution, coverage, PRECOMPUTE_RANDOM):
 		'''
 		Randomly pulls a read of size X derived from the read length distribution from the fasta until the fasta is N times covered (coverage).
-		
-		If barcoding:
-		Each pulled read will be assigned to a barcode by the barcodes weight. This accounts for the fact that we have a heterogenous mixture of cells for sequencing.
-
-		If masked regions are provided:
-		Each pulled read will be checked for its location. If its position lays within a masked region, it is discarded accoridng to the defined probability.
-		(Only specific barcodes can have masked regions as well. This is implemented via "barcodes_to_check_blocked_regions" (default: All barcodes are used))
-
 		'''
 		print("Coverage: " + str(coverage))
 		print("Pulling reads...")
@@ -516,11 +526,11 @@ def main():
 			# Check if the random barcode is in the list of barcodes that require checking for blocked regions
 			random_barcode_number = random_barcode.split('_')[-1] #otherwise user input needs to be weird
 
-			if barcodes_to_check_blocked_regions and random_barcode_number in barcodes_to_check_blocked_regions:
-				# Check if the start position falls within a blocked region
-				if check_if_blocked_region(start_position, read_length, masked_regions):
-					# If the start position is in a blocked region, continue to the next iteration
-					continue
+
+			# Check if the start position falls within a blocked region
+			if masked_regions and check_if_blocked_region(random_barcode_number, start_position, read_length, masked_regions):
+				# If the start position is in a blocked region, continue to the next iteration
+				continue
 			
 			# Record the read coordinates
 			read_coordinates[f"Read_{len(read_coordinates)}_{random_barcode}"] = (start_position, start_position + read_length)
@@ -572,7 +582,7 @@ def main():
 
 
 	@profile
-	def count_insertions(insertion_dir, n_barcodes, read_dir):
+	def count_insertions(insertion_dict, read_dir):
 		'''
 		Counts the number of full-length and partial insertions for each insertion/roi.
 		Requires at least 'min_overlap' between the insertion and read intervals
@@ -585,25 +595,31 @@ def main():
 		else:
 			genome_scale_facor = 1
 
-		for insertion, insertion_positions in insertion_dir.items():
+		for key, values in insertion_dict.items():
 			full_length_count = 0
 			partial_count = 0
-			insertion_start, insertion_end = insertion_positions
-			insertion_data = {'Insertion': insertion}
+			print(values)
+			print(type(values))
+			if type(values) == list: 
+				start = values[0]
+				end = values[1]
+			else:
+				start = values["start"]
+				end = values["end"]
+			countdata = {'Insertion': key}
 			overlaps=[]
-
 			for read, read_positions in read_dir.items():
-				if read.split("_")[-1] == insertion.split("_")[1]:  # If barcodes match
+				if read.split("_")[-1] == key.split("_")[1]:  # If barcodes match
 					read_start, read_end = read_positions
 
 					# Check if there is overlap first
-					if max(insertion_start, read_start) < min(insertion_end, read_end):
+					if max(start, read_start) < min(end, read_end):
 						
 						# Calculate overlap between the insertion and the read
-						overlap = min(insertion_end, read_end) - max(insertion_start, read_start)
+						overlap = min(end, read_end) - max(start, read_start)
 						
 						# Full-length insertion: check if the read fully covers the insertion
-						if read_start <= insertion_start and insertion_end <= read_end:
+						if read_start <= start and end <= read_end:
 							if overlap >= min_overlap_for_detection:  # Ensure the overlap is at least 'x'
 								if random.random() <= genome_scale_facor:
 									full_length_count += 1
@@ -611,18 +627,18 @@ def main():
 
 
 						# Partial insertion: check if the read partially overlaps with the insertion
-						elif (insertion_start < read_start and insertion_end > read_start) or \
-							 (insertion_start < read_end and insertion_end > read_end):
+						elif (start < read_start and end > read_start) or \
+							 (start < read_end and end > read_end):
 							if overlap >= min_overlap_for_detection:  # Ensure the overlap is at least 'x'
 								if random.random() <= genome_scale_facor:
 									partial_count += 1
 									overlaps.append(overlap)
 
 
-			insertion_data['full_matches'] = full_length_count
-			insertion_data['partial_matches'] = partial_count
-			insertion_data['overlap'] = overlaps
-			data.append(insertion_data)
+			countdata['full_matches'] = full_length_count
+			countdata['partial_matches'] = partial_count
+			countdata['overlap'] = overlaps
+			data.append(countdata)
 
 		return data
 
@@ -704,7 +720,7 @@ def main():
 		plt.ylabel('Frequency')
 		plt.title('Histogram with Mean and Median')
 		
-		plt.show()
+		#plt.show()
 		# Save the histogram as a PNG file
 		output_file = f"{output_path_plots}/{experiment_name}_{mean_read_length}_{coverage}_histogram.png"
 		plt.savefig(output_file, format='png', dpi=300)
@@ -787,7 +803,7 @@ def main():
 		print(f"Plot saved as {output_file}")
 
 
-	def process_combination(mean_read_length, coverage, length_mod_fasta, insertion_dir, iteration):
+	def process_combination(mean_read_length, coverage, length_mod_fasta, insertion_dict, iteration):
 		'''
 		This is the heart of the calculations, since it simulates the sequencing procedure. In brief:
 
@@ -800,18 +816,18 @@ def main():
 		try:
 			custom_read_length_distribution = get_read_length_distribution_from_real_data(sequenced_data_path) #for experimental data
 			print("Custom FASTA data provided.")
-			save_histogram(custom_read_length_distribution, 20, mean_read_length, coverage)
+			#save_histogram(custom_read_length_distribution, 20, mean_read_length, coverage)
 		except:
 			print("No custom read length distribution provided... Generating artificial one...")
 			custom_read_length_distribution = generate_read_length_distribution(num_reads=1000000, mean_read_length=mean_read_length, distribution='lognormal')
-			print(custom_read_length_distribution)
-			save_histogram(custom_read_length_distribution, 20, mean_read_length, coverage)
+			sys.exit()
+			#save_histogram(custom_read_length_distribution, 20, mean_read_length, coverage)
 			print('Calculating for:' + str(mean_read_length))
 		
 		PRECOMPUTE_RANDOM = [random.choice(custom_read_length_distribution) for _ in range(100000000)]
 		custom_cov_coordinates, covered_length = generate_reads_based_on_coverage(length_mod_fasta, custom_read_length_distribution, coverage, PRECOMPUTE_RANDOM)
 		#plot coverage
-		#plot_reads_coverage(length_mod_fasta, 1000000, custom_cov_coordinates, mean_read_length, coverage, insertion_dir) #might need to be commented out for high coverage runs! otherwise, the plot cannot be drawn!
+		#plot_reads_coverage(length_mod_fasta, 1000000, custom_cov_coordinates, mean_read_length, coverage, insertion_dict) #might need to be commented out for high coverage runs! otherwise, the plot cannot be drawn!
 		# Sanity check for barcoding
 		barcode_distribution = count_barcode_occurrences(custom_cov_coordinates)
 		barcode_distribution["coverage"] = coverage
@@ -820,7 +836,7 @@ def main():
 		barcode_distribution["N_bases"] = covered_length  #new, check if this works for roi too, although I'd be very surprised if not
 		
 		#Detections per ROI/Insertion
-		detected = count_insertions(insertion_dir, n_barcodes, custom_cov_coordinates)
+		detected = count_insertions(insertion_dict, custom_cov_coordinates)
 		suffix = "_" + str(iteration)
 		for insertion_data in detected:
 			insertion_data["mean_read_length"] = mean_read_length
@@ -861,8 +877,7 @@ def main():
 		t0 = time.time()
 		#run once
 		#1 Creates the vector in the right format
-		#insertion_fasta = collapse_fasta(vector_sequence_path)
-		insertion_fasta = 'X' * 5000 #artificial insertionf
+		insertion_fasta = 'X' * insertion_length
 
 		length_mod_fasta, insertion_dict, masked_regions, chromosome_dir = create_barcoded_insertion_genome(reference_genome_path=reference_genome_path, bedpath=bedpath, insertion_fasta=insertion_fasta, n_barcodes=n_barcodes)
 		print("Number of insertions:")
@@ -870,7 +885,6 @@ def main():
 		print(insertion_dict)
 		print(chromosome_dir)
 		if masked_regions:
-			masked_regions = {k: v for k, v in masked_regions.items() if len(v) == 3}
 			print("Masked regions:")
 			print(masked_regions)
 		#get locations of the insertions
@@ -884,7 +898,7 @@ def main():
 	#region of interest mode    
 	elif mode == "ROI":
 		'''
-		ROI mode needs a different pre-treatment of the reference genome, as insertions are not spread randomly but have a fixed placement as defined in the bed file.
+		ROI mode needs a different pre-treatment of the reference genome, as ROIs are not spread randomly but have a fixed placement as defined in the bed file.
 		'''
 		print("Region of interest mode selected...")
 		t0 = time.time()
@@ -892,19 +906,16 @@ def main():
 		#create global cooridnates from bed based on provided genome ref to adjust ROIs to string-like genome
 		fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
 		bed = readbed(roi_bedpath, chromosome_dir.keys())
-		print(bed.head())
 		roi_dict = update_coordinates(bed, chromosome_dir)
-		print(roi_dict)
 		roi_dict = roi_barcoding(roi_dict, n_barcodes)
 		
 		#create blocked regions file
 		if blocked_regions_bedpath is not None:
 			blocked_bed = readbed(blocked_regions_bedpath, chromosome_dir.keys()) #barcoding should be default false
-			masked_regions = update_coordinates(blocked_bed, chromosome_dir, include_weights=True)
+			masked_regions = update_coordinates(blocked_bed, chromosome_dir)
+			print("Masked regions:")
+			print(masked_regions)
 		
-		masked_regions = add_monosomy_regions(monosomie, chromosome_dir, masked_regions=masked_regions, chromosome_weights=chromosome_weights)
-		print("masking...")
-		print(masked_regions)
 		#input variables
 		genome_size = len(fasta)
 		target_regions = roi_dict
@@ -966,12 +977,13 @@ def main():
 		print(results_df.tail())
 	except:
 		print("ROI mode: Writing files...")
+		print(results_df.head())
 
 	barcode_distributions_df.to_csv(output_path+experiment_name+"_"+"barcode_distribution_table.csv", sep='\t', header=True, index=False)
 	results_df.to_csv(output_path+experiment_name+"_"+"matches_table.csv", sep='\t', header=True, index=False)
 
 	print(f"Reference Genome Path: {reference_genome_path}")
-	print(f"Vector Sequence Path: {vector_sequence_path}")
+	print(f"Insertion Length: {insertion_length}")
 	print(f"Sequenced Data Path: {sequenced_data_path}")
 	print(f"Output Path: {output_path}")
 	print(f"Experiment Name: {experiment_name}")
@@ -981,7 +993,6 @@ def main():
 	print(f"Chromosome Restriction: {chr_restriction}")
 	print(f"Bed Path: {bedpath}")
 	print(f"Barcode Weights: {barcode_weights}")
-	print(f"Chromosome Weights: {chromosome_weights}")
 	print(f"Insertion Numbers: {insertion_numbers}")
 	print(f"Number of Barcodes: {n_barcodes}")
 	print(f"Iterations: {iterations}")
@@ -992,8 +1003,6 @@ def main():
 	print(f"Mean Read Lengths: {mean_read_lengths}")
 	print(f"ROI Bed Path: {roi_bedpath}")
 	print(f"Blocked Regions Bed Path: {blocked_regions_bedpath}")
-	print(f"Barcodes to Check Blocked Regions: {barcodes_to_check_blocked_regions}")
-	print(f"Monosomie: {monosomie}")
 
 if __name__ == "__main__":
 	main()
