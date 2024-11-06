@@ -1,8 +1,6 @@
 #%%
 #!/usr/bin/env python3
 
-import configparser
-import argparse
 from Bio import SeqIO
 import random
 import matplotlib.pyplot as plt
@@ -21,80 +19,27 @@ import os #wrapper
 from functools import partial
 from joblib import Parallel, delayed
 
-def get_config():
-	config=configparser.ConfigParser()
-	config.read("sim_config.ini")
-	return config["ROI"] #INSERTION or ROI
+# class-based
+from config_handler import ConfigHandler
 
-def get_arguments():
-	parser = argparse.ArgumentParser(description='Simulation of insertions (I) or regions-of-interests (ROI).')
-	parser.add_argument('--reference_genome_path', type=str, help='Path to reference genome')
-	parser.add_argument('--insertion_length', type=int, help='Length of the simulated insertion')
-	parser.add_argument('--sequenced_data_path', type=str, help='Path to sequenced data for custom read length distribution')
-	parser.add_argument('--output_path', type=str, help='Output path')
-	parser.add_argument('--experiment_name', type=str, help='Experiment name')
-	parser.add_argument('--output_path_plots', type=str, help='Output path for plots')
-	parser.add_argument('--insertion_number_fixed', type=int, help='insertion_number_fixed: If 0, n insertions will be used. Otherwise, n insertions will be used as the mean number of insertions drawn from a poisson distribution.')
-	parser.add_argument('--min_overlap_for_detection', type=float, help='Minimum overlap between a read and an insertion required to be detected')
-	parser.add_argument('--chr_restriction', type=str, help='Chromosome restriction. If "unrestricted", all chromosomes from the reference are used and "_" are changed to "-" in the gene names".')
-	parser.add_argument('--bedpath', type=str, help='Path to BED file for insertions. Insertions are randomly spread into the respective intervals. Interval-size is considered. Special: If num insertions and num of bed entries match, each entry will be chosen once, disregaridng its length. This allows for fixed insertions!')
-	parser.add_argument('--barcode_weights', type=str, help='Barcode weights. E.g. {"Barcode_0: 5, "Barcode_1: 2"}: A read will be be five times more likely to be from Barcode 0 than from Barcode 2,3,...n. ')
-	parser.add_argument('--insertion_numbers', type=int, help='Number of insertions')
-	parser.add_argument('--n_barcodes', type=int, help='Number of barcodes, i.e. number of genomes')
-	parser.add_argument('--iterations', type=int, help='Number of iterations')
-	parser.add_argument('--scaling', type=bool, help='defines whether there is genome scaling necessary. Currently, onle True/False are implemented. If true, 50%% of the findings will be discarded to account for the difference of haplotype (reference genome) and the physiologicla state (diploid)')
-	parser.add_argument('--parallel_jobs', type=int, help='Number of parallel jobs')
-	parser.add_argument('--mode', type=str, help='Mode. Either I for Insertion moder or ROI for region of interest mode. ROI needs a BED file with ROI genomic locations based on the referece genome.')
-	parser.add_argument('--coverages', type=str, help='Coverages. N times the reference genome.')
-	parser.add_argument('--mean_read_lengths', type=str, help='Mean read lengths. Only if no custom read length distirbution is used.')
-	parser.add_argument('--roi_bedpath', type=str, help='Path to ROI BED file')
-	parser.add_argument('--blocked_regions_bedpath', type=str, help='Path to blocked regions BED file')
-	parser.add_argument("-f", "--fff", help="a dummy argument to fool ipython", default="1")
-	
-	return parser.parse_args()
-
-
-def parse_comma_separated_list(value, value_type):
-	if value is None or value.lower() == 'none':
-		return None
-	return [value_type(item) for item in value.split(',')]
-
-def parse_stringified_dict(value):
-	if value is None or value.lower() == 'none':
-		return None
-	try:
-		return eval(value)
-	except (SyntaxError, NameError):
-		raise ValueError("Invalid dictionary format for argument")
 
 def main():
-	config = get_config()
-	args = get_arguments()
-
-	reference_genome_path = args.reference_genome_path or config.get('reference_genome_path')
-	insertion_length = args.insertion_length if args.insertion_length is not None else int(config.get('insertion_length')) if config.get('insertion_length') is not None else None
-	sequenced_data_path = args.sequenced_data_path or config.get('sequenced_data_path')
-	output_path = args.output_path or config.get('output_path')
-	experiment_name = args.experiment_name or config.get('experiment_name')
-	output_path_plots = args.output_path_plots or config.get('output_path_plots')
-	insertion_number_fixed = args.insertion_number_fixed or config.get('insertion_number_fixed')
-	min_overlap_for_detection = args.min_overlap_for_detection or float(config.get('min_overlap_for_detection'))
-	chr_restriction = args.chr_restriction or config.get('chr_restriction')
-	bedpath = args.bedpath or config.get('bedpath')
-	barcode_weights = parse_stringified_dict(args.barcode_weights) if args.barcode_weights else parse_stringified_dict(config.get('barcode_weights'))
-	insertion_numbers = args.insertion_numbers or int(config.get('insertion_numbers'))
-	n_barcodes = args.n_barcodes or int(config.get('n_barcodes'))
-	iterations = args.iterations or int(config.get('iterations'))
-	scaling = args.scaling if args.scaling is not None else config.getboolean('scaling')
-	parallel_jobs = args.parallel_jobs or int(config.get('parallel_jobs'))
-	mode = args.mode or config.get('mode')
-	coverages = parse_comma_separated_list(args.coverages, float) if args.coverages else parse_comma_separated_list(config.get('coverages'), float)
-	mean_read_lengths = parse_comma_separated_list(args.mean_read_lengths, int) if args.mean_read_lengths else parse_comma_separated_list(config.get('mean_read_lengths'), int)
-	roi_bedpath = args.roi_bedpath or config.get('roi_bedpath')
-	blocked_regions_bedpath = args.blocked_regions_bedpath or config.get('blocked_regions_bedpath')
-
 	
-	#combinations
+	# Set the desired section dynamically
+	section = 'I'  # or 'I' depending on your use case
+
+	# Initialize ConfigHandler with the chosen section
+	config_handler = ConfigHandler(config_file="sim_config.ini", section=section)
+	param_dictionary = config_handler.parse_config()
+
+	mean_read_lengths = param_dictionary.get('mean_read_lengths')
+	coverages = param_dictionary.get('coverages')
+	
+	if type(mean_read_lengths) is not list:
+		mean_read_lengths = [mean_read_lengths]
+	if type(coverages) is not list:
+		coverages = [coverages]
+
 	combinations = itertools.product(mean_read_lengths, coverages)
 
 	### WRAPPER START
@@ -260,7 +205,7 @@ def main():
 			seqList=[]
 			updated_length=0
 			for record in SeqIO.parse(fasta_file, 'fasta'):
-				if chr_restriction == "unrestricted":
+				if param_dictionary.get('chr_restriction') == "unrestricted":
 					#this part makes sure now downstream errors occur while doing splits by _
 					record.id = record.id.replace("_", "-")
 					entries[record.id] = [updated_length, updated_length + len(record.seq)]
@@ -347,9 +292,9 @@ def main():
 		'''
 		position = {}
 		
-		print(f"insertion_number_fixed: {insertion_number_fixed}")
+		print(f"insertion_number_distribution: {param_dictionary.get('insertion_number_distribution')}")
 
-		if insertion_number_fixed != '0': 
+		if param_dictionary.get('insertion_number_distribution') == 'poisson': 
 			num_insertions = np.random.poisson(num_insertions)
 			print(f"Number of insertions drawn from Poisson distribution: {num_insertions}")
 		else:
@@ -446,8 +391,8 @@ def main():
 		fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
 		
 		#2 #create blocked regions file
-		if blocked_regions_bedpath is not None:
-			blocked_bed = readbed(blocked_regions_bedpath, chromosome_dir.keys())
+		if param_dictionary.get('blocked_regions_bedpath') is not None:
+			blocked_bed = readbed(param_dictionary.get('blocked_regions_bedpath'), chromosome_dir.keys())
 			masked_regions = update_coordinates(blocked_bed, chromosome_dir)
 		else:
 			masked_regions = None
@@ -459,7 +404,7 @@ def main():
 			barcoded_chromosome_dir = barcode_genome(chromosome_dir, i)
 			#optional bed-guided insertion
 			bed_df = readbed(bedpath, barcoded_chromosome_dir.keys(), barcoding=check_barcoding(n_barcodes))
-			mod_fasta, insertion_dict = add_insertions_to_genome_sequence_with_bed(fasta, insertion_fasta, insertion_numbers, barcoded_chromosome_dir, bed_df)
+			mod_fasta, insertion_dict = add_insertions_to_genome_sequence_with_bed(fasta, insertion_fasta, param_dictionary.get('insertion_numbers'), barcoded_chromosome_dir, bed_df)
 			collected_insertion_dict.update(insertion_dict)
 			del barcoded_chromosome_dir, bed_df, insertion_dict
 		#4
@@ -516,11 +461,11 @@ def main():
 		total_length = fasta
 		#reads = [] #only a goodf idea if we are not testing high coverages, otherwise memory is floated
 		read_coordinates = {}
-		barcode_names = ["Barcode_" + str(i) for i in range(n_barcodes)]
+		barcode_names = ["Barcode_" + str(i) for i in range(param_dictionary.get('n_barcodes'))]
 
 		#Reads pulled until desired coverage is reached
 		while covered_length < coverage * total_length:
-			random_barcode = random.choices(barcode_names, [get_weighted_probabilities(i, n_barcodes, barcode_weights) for i in barcode_names])[0] #chooses one of the barcodes based on weighted probability
+			random_barcode = random.choices(barcode_names, [get_weighted_probabilities(i, param_dictionary.get('n_barcodes'), param_dictionary.get('barcode_weights')) for i in barcode_names])[0] #chooses one of the barcodes based on weighted probability
 			read_length = PRECOMPUTE_RANDOM.pop()
 			start_position = random.randint(0, total_length - read_length)
 			# Check if the random barcode is in the list of barcodes that require checking for blocked regions
@@ -590,7 +535,7 @@ def main():
 		'''
 		data = []
 		print("Counting...")
-		if scaling == True:
+		if param_dictionary.get('scaling') == True:
 			genome_scale_facor = 0.5 
 		else:
 			genome_scale_facor = 1
@@ -598,8 +543,7 @@ def main():
 		for key, values in insertion_dict.items():
 			full_length_count = 0
 			partial_count = 0
-			print(values)
-			print(type(values))
+			#necessary since Insertions and ROIs have a different structure
 			if type(values) == list: 
 				start = values[0]
 				end = values[1]
@@ -620,7 +564,7 @@ def main():
 						
 						# Full-length insertion: check if the read fully covers the insertion
 						if read_start <= start and end <= read_end:
-							if overlap >= min_overlap_for_detection:  # Ensure the overlap is at least 'x'
+							if overlap >= param_dictionary.get('min_overlap_for_detection'):  # Ensure the overlap is at least 'x'
 								if random.random() <= genome_scale_facor:
 									full_length_count += 1
 									overlaps.append(overlap)
@@ -629,7 +573,7 @@ def main():
 						# Partial insertion: check if the read partially overlaps with the insertion
 						elif (start < read_start and end > read_start) or \
 							 (start < read_end and end > read_end):
-							if overlap >= min_overlap_for_detection:  # Ensure the overlap is at least 'x'
+							if overlap >= param_dictionary.get('min_overlap_for_detection'):  # Ensure the overlap is at least 'x'
 								if random.random() <= genome_scale_facor:
 									partial_count += 1
 									overlaps.append(overlap)
@@ -722,7 +666,7 @@ def main():
 		
 		#plt.show()
 		# Save the histogram as a PNG file
-		output_file = f"{output_path_plots}/{experiment_name}_{mean_read_length}_{coverage}_histogram.png"
+		output_file = f"{param_dictionary.get('output_path_plots')}/{param_dictionary.get('experiment_name')}_{mean_read_length}_{coverage}_histogram.png"
 		plt.savefig(output_file, format='png', dpi=300)
 		plt.close()
 
@@ -796,7 +740,7 @@ def main():
 		plt.title('Read Coverage Plot')
 		plt.show()
 		# Save the plot
-		output_file = f"{output_path_plots}/{experiment_name}_{mean_read_length}_{current_coverage}_coverage.png"
+		output_file = f"{param_dictionary.get('output_path_plots')}/{param_dictionary.get('experiment_name')}_{mean_read_length}_{current_coverage}_coverage.png"
 		plt.savefig(output_file)
 		plt.close()
 		
@@ -814,7 +758,7 @@ def main():
 		#to prevent memory overfloat
 
 		try:
-			custom_read_length_distribution = get_read_length_distribution_from_real_data(sequenced_data_path) #for experimental data
+			custom_read_length_distribution = get_read_length_distribution_from_real_data(param_dictionary.get('sequenced_data_path')) #for experimental data
 			print("Custom FASTA data provided.")
 			#save_histogram(custom_read_length_distribution, 20, mean_read_length, coverage)
 		except:
@@ -865,7 +809,7 @@ def main():
 
 
 	#insertion mode
-	if mode == "I":
+	if param_dictionary.get('mode') == "I":
 		'''
 		I mode needs a quite complex pre-treatment, which is performed within the create_barcoded_insertion_genome function. In brief:
 		1.) The reference genome cooridnates are transformed into a string-like format (One single FASTA string) and the chromsome borders are stored
@@ -877,9 +821,9 @@ def main():
 		t0 = time.time()
 		#run once
 		#1 Creates the vector in the right format
-		insertion_fasta = 'X' * insertion_length
+		insertion_fasta = 'X' * param_dictionary.get('insertion_length')
 
-		length_mod_fasta, insertion_dict, masked_regions, chromosome_dir = create_barcoded_insertion_genome(reference_genome_path=reference_genome_path, bedpath=bedpath, insertion_fasta=insertion_fasta, n_barcodes=n_barcodes)
+		length_mod_fasta, insertion_dict, masked_regions, chromosome_dir = create_barcoded_insertion_genome(reference_genome_path=param_dictionary.get('reference_genome_path'), bedpath=param_dictionary.get('bedpath'), insertion_fasta=insertion_fasta, n_barcodes=param_dictionary.get('n_barcodes'))
 		print("Number of insertions:")
 		print(len(insertion_dict.keys()))
 		print(insertion_dict)
@@ -896,7 +840,7 @@ def main():
 		target_regions = insertion_dict
 
 	#region of interest mode    
-	elif mode == "ROI":
+	elif param_dictionary.get('mode') == "ROI":
 		'''
 		ROI mode needs a different pre-treatment of the reference genome, as ROIs are not spread randomly but have a fixed placement as defined in the bed file.
 		'''
@@ -904,14 +848,14 @@ def main():
 		t0 = time.time()
 		
 		#create global cooridnates from bed based on provided genome ref to adjust ROIs to string-like genome
-		fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
-		bed = readbed(roi_bedpath, chromosome_dir.keys())
+		fasta, chromosome_dir = pseudo_fasta_coordinates(param_dictionary.get('reference_genome_path'))
+		bed = readbed(param_dictionary.get('roi_bedpath'), chromosome_dir.keys())
 		roi_dict = update_coordinates(bed, chromosome_dir)
-		roi_dict = roi_barcoding(roi_dict, n_barcodes)
+		roi_dict = roi_barcoding(roi_dict, param_dictionary.get('n_barcodes'))
 		
 		#create blocked regions file
-		if blocked_regions_bedpath is not None:
-			blocked_bed = readbed(blocked_regions_bedpath, chromosome_dir.keys()) #barcoding should be default false
+		if param_dictionary.get('blocked_regions_bedpath') is not None:
+			blocked_bed = readbed(param_dictionary.get('blocked_regions_bedpath'), chromosome_dir.keys()) #barcoding should be default false
 			masked_regions = update_coordinates(blocked_bed, chromosome_dir)
 			print("Masked regions:")
 			print(masked_regions)
@@ -927,7 +871,7 @@ def main():
 
 
 	#Shared processing: The input files differ between ROI and I, but the downstream handling is the same!
-	parallel_results= Parallel(n_jobs=parallel_jobs)(delayed(parallel_replicates)(i) for i in range(iterations))
+	parallel_results= Parallel(n_jobs=param_dictionary.get('parallel_jobs'))(delayed(parallel_replicates)(i) for i in range(param_dictionary.get('iterations')))
 
 	#the next part unpacks the nested structure of the parallel results
 	results_list = []
@@ -947,7 +891,7 @@ def main():
 	barcode_distributions_df = pd.DataFrame(flattened_barcode_distributions_list)
 
 	#ROI-sepcific transformations
-	if mode == "ROI":
+	if param_dictionary.get('mode') == "ROI":
 		'''
 		For this mode, the files need some additonal modifications, namely the normalization of the detected ROIs by their length and total number of reads.
 		The output dataframe is thereby much bigger than the insertion output. 
@@ -955,7 +899,7 @@ def main():
 
 		# Split the 'Insertion' column in df1 to extract the 'iteration' number
 		results_df['iteration'] = results_df['Insertion'].str.split('_').str[-1].astype(int)
-		barcode_distributions_df['Total_Reads'] = barcode_distributions_df.iloc[:, :n_barcodes].sum(axis=1)
+		barcode_distributions_df['Total_Reads'] = barcode_distributions_df.iloc[:, :param_dictionary.get('n_barcodes')].sum(axis=1)
 		#barcode_distributions_df = barcode_distributions_df.drop(columns=barcode_distributions_df.columns[:n_barcodes])
 		results_df = pd.merge(results_df, barcode_distributions_df, on=['coverage', 'mean_read_length', 'iteration'], how='inner')
 		results_df = normalize_ROI_by_length(bed, results_df, scaling_factor=0) #ROIPKB
@@ -968,7 +912,7 @@ def main():
 
 	#output file writing: Insertions have one mor eoutput file: The location bed of the random insertions
 	try:
-		insertion_locations_bed.to_csv(output_path+experiment_name+"_"+"insertion_locations.bed", sep='\t', header=True, index=False)
+		insertion_locations_bed.to_csv(param_dictionary.get('output_path')+param_dictionary.get('experiment_name')+"_"+"insertion_locations.bed", sep='\t', header=True, index=False)
 		print("Insertion mode: Writing files...")
 		print(insertion_locations_bed.head())
 		#### I pre processing
@@ -979,16 +923,24 @@ def main():
 		print("ROI mode: Writing files...")
 		print(results_df.head())
 
-	barcode_distributions_df.to_csv(output_path+experiment_name+"_"+"barcode_distribution_table.csv", sep='\t', header=True, index=False)
-	results_df.to_csv(output_path+experiment_name+"_"+"matches_table.csv", sep='\t', header=True, index=False)
+	barcode_distributions_df.to_csv(param_dictionary.get('output_path')+param_dictionary.get('experiment_name')+"_"+"barcode_distribution_table.csv", sep='\t', header=True, index=False)
+	results_df.to_csv(param_dictionary.get('output_path')+param_dictionary.get('experiment_name')+"_"+"matches_table.csv", sep='\t', header=True, index=False)
+	
+	print("Input parameters for the simulation:")
+	
+	# Now param_dictionary is accessible with correctly typed values
+	for param, value in param_dictionary.items():
+		print(f"{param} = {value} ({type(value)})")
+	
 
+	'''
 	print(f"Reference Genome Path: {reference_genome_path}")
 	print(f"Insertion Length: {insertion_length}")
 	print(f"Sequenced Data Path: {sequenced_data_path}")
 	print(f"Output Path: {output_path}")
 	print(f"Experiment Name: {experiment_name}")
 	print(f"Output Path Plots: {output_path_plots}")
-	print(f"insertion_number_fixed: {insertion_number_fixed}")
+	print(f"dinsertion_number_distribution: {insertion_number_distribution}")
 	print(f"min_overlap_for_detection: {min_overlap_for_detection}")
 	print(f"Chromosome Restriction: {chr_restriction}")
 	print(f"Bed Path: {bedpath}")
@@ -1003,9 +955,13 @@ def main():
 	print(f"Mean Read Lengths: {mean_read_lengths}")
 	print(f"ROI Bed Path: {roi_bedpath}")
 	print(f"Blocked Regions Bed Path: {blocked_regions_bedpath}")
-
+	'''
 if __name__ == "__main__":
-	main()
-
+	try:
+		main()
+	except ValueError as e:
+		print("Configuration error:", e)
+		sys.exit(1)
 # %%
+
 
