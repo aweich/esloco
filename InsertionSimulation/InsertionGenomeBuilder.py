@@ -764,7 +764,6 @@ def main():
 		except:
 			print("No custom read length distribution provided... Generating artificial one...")
 			custom_read_length_distribution = generate_read_length_distribution(num_reads=1000000, mean_read_length=mean_read_length, distribution='lognormal')
-			sys.exit()
 			#save_histogram(custom_read_length_distribution, 20, mean_read_length, coverage)
 			print('Calculating for:' + str(mean_read_length))
 		
@@ -794,7 +793,7 @@ def main():
 		del custom_cov_coordinates
 		gc.collect()
 
-	def parallel_replicates(n_iterations): #x100 down to ~5.5h
+	def parallel_replicates(n_iterations): #x100 faster
 			'''
 			This snippet is th wrapper for the parallelization over the iterations. Each Iteration will be performed as a single job. 
 			'''
@@ -932,30 +931,6 @@ def main():
 	for param, value in param_dictionary.items():
 		print(f"{param} = {value} ({type(value)})")
 	
-
-	'''
-	print(f"Reference Genome Path: {reference_genome_path}")
-	print(f"Insertion Length: {insertion_length}")
-	print(f"Sequenced Data Path: {sequenced_data_path}")
-	print(f"Output Path: {output_path}")
-	print(f"Experiment Name: {experiment_name}")
-	print(f"Output Path Plots: {output_path_plots}")
-	print(f"dinsertion_number_distribution: {insertion_number_distribution}")
-	print(f"min_overlap_for_detection: {min_overlap_for_detection}")
-	print(f"Chromosome Restriction: {chr_restriction}")
-	print(f"Bed Path: {bedpath}")
-	print(f"Barcode Weights: {barcode_weights}")
-	print(f"Insertion Numbers: {insertion_numbers}")
-	print(f"Number of Barcodes: {n_barcodes}")
-	print(f"Iterations: {iterations}")
-	print(f"Scaling: {scaling}")
-	print(f"Parallel Jobs: {parallel_jobs}")
-	print(f"Mode: {mode}")
-	print(f"Coverages: {coverages}")
-	print(f"Mean Read Lengths: {mean_read_lengths}")
-	print(f"ROI Bed Path: {roi_bedpath}")
-	print(f"Blocked Regions Bed Path: {blocked_regions_bedpath}")
-	'''
 if __name__ == "__main__":
 	try:
 		main()
