@@ -1,6 +1,5 @@
-#%%
+#%%	
 #!/usr/bin/env python3
-
 from Bio import SeqIO
 import random
 import matplotlib.pyplot as plt
@@ -19,29 +18,18 @@ import os #wrapper
 from functools import partial
 from joblib import Parallel, delayed
 
-# class-based
-from config_handler import ConfigHandler
-
+# custom config reader
+from config_handler import parse_config
 
 def main():
+	# config
+	config_file = "sim_config_roi.ini"
+	try:
+		param_dictionary = parse_config(config_file)
+		print(param_dictionary)
+	except Exception as e:
+		print(f"Unexpected error: {e}")
 	
-	# Set the desired section dynamically
-	section = 'I'  # or 'I' depending on your use case
-
-	# Initialize ConfigHandler with the chosen section
-	config_handler = ConfigHandler(config_file="sim_config.ini", section=section)
-	param_dictionary = config_handler.parse_config()
-
-	mean_read_lengths = param_dictionary.get('mean_read_lengths')
-	coverages = param_dictionary.get('coverages')
-	
-	if type(mean_read_lengths) is not list:
-		mean_read_lengths = [mean_read_lengths]
-	if type(coverages) is not list:
-		coverages = [coverages]
-
-	combinations = itertools.product(mean_read_lengths, coverages)
-
 	### WRAPPER START
 	'''
 	Wrapper to monitor the resources used by key steps.
@@ -135,7 +123,7 @@ def main():
 			bed = bed[bed["chrom"].isin(list_of_chromosomes_in_reference)]
 					
 		except Exception as e:
-			print("Error reading the BED file:", e)
+			print("Not defined or error reading the BED file:", e)
 			return None
 		
 		return bed
@@ -156,7 +144,7 @@ def main():
 				chrom = row['chrom']
 				
 				if row["start"] == row["end"] == 0: #full chromosome mode
-					print(f"Whole {chrom} will be used for {ID}.")
+					print(f"Full {chrom} used for {ID}.")
 					start = input_chromosome_dict[chrom][0]
 					end = input_chromosome_dict[chrom][1]
 				else:
@@ -216,8 +204,8 @@ def main():
 							entries[record.id] = [updated_length, updated_length + len(record.seq)]
 							updated_length = updated_length + len(record.seq)
 							seqList.append(str(record.seq))
-
-		return ''.join(seqList), entries
+							
+		return len(''.join(seqList)), entries
 
 	def barcode_genome(chromosome_dir, barcode):
 		'''
@@ -282,7 +270,7 @@ def main():
 		return insertions_df
 
 	@profile
-	def add_insertions_to_genome_sequence_with_bed(reference_sequence, insertion_sequence, num_insertions, chromosome_dir, bed_df=None): #costs 3 billion per barcode!
+	def add_insertions_to_genome_sequence_with_bed(reference_sequence, insertion_length, num_insertions, chromosome_dir, bed_df=None): #costs 3 billion per barcode!
 		'''
 		Randomly add insertion sequence into the reference genome or within specified regions.
 
@@ -307,11 +295,11 @@ def main():
 			print("Calculating insertion probabilities (region length / sum of all regions lengths)...")
 			region_lengths = bed_df['end'] - bed_df['start']
 			region_probabilities = region_lengths / region_lengths.sum()
-			updated_reference_sequence = reference_sequence
 
 			for i in range(num_insertions):
 				# Step 2: Randomly select insertion regions #so that each region is selected once!
 				if len(bed_df.index) == num_insertions:
+					print("Fixed insertion locations selected as provided by the BED.")
 					selected_region = bed_df.iloc[i]
 				else:
 					selected_region_index = np.random.choice(bed_df.index, p=region_probabilities)
@@ -322,61 +310,48 @@ def main():
 				chromosome_range = chromosome_dir[chromosome]
 
 				insert_position = random.randint(selected_region['start'], selected_region['end'])
+				
 				# Adjust insertion position to the global genomic coordinates
 				global_insert_position = chromosome_range[0] + insert_position
-
-				# Insert the insertion sequence into the reference sequence
-				updated_reference_sequence = (
-					updated_reference_sequence[:global_insert_position] +
-					insertion_sequence +
-					updated_reference_sequence[global_insert_position:]
-				)
 
 				# Update position table
 				for key, value in position.items():
 				# If the insertion is after the current position, update the position
 					if value[0] >= global_insert_position:
-						position[key][0] += len(insertion_sequence)
-						position[key][1] += len(insertion_sequence)
+						position[key][0] += insertion_length
+						position[key][1] += insertion_length
 
 				# Add the new insertion position and (barcoded) name
 				insertion_name = chromosome.split('chr')[0] + "insertion_%s" %i
-				position[insertion_name] = [global_insert_position, global_insert_position + len(insertion_sequence)]
+				position[insertion_name] = [global_insert_position, global_insert_position + insertion_length]
 
+		else:
+			#if no bed is provided
+			for i in range(num_insertions):
+				# Choose a random position to insert the smaller sequence
+				insert_position = random.randint(0, reference_sequence)
+				print(insert_position)
+				#check in which chr it landed
+				chromosome = get_chromosome(insert_position, chromosome_dir)
+				# Update position table
+				for key, value in position.items():
+				# If the insertion is after the current position, update the position
+					if value[0] >= insert_position:
+						position[key][0] += insertion_length
+						position[key][1] += insertion_length
 
-			return updated_reference_sequence, position
-		
-		#if no bed is provided
-		for i in range(num_insertions):
-			# Choose a random position to insert the smaller sequence
-			insert_position = random.randint(0, len(reference_sequence))
-			
-			#check in which chr it landed
-			chromosome = get_chromosome(insert_position, chromosome_dir)
-			
-			# Insert the insertion sequence at the chosen position
-			updated_reference_sequence = (
-				reference_sequence[:insert_position] +
-				insertion_sequence +
-				reference_sequence[insert_position:]
-			)
-			# Update position table
-			for key, value in position.items():
-			# If the insertion is after the current position, update the position
-				if value[0] >= insert_position:
-					position[key][0] += len(insertion_sequence)
-					position[key][1] += len(insertion_sequence)
+				# Add the new insertion position and (barcoded) name
+				insertion_name = chromosome.split('chr')[0] + "insertion_%s" %i
+				position[insertion_name]= [insert_position, insert_position + insertion_length]
 
-			# Add the new insertion position and (barcoded) name
-			insertion_name = chromosome.split('chr')[0] + "insertion_%s" %i
-			position[insertion_name]= [insert_position, insert_position + len(insertion_sequence)]
-
-		print(updated_reference_sequence)
+		#new genome length is original length + length of all insertions combined
+		length_updated_reference_sequence = reference_sequence + num_insertions * insertion_length
+		print(length_updated_reference_sequence)
 		print(position)
-		return updated_reference_sequence, position
+		return length_updated_reference_sequence, position
 
 	@profile
-	def create_barcoded_insertion_genome(reference_genome_path, bedpath, insertion_fasta, n_barcodes):
+	def create_barcoded_insertion_genome(reference_genome_path, bedpath, insertion_length, n_barcodes):
 		'''
 		Pre-processment step of the insertion mode.
 
@@ -388,7 +363,7 @@ def main():
 		print("Create Barcoded Genome...")
 		collected_insertion_dict={}
 		#1
-		fasta, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
+		ref_genome_size, chromosome_dir = pseudo_fasta_coordinates(reference_genome_path)
 		
 		#2 #create blocked regions file
 		if param_dictionary.get('blocked_regions_bedpath') is not None:
@@ -404,11 +379,13 @@ def main():
 			barcoded_chromosome_dir = barcode_genome(chromosome_dir, i)
 			#optional bed-guided insertion
 			bed_df = readbed(bedpath, barcoded_chromosome_dir.keys(), barcoding=check_barcoding(n_barcodes))
-			mod_fasta, insertion_dict = add_insertions_to_genome_sequence_with_bed(fasta, insertion_fasta, param_dictionary.get('insertion_numbers'), barcoded_chromosome_dir, bed_df)
+			if not bed_df:
+				print("Insertions will be placed randomly...")
+			genome_size, insertion_dict = add_insertions_to_genome_sequence_with_bed(ref_genome_size, insertion_length, param_dictionary.get('insertion_numbers'), barcoded_chromosome_dir, bed_df)
 			collected_insertion_dict.update(insertion_dict)
 			del barcoded_chromosome_dir, bed_df, insertion_dict
 		#4
-		return len(mod_fasta), collected_insertion_dict, masked_regions, chromosome_dir
+		return genome_size, collected_insertion_dict, masked_regions, chromosome_dir
 
 	def get_read_length_distribution_from_real_data(path_to_sequenced_fasta):
 		'''
@@ -800,7 +777,7 @@ def main():
 			results=[]
 			barcode_distributions=[]
 			print("Iteration number: %i" % n_iterations)
-			for mean_read_length, coverage in combinations:
+			for mean_read_length, coverage in param_dictionary.get('combinations'):
 				out, barcode_distribution = process_combination(mean_read_length, coverage, genome_size, target_regions, n_iterations)
 				results.append(out)
 				barcode_distributions.append(barcode_distribution)
@@ -821,8 +798,7 @@ def main():
 		#run once
 		#1 Creates the vector in the right format
 		insertion_fasta = 'X' * param_dictionary.get('insertion_length')
-
-		length_mod_fasta, insertion_dict, masked_regions, chromosome_dir = create_barcoded_insertion_genome(reference_genome_path=param_dictionary.get('reference_genome_path'), bedpath=param_dictionary.get('bedpath'), insertion_fasta=insertion_fasta, n_barcodes=param_dictionary.get('n_barcodes'))
+		genome_size, insertion_dict, masked_regions, chromosome_dir = create_barcoded_insertion_genome(reference_genome_path=param_dictionary.get('reference_genome_path'), bedpath=param_dictionary.get('bedpath'), insertion_length=param_dictionary.get('insertion_length'), n_barcodes=param_dictionary.get('n_barcodes'))
 		print("Number of insertions:")
 		print(len(insertion_dict.keys()))
 		print(insertion_dict)
@@ -835,7 +811,6 @@ def main():
 		print(insertion_locations_bed)
 
 		#input variables
-		genome_size = length_mod_fasta
 		target_regions = insertion_dict
 
 	#region of interest mode    
@@ -847,7 +822,7 @@ def main():
 		t0 = time.time()
 		
 		#create global cooridnates from bed based on provided genome ref to adjust ROIs to string-like genome
-		fasta, chromosome_dir = pseudo_fasta_coordinates(param_dictionary.get('reference_genome_path'))
+		genome_size, chromosome_dir = pseudo_fasta_coordinates(param_dictionary.get('reference_genome_path'))
 		bed = readbed(param_dictionary.get('roi_bedpath'), chromosome_dir.keys())
 		roi_dict = update_coordinates(bed, chromosome_dir)
 		roi_dict = roi_barcoding(roi_dict, param_dictionary.get('n_barcodes'))
@@ -860,7 +835,6 @@ def main():
 			print(masked_regions)
 		
 		#input variables
-		genome_size = len(fasta)
 		target_regions = roi_dict
 
 
@@ -930,13 +904,13 @@ def main():
 	# Now param_dictionary is accessible with correctly typed values
 	for param, value in param_dictionary.items():
 		print(f"{param} = {value} ({type(value)})")
-	
+
+
 if __name__ == "__main__":
 	try:
 		main()
 	except ValueError as e:
 		print("Configuration error:", e)
 		sys.exit(1)
+
 # %%
-
-
