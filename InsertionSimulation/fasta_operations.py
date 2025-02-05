@@ -22,16 +22,3 @@ def pseudo_fasta_coordinates(path_to_fasta, restriction=None):
 						seqList.append(str(record.seq))
 						
 	return len(''.join(seqList)), entries
-
-
-""" probably outdated
-def collapse_fasta(path_to_fasta):
-		'''
-		Collapses fasta file into single fasta string
-		'''
-		with open(path_to_fasta, 'r') as fasta_file:
-			seqList=[]
-			for record in SeqIO.parse(fasta_file, 'fasta'): 
-				seqList.append(record)
-		return ''.join(seqList)
-"""

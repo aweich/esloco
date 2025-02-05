@@ -1,4 +1,5 @@
 import math
+import logging
 import pandas as pd
 
 def bedcheck(bed):
@@ -11,8 +12,21 @@ def bedcheck(bed):
 			return True
 		
 		else:
-			print("The file does not seem to be in BED format. Make sure the data looks like: chrN integer integer")
+			logging.info("The file does not seem to be in BED format. Make sure the data looks like: chrN integer integer")
 			return False
+
+def extract_bed_columns(df):
+    """
+    Extracts the first three columns of a DataFrame and assigns default column names if missing.
+    Assumes the first three columns correspond to 'chrom', 'start', and 'end'.
+    """
+    # Extract the first three columns
+    df = df.iloc[:, :3].copy()
+
+    # Assign default column names if they don't exist
+    df.columns = ["chrom", "start", "end"]
+    
+    return df
 
 def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
     """
@@ -22,18 +36,25 @@ def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
 
     try:
         # Read only the available columns initially
-        bed = pd.read_csv(bedpath, sep='\t', header=0)
+        bed = pd.read_csv(bedpath, sep="\t", header=None, dtype=str)
         
-        print(bedpath.split("/")[-1])
-        print(bed.head())
+        # Check if first row is a header (contains "chr" and "start")
+        if "chr" in bed.iloc[0, 0].lower() and bed.iloc[0, 1].lower() == "start":
+            bed = pd.read_csv(bedpath, sep="\t", header=0, dtype=str)
+        else:
+            logging.info(f"No header detected in {bedpath}. Extracting columns 1-3 and assigning default column names...")
+            bed = extract_bed_columns(bed)
         
+        # Convert start and end columns to integer
+        bed["start"] = pd.to_numeric(bed["start"], errors="coerce")
+        bed["end"] = pd.to_numeric(bed["end"], errors="coerce")
+
         if not bedcheck(bed):
             return None
-        
+              
         all_cols = ["chrom", "start", "end", "ID", "Barcode", "weight"]
         missing_cols = list(set(all_cols) - set(bed.columns))
-        print(f"Your BED is missing the following columns: {missing_cols}")
-        print("Trying to fill in default values where possible...")
+        logging.info(f"Your BED is missing the following columns: {missing_cols}. Trying to fill in default values where possible...")
         for missing_col in missing_cols: 
             if missing_col == "weight":
                 bed[missing_col] = 1 
@@ -48,20 +69,18 @@ def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
         # Fill NaN values in the 'Barcode' column with an empty list
         bed['Barcode'] = bed['Barcode'].apply(lambda x: [] if x in ["", None] or (isinstance(x, float) and math.isnan(x)) else x)
         
-        print(bed.head())
-        
         # Apply barcoding transformation if required
         if barcoding:
-            print('Barcoding selected: Transforming the chromosome names in the bed...')
+            logging.info('Barcoding selected: Transforming the chromosome names in the bed...')
             barcode = '_'.join(list(list_of_chromosomes_in_reference)[0].split("_")[:-1])
             bed['chrom'] = barcode + '_' + bed['chrom'].astype(str)
 
         # Filter out chromosomes not in the reference list
-        print(f'Only keeping the following chromosomes: {list_of_chromosomes_in_reference}')
+        logging.info(f'Only keeping the following chromosomes: {", ".join(sorted(list_of_chromosomes_in_reference))}')
         bed = bed[bed["chrom"].isin(list_of_chromosomes_in_reference)]
                 
     except Exception as e:
-        print("Not defined or error reading the BED file:", e)
+        logging.info(f"Not defined or error reading the BED file: {e}")
         return None
     
     return bed
@@ -74,15 +93,15 @@ def chromosome_to_global_coordinates(beddf, input_chromosome_dict):
     try:
         
         updated_coordinates = {}
-        barcode_exists = 'Barcode' in beddf.columns
-        weight_exists = 'weight' in beddf.columns
+        #barcode_exists = 'Barcode' in beddf.columns
+        #weight_exists = 'weight' in beddf.columns
         
         for index, row in beddf.iterrows():
             ID=row["ID"]
             chrom = row['chrom']
             
             if row["start"] == row["end"] == 0: #full chromosome mode
-                print(f"Full {chrom} used for {ID}.")
+                logging.info(f"Start and End coordinates in are both 0. Full {chrom} used for {ID}.")
                 start = input_chromosome_dict[chrom][0]
                 end = input_chromosome_dict[chrom][1]
             else:
@@ -94,7 +113,7 @@ def chromosome_to_global_coordinates(beddf, input_chromosome_dict):
             updated_coordinates[ID] = entry
         return updated_coordinates
     except:
-        print("BED coordinates could not be updated.")
+        logging.warning("BED coordinates could not be updated.")
         return None
 
 def global_to_chromosome_coordinates(chromosome_dict, items_dict):

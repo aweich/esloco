@@ -1,11 +1,10 @@
 import os
+import logging
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.lines import Line2D
 from scipy.ndimage import gaussian_filter1d
-from filelock import FileLock, Timeout
-
 
 from utils import profile
 
@@ -30,13 +29,13 @@ def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, curre
     """
 
     if not outputpath or outputpath.lower() == "none":
-        print("Skipping plot due to missing output path.")
+        logging.info("Skipping plot due to missing output path.")
         return  # Stop execution
     
     output_file = f"{outputpath}/{mean_read_length}_{current_coverage}_coverage.png"
     
     if os.path.exists(output_file):
-        print(f"Skipping plot generation: Output file '{output_file}' already exists.")
+        logging.info(f"Skipping plot generation: Output file '{output_file}' already exists.")
         return  # Stop execution
     
     #start plotting
@@ -101,4 +100,4 @@ def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, curre
     plt.savefig(output_file)
     plt.close()
     
-    print(f"Plot saved as {output_file}")
+    logging.info(f"Plot saved as {output_file}")

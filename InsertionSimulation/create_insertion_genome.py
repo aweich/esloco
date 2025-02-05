@@ -1,5 +1,6 @@
 # create_insertion_genome.py
 import random
+import logging
 import numpy as np
 
 #custom
@@ -16,27 +17,26 @@ def add_insertions_to_genome_sequence_with_bed(reference_sequence, insertion_len
 		'''
 		position = {}
 		
-		print(f"insertion_number_distribution: {insertion_number_distribution}")
+		logging.info(f"insertion_number_distribution: {insertion_number_distribution}")
 
 		if insertion_number_distribution == 'poisson': 
 			num_insertions = np.random.poisson(num_insertions)
-			print(f"Number of insertions drawn from Poisson distribution: {num_insertions}")
+			logging.info(f"Number of insertions drawn from Poisson distribution: {num_insertions}")
 		else:
-			print(f"Using exactly {num_insertions}.")
+			logging.info(f"Using exactly {num_insertions}.")
 
 		if bed_df is not None:
-			print("BED guided insertion pattern...")
-			print(bed_df.head())
+			logging.info("BED guided insertion pattern...")
 			
 			# Step 1: Calculate probabilities based on region lengths
-			print("Calculating insertion probabilities (region length / sum of all regions lengths)...")
+			logging.info("Calculating insertion probabilities (region length / sum of all regions lengths)...")
 			region_lengths = bed_df['end'] - bed_df['start']
 			region_probabilities = region_lengths / region_lengths.sum()
 
 			for i in range(num_insertions):
 				# Step 2: Randomly select insertion regions #so that each region is selected once!
 				if len(bed_df.index) == num_insertions:
-					print("Fixed insertion locations selected as provided by the BED.")
+					logging.info("Fixed insertion locations selected as provided by the BED.")
 					selected_region = bed_df.iloc[i]
 				else:
 					selected_region_index = np.random.choice(bed_df.index, p=region_probabilities)

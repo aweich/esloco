@@ -1,8 +1,8 @@
 #utils.py
-
-import time #wrapper
-import psutil #wrapper
-import os #wrapper
+import logging
+import time
+import psutil
+import os
 
 def elapsed_since(start):
 	return time.strftime("%H:%M:%S", time.gmtime(time.time() - start))
@@ -21,7 +21,7 @@ def profile(func):
 		result = func(*args, **kwargs)
 		elapsed_time = elapsed_since(start)
 		mem_after = get_process_memory()
-		print("{}: memory before: {:,}, after: {:,}, consumed: {:,}; exec time: {}".format(
+		logging.info("{}: memory before: {:,}, after: {:,}, consumed: {:,}; exec time: {}".format(
 			func.__name__,
 			mem_before, mem_after, mem_after - mem_before,
 			elapsed_time))

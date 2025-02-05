@@ -1,6 +1,8 @@
 import random
 from Bio import SeqIO
 import numpy as np
+import logging
+import sys
 
 from utils import profile
 
@@ -25,7 +27,8 @@ def generate_read_length_distribution(num_reads, mean_read_length, distribution=
         #adjust the mean so it matches the lognormal case
         read_lengths = np.random.lognormal(mean=np.log(mean_read_length) - 0.5, sigma=1.0, size=num_reads)
     else:
-        raise ValueError("Unsupported distribution. Supported options: 'normal', 'lognormal'.")
+        logging.error("Unsupported distribution. Supported options: 'normal', 'lognormal'.")
+        sys.exit(1)
     
     # Filter out zero-length reads
     read_lengths = np.round(read_lengths).astype(int)
@@ -74,13 +77,11 @@ def get_weighted_probabilities(insertion_name,n_barcodes, weights_dict):
 			#Weight provided: Weighted share of the barcode of the common denominator used
 			for key in weights_dict: 
 				if any(key == part for part in insertion_name.split("_")) or key == insertion_name: #added the part after the or
-					#print((weights_dict[key] * n_barcodes) / common_denominator)
 					return (weights_dict[key] * n_barcodes) / common_denominator
 			
 			#No weight provided for this barcode, using the barcodes share of the common denominator 
 			return n_barcodes / common_denominator
 		else:
-			#print("No weights provided, using equal weights.") # = probability that insertion/roi is from the right genome is 1/number of genomes 
 			return 1 / n_barcodes
 
 @profile
@@ -88,10 +89,9 @@ def generate_reads_based_on_coverage(genome_size, read_length_distribution, cove
     '''
     Randomly pulls a read of size X derived from the read length distribution from the fasta until the fasta is N times covered (coverage).
     '''
-    print("Coverage: " + str(coverage))
-    print("Pulling reads...")
+    logging.info("Coverage: " + str(coverage))
+    logging.info("Pulling reads...")
     covered_length = 0
-    #reads = [] #only a goodf idea if we are not testing high coverages, otherwise memory is floated
     read_coordinates = {}
     barcode_names = ["Barcode_" + str(i) for i in range(n_barcodes)]
 
@@ -102,7 +102,6 @@ def generate_reads_based_on_coverage(genome_size, read_length_distribution, cove
         start_position = random.randint(0, genome_size - read_length)
         # Check if the random barcode is in the list of barcodes that require checking for blocked regions
         random_barcode_number = random_barcode.split('_')[-1] #otherwise user input needs to be weird
-
 
         # Check if the start position falls within a blocked region
         if masked_regions and check_if_blocked_region(random_barcode_number, start_position, read_length, masked_regions):

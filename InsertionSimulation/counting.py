@@ -1,3 +1,4 @@
+import logging
 import random
 from utils import profile
 
@@ -9,11 +10,10 @@ def count_matches(insertion_dict, read_dir, scaling, min_overlap):
     Genome scale factor due to diploidy of the human genome.
     '''
     data = []
-    print("Counting...")
-    if scaling == True:
-        genome_scale_facor = 0.5 
-    else:
-        genome_scale_facor = 1
+    logging.info("Counting...")
+    
+    if not isinstance(scaling, (int, float)):
+        scaling = 1 
 
     for key, values in insertion_dict.items():
         full_length_count = 0
@@ -40,7 +40,7 @@ def count_matches(insertion_dict, read_dir, scaling, min_overlap):
                     # Full-length insertion: check if the read fully covers the insertion
                     if read_start <= start and end <= read_end:
                         if overlap >= min_overlap:  # Ensure the overlap is at least 'x'
-                            if random.random() <= genome_scale_facor:
+                            if random.random() <= scaling:
                                 full_length_count += 1
                                 overlaps.append(overlap)
 
@@ -49,7 +49,7 @@ def count_matches(insertion_dict, read_dir, scaling, min_overlap):
                     elif (start < read_start and end > read_start) or \
                             (start < read_end and end > read_end):
                         if overlap >= min_overlap:  # Ensure the overlap is at least 'x'
-                            if random.random() <= genome_scale_facor:
+                            if random.random() <= scaling:
                                 partial_count += 1
                                 overlaps.append(overlap)
 

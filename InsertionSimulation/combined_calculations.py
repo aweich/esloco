@@ -1,4 +1,6 @@
 import random
+import gc
+import logging
 
 from plotting import plot_reads_coverage
 from counting import count_matches, count_barcode_occurrences
@@ -7,21 +9,18 @@ from read_operations import get_read_length_distribution_from_real_data, generat
 
 def process_combination(mean_read_length, coverage, genome_size, target_regions, iteration, sequenced_data_path, n_barcodes, barcode_weights, masked_regions,  output_path, scaling, min_overlap_for_detection):
     '''
-    This is the heart of the calculations, since it simulates the sequencing procedure. In brief:
-
     Creates a read length distribution based on mean read length and draws artificial reads from it until desired coverage is reached. 
     Then it compares the coordinates of the target regions (ROI or I) with the coordinates of artifical reads of each barcode and checks whether they are partially or fully contained.
-    Masking is optional and is performed during the read generation step.
+    Masking is optional and is performed during the read generation step. 
     '''
-    #to prevent memory overfloat
 
     try:
         custom_read_length_distribution = get_read_length_distribution_from_real_data(sequenced_data_path) #for experimental data
-        print("Custom FASTA data provided.")
+        logging.info("Custom FASTA data provided.")
     except:
-        print("No custom read length distribution provided... Generating artificial one...")
+        logging.info("No custom read length distribution provided... Generating artificial one...")
         custom_read_length_distribution = generate_read_length_distribution(num_reads=1000000, mean_read_length=mean_read_length, distribution='lognormal')
-        print('Calculating for:' + str(mean_read_length))
+        logging.info('Calculating for:' + str(mean_read_length))
     
     precomputed_lengths = [random.choice(custom_read_length_distribution) for _ in range(100000000)]
     custom_cov_coordinates, covered_length = generate_reads_based_on_coverage(genome_size, custom_read_length_distribution, coverage, precomputed_lengths, n_barcodes, barcode_weights, masked_regions)
@@ -35,7 +34,7 @@ def process_combination(mean_read_length, coverage, genome_size, target_regions,
     barcode_distribution["coverage"] = coverage
     barcode_distribution["mean_read_length"] = mean_read_length
     barcode_distribution["iteration"] = iteration   
-    barcode_distribution["N_bases"] = covered_length  #new, check if this works for roi too, although I'd be very surprised if not
+    barcode_distribution["N_bases"] = covered_length
     
     #Detections per ROI/Insertion
     detected = count_matches(target_regions, custom_cov_coordinates, scaling, min_overlap_for_detection)
@@ -45,9 +44,30 @@ def process_combination(mean_read_length, coverage, genome_size, target_regions,
         insertion_data["coverage"] = coverage
         insertion_data["Insertion"] += suffix
 
-    return detected, barcode_distribution
-    
     #save memory from overload
     del custom_read_length_distribution
     del custom_cov_coordinates
     gc.collect()
+    
+    return detected, barcode_distribution
+
+
+def run_simulation_iteration(iteration_id, param_dictionary, genome_size, target_regions, masked_regions):
+    """
+    Executes a single iteration of the simulation.
+    """
+    print(f"Running iteration {iteration_id}...")
+
+    results, barcode_distributions = [], []
+    for mean_read_length, coverage in param_dictionary['combinations']:
+        out, barcode_distribution = process_combination(
+            mean_read_length, coverage, genome_size, target_regions, iteration_id,
+            param_dictionary['sequenced_data_path'], param_dictionary['n_barcodes'],
+            param_dictionary['barcode_weights'], masked_regions,
+            param_dictionary['output_path_plots'], param_dictionary['scaling'],
+            param_dictionary['min_overlap_for_detection']
+        )
+        results.append(out)
+        barcode_distributions.append(barcode_distribution)
+
+    return results, barcode_distributions
