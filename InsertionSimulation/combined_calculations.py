@@ -25,8 +25,11 @@ def process_combination(mean_read_length, coverage, genome_size, target_regions,
     
     precomputed_lengths = [random.choice(custom_read_length_distribution) for _ in range(100000000)]
     custom_cov_coordinates, covered_length = generate_reads_based_on_coverage(genome_size, custom_read_length_distribution, coverage, precomputed_lengths, n_barcodes, barcode_weights, masked_regions)
-    #plot coverage
-    plot_reads_coverage(genome_size, 1000000, custom_cov_coordinates, mean_read_length, coverage, target_regions, output_path) #might need to be commented out for high coverage runs! otherwise, the plot cannot be drawn!
+    
+    #plot coverage only for first iteration of each parameter combination
+    if iteration < 1:
+        plot_reads_coverage(genome_size, 1000000, custom_cov_coordinates, mean_read_length, coverage, target_regions, output_path)
+    
     # Sanity check for barcoding
     barcode_distribution = count_barcode_occurrences(custom_cov_coordinates)
     barcode_distribution["coverage"] = coverage

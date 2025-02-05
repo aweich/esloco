@@ -1,8 +1,10 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.lines import Line2D
 from scipy.ndimage import gaussian_filter1d
+from filelock import FileLock, Timeout
 
 
 from utils import profile
@@ -22,12 +24,24 @@ def bin_coverage(coverage, bin_size):
     return binned_coverage
 
 @profile
-def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, current_coverage, insertion_dict, outputdir):
+def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, current_coverage, insertion_dict, outputpath):
     """
     Plots a coverage-like plot using the reference genome and reads information.
     """
-    smooth_sigma = 3
 
+    if not outputpath or outputpath.lower() == "none":
+        print("Skipping plot due to missing output path.")
+        return  # Stop execution
+    
+    output_file = f"{outputpath}/{mean_read_length}_{current_coverage}_coverage.png"
+    
+    if os.path.exists(output_file):
+        print(f"Skipping plot generation: Output file '{output_file}' already exists.")
+        return  # Stop execution
+    
+    #start plotting
+
+    smooth_sigma = 3
     # Initialize coverage array
     coverage = np.zeros(ref_length)
     
@@ -52,6 +66,7 @@ def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, curre
     plt.figure(figsize=(20, 6))
     plt.plot(bin_positions[:len(smoothed_binned_coverage)], smoothed_binned_coverage, drawstyle='steps-pre', color='gray', alpha=0.5)
     #plt.plot(bin_positions[:len(binned_coverage)], binned_coverage, color='r', marker='o')
+    
     # Plot individual reads with different colors based on suffix
     for suffix in unique_suffixes:
         coverage_suffix = np.zeros(ref_length)
@@ -65,9 +80,14 @@ def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, curre
     # Add vertical lines at specified positions
     for key, positions in insertion_dict.items():
         suffix = key.split('_')[1]
+        
+        if isinstance(positions, dict):  # Correct way to check type
+            positions = list(positions.values())  # Convert dict_values to a list
+            positions = positions[0:2]
         for pos in positions:
-            plt.axvline(x=pos, color=suffix_color_map[suffix], linestyle='--')
-    
+            plt.axvline(x=pos, color=suffix_color_map[suffix], linestyle='solid', alpha=0.5, lw=2, label=suffix)
+        
+
     # Create custom legend
     legend_handles = [Line2D([0], [0], color=suffix_color_map[suffix], lw=2, label=suffix) for suffix in unique_suffixes]
     plt.legend(handles=legend_handles, title='Barcode', bbox_to_anchor=(1.05, 1), loc='upper left')
@@ -77,7 +97,7 @@ def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, curre
     plt.title('Read Coverage Plot')
     #plt.show()
     # Save the plot
-    output_file = f"{outputdir}/{mean_read_length}_{current_coverage}_coverage.png"
+    
     plt.savefig(output_file)
     plt.close()
     
