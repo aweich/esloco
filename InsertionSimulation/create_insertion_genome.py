@@ -16,7 +16,7 @@ def add_insertions_to_genome_sequence_with_bed(reference_sequence, insertion_len
 		In case of a bed-guided insertion, each region in the file is assigned a probability according to its length.
 		'''
 		position = {}
-		
+
 		logging.info(f"insertion_number_distribution: {insertion_number_distribution}")
 
 		if insertion_number_distribution == 'poisson': 
@@ -61,6 +61,7 @@ def add_insertions_to_genome_sequence_with_bed(reference_sequence, insertion_len
 				# Add the new insertion position and (barcoded) name
 				insertion_name = chromosome.split('chr')[0] + "insertion_%s" %i
 				position[insertion_name] = [global_insert_position, global_insert_position + insertion_length]
+
 		
 		#if no bed is provided
 		else:
@@ -79,6 +80,8 @@ def add_insertions_to_genome_sequence_with_bed(reference_sequence, insertion_len
 				# Add the new insertion position and (barcoded) name
 				insertion_name = chromosome.split('chr')[0] + "insertion_%s" %i
 				position[insertion_name]= [insert_position, insert_position + insertion_length]
+
+
 
 		#new genome length is original length + length of all insertions combined
 		length_updated_reference_sequence = reference_sequence + num_insertions * insertion_length

@@ -40,9 +40,10 @@ def create_barcoded_insertion_genome(reference_genome_path, bedpath, blocked_reg
             bed_df = readbed(bedpath, barcoded_chromosome_dir.keys(), barcoding=check_barcoding(n_barcodes))
         
         genome_size, insertion_dict = add_insertions_to_genome_sequence_with_bed(ref_genome_size, insertion_length, insertion_numbers, barcoded_chromosome_dir, insertion_number_distribution, bed_df)
+        
         collected_insertion_dict.update(insertion_dict)
         del barcoded_chromosome_dir, bed_df, insertion_dict
-    #4
+    
     return genome_size, collected_insertion_dict, masked_regions, chromosome_dir
 
 def create_barcoded_roi_genome(reference_genome_path, restriction, roi_bedpath, n_barcodes, blocked_regions_bedpath):

@@ -85,7 +85,7 @@ def get_weighted_probabilities(insertion_name,n_barcodes, weights_dict):
 			return 1 / n_barcodes
 
 @profile
-def generate_reads_based_on_coverage(genome_size, read_length_distribution, coverage, precomputed_lengths, n_barcodes, barcode_weights, masked_regions=None):
+def generate_reads_based_on_coverage(genome_size, coverage, precomputed_lengths, n_barcodes, barcode_weights, masked_regions=None):
     '''
     Randomly pulls a read of size X derived from the read length distribution from the fasta until the fasta is N times covered (coverage).
     '''

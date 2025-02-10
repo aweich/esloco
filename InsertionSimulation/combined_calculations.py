@@ -23,7 +23,7 @@ def process_combination(mean_read_length, coverage, genome_size, target_regions,
         logging.info('Calculating for:' + str(mean_read_length))
     
     precomputed_lengths = [random.choice(custom_read_length_distribution) for _ in range(100000000)]
-    custom_cov_coordinates, covered_length = generate_reads_based_on_coverage(genome_size, custom_read_length_distribution, coverage, precomputed_lengths, n_barcodes, barcode_weights, masked_regions)
+    custom_cov_coordinates, covered_length = generate_reads_based_on_coverage(genome_size, coverage, precomputed_lengths, n_barcodes, barcode_weights, masked_regions)
     
     #plot coverage only for first iteration of each parameter combination
     if iteration < 1:

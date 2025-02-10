@@ -84,7 +84,7 @@ def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, curre
             positions = list(positions.values())  # Convert dict_values to a list
             positions = positions[0:2]
         for pos in positions:
-            plt.axvline(x=pos, color=suffix_color_map[suffix], linestyle='solid', alpha=0.5, lw=2, label=suffix)
+            plt.axvline(x=pos, color=suffix_color_map[suffix], linestyle='solid', alpha=0.5, lw=1)
         
 
     # Create custom legend

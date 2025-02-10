@@ -50,7 +50,7 @@ def main():
         logging.root.removeHandler(handler)
 
     logging.basicConfig(
-    filename=os.path.join(output_path, 'test2_log.log'),
+    filename=os.path.join(output_path, 'tcr_simple_log.log'),
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     filemode='w'
