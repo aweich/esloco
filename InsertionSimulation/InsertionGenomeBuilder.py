@@ -28,7 +28,12 @@ def main():
     """ Main function to execute the entire simulation. """
 
     # Load configuration
-    config_file = "../sim_config_roi.ini"
+    if len(sys.argv) != 2:
+        print("Usage: python InsertionGenomeBuilder.py <config_file>")
+        sys.exit(1)
+    
+    config_file = sys.argv[1]
+    
     try:
         param_dictionary = parse_config(config_file)
     except Exception as e:
