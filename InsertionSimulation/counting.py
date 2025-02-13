@@ -1,8 +1,7 @@
 import logging
 import random
-from utils import profile
+from utils import track_usage
 
-@profile
 def count_matches(insertion_dict, read_dir, scaling, min_overlap):
     '''
     Counts the number of full-length and partial insertions for each insertion/roi.
@@ -59,6 +58,7 @@ def count_matches(insertion_dict, read_dir, scaling, min_overlap):
         countdata['overlap'] = overlaps
         data.append(countdata)
 
+    track_usage("count_matches")
     return data
 
 def count_barcode_occurrences(dictionary):

@@ -6,7 +6,7 @@ import matplotlib.colors as mcolors
 from matplotlib.lines import Line2D
 from scipy.ndimage import gaussian_filter1d
 
-from utils import profile
+from utils import track_usage
 
 def bin_coverage(coverage, bin_size):
     """
@@ -22,7 +22,6 @@ def bin_coverage(coverage, bin_size):
     
     return binned_coverage
 
-@profile
 def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, current_coverage, insertion_dict, outputpath):
     """
     Plots a coverage-like plot using the reference genome and reads information.
@@ -37,7 +36,10 @@ def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, curre
     if os.path.exists(output_file):
         logging.info(f"Skipping plot generation: Output file '{output_file}' already exists.")
         return  # Stop execution
-    
+    else:
+        os.makedirs(outputpath, exist_ok=True)
+        logging.info(f"Generating plot: {output_file}")
+
     #start plotting
 
     smooth_sigma = 3
@@ -79,24 +81,27 @@ def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, curre
     # Add vertical lines at specified positions
     for key, positions in insertion_dict.items():
         suffix = key.split('_')[1]
-        
-        if isinstance(positions, dict):  # Correct way to check type
+
+        if isinstance(positions, dict):
             positions = list(positions.values())  # Convert dict_values to a list
             positions = positions[0:2]
         for pos in positions:
-            plt.axvline(x=pos, linestyle='solid', alpha=0.5, lw=1)
+            max_height = max(smoothed_binned_coverage) * 1.1  # Slightly above the highest line
+            plt.plot(pos, max_height, marker='v', color=suffix_color_map[suffix], markersize=4, linestyle='None', alpha=0.7)
         
 
     # Create custom legend
     legend_handles = [Line2D([0], [0], color=suffix_color_map[suffix], lw=2, label=suffix) for suffix in unique_suffixes]
+    legend_handles.append(Line2D([0], [0], color='gray', lw=2, label="Combined")) #manual adding of the combined line
     plt.legend(handles=legend_handles, title='Barcode', bbox_to_anchor=(1.05, 1), loc='upper left')
     
     plt.xlabel('Position on "one-string" Reference Genome (1e6 binned)')
     plt.ylabel('Read Coverage')
     plt.title('Read Coverage Plot')
     #plt.show()
+
     # Save the plot
-    
+    track_usage("plot_reads_coverage")
     plt.savefig(output_file)
     plt.close()
     

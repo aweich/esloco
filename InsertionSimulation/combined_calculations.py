@@ -5,7 +5,7 @@ import logging
 from plotting import plot_reads_coverage
 from counting import count_matches, count_barcode_occurrences
 from read_operations import get_read_length_distribution_from_real_data, generate_read_length_distribution, generate_reads_based_on_coverage 
-
+from utils import profile_iteration, setup_logging, track_usage
 
 def process_combination(mean_read_length, coverage, genome_size, target_regions, iteration, sequenced_data_path, n_barcodes, barcode_weights, masked_regions,  output_path, scaling, min_overlap_for_detection):
     '''
@@ -52,11 +52,12 @@ def process_combination(mean_read_length, coverage, genome_size, target_regions,
     return detected, barcode_distribution
 
 
-def run_simulation_iteration(iteration_id, param_dictionary, genome_size, target_regions, masked_regions):
+@profile_iteration
+def run_simulation_iteration(iteration_id, param_dictionary, genome_size, target_regions, masked_regions, log_file):
     """
     Executes a single iteration of the simulation.
     """
-    print(f"Running iteration {iteration_id}...")
+    setup_logging(log_file)
 
     results, barcode_distributions = [], []
     for mean_read_length, coverage in param_dictionary['combinations']:
@@ -69,5 +70,5 @@ def run_simulation_iteration(iteration_id, param_dictionary, genome_size, target
         )
         results.append(out)
         barcode_distributions.append(barcode_distribution)
-
+    track_usage(f"Iteration_{iteration_id}")
     return results, barcode_distributions

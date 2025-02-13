@@ -12,13 +12,14 @@ import itertools
 from functools import partial
 from joblib import Parallel, delayed
 from tqdm import tqdm
+from tqdm_joblib import ParallelPbar
 
 # custom config reader
 from config_handler import parse_config
 
 #custom functions
 #from create_insertion_genome import add_insertions_to_genome_sequence_with_bed
-#from utils import profile, check_barcoding, roi_barcoding, barcode_genome
+from utils import track_usage, setup_logging #, check_barcoding, roi_barcoding, barcode_genome
 from bed_operations import global_to_chromosome_coordinates
 from counting import normalize_ROI_by_length
 from genome_generation import create_barcoded_insertion_genome, create_barcoded_roi_genome
@@ -54,16 +55,17 @@ def main():
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
 
-    logging.basicConfig(
-    filename=os.path.join(output_path, 'tcr_simple_log.log'),
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    filemode='w'
-	)
-    
+    #setup logfile
+    log_file=os.path.join(output_path, f"{ experiment_name}_log.log")
+    setup_logging(log_file)
+
+    logging.info(f"Starting simulation: {experiment_name}")
     logging.info(f"Running in mode: {mode}")
 
+    #setup monitoring
     start_time = time.time()
+    track_usage("Before")
+
     genome_size, target_regions, masked_regions, chromosome_dir = None, None, None, None
 
     # Process based on mode
@@ -91,10 +93,11 @@ def main():
         logging.error("Error: Invalid mode selected.")
         sys.exit(1)
 
+
     # Parallel execution
-    parallel_results = Parallel(n_jobs=parallel_jobs)(
-        delayed(run_simulation_iteration)(i, param_dictionary, genome_size, target_regions, masked_regions)
-        for i in tqdm(range(num_iterations))
+    parallel_results = ParallelPbar("Iterations...")(n_jobs=parallel_jobs)(
+        delayed(run_simulation_iteration)(i, param_dictionary, genome_size, target_regions, masked_regions, log_file)
+        for i in range(num_iterations)
     )
 
     # Unpack nested structure
@@ -134,8 +137,11 @@ def main():
     for param, value in param_dictionary.items():
         logging.info(f"{param} = {value} ({type(value)})")
 
+    track_usage("After")
     logging.info(f"Total execution time: {time.time() - start_time:.2f} seconds.")
     logging.info("Simulation complete!")
+    print("Simulation complete!")
+    sys.exit()
 
 
 

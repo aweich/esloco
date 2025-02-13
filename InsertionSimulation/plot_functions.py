@@ -29,7 +29,7 @@ def read_data(filepath):
     data = pd.read_csv(filepath, sep='\t')
     return data
 
-#data = read_data('../out/tcr_20/tcr_20_matches_table.csv')
+#data = read_data('../out/insertion_test/insertion_test_matches_table.csv')
 #basic_data = read_data('../out/tcr_20/tcr_20_barcode_distribution_table.csv')
 #%%
 def plot_barcode_distribution(data, output_path):
@@ -79,6 +79,9 @@ def plot_barcode_distribution(data, output_path):
     fig.update_layout(legend=dict(font=dict(size=8), orientation="h", yanchor="bottom", y=-0.75, x=0.5, xanchor="center"))
     fig.write_image(output_path_perc, scale=10)
 
+    
+    print(f"Mean Total Reads Barplot saved as {output_html_total}")
+    print(f"Barcode distribution Barplot saved as {output_html_perc}")
     return str(output_html_total), str(output_html_perc)
 
 #plot_barcode_distribution(basic_data, output_path="./output/tcr_20/")  
@@ -95,7 +98,14 @@ def plot_lineplot(data, output_path):
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)  # Ensure the folder exists
 
-    data[["ID", "Barcode", "Iteration"]] = data["Insertion"].str.split("_", expand=True)
+    #Barcode_0_insertion_0_0
+    #TRA1_0_0
+
+    if data["Insertion"].str.contains("insertion").any():
+        data[["temp1","Barcode","ID1","ID2","Iteration"]] = data["Insertion"].str.split("_", expand=True)
+        data["ID"] = data["ID1"] + "_" + data["ID2"]
+    else:
+        data[["ID", "Barcode", "Iteration"]] = data["Insertion"].str.split("_", expand=True)
 
     numeric_cols = ["full_matches",
                     "partial_matches", 
@@ -106,7 +116,7 @@ def plot_lineplot(data, output_path):
 
     data = data[["ID"] + numeric_cols]
 
-    data[numeric_cols] = data[numeric_cols].apply(pd.to_numeric, errors="coerce")
+    data.loc[:, numeric_cols] = data[numeric_cols].apply(pd.to_numeric, errors="coerce")
     
     # Partial matches plot
     grouped = data.groupby(['coverage', 'mean_read_length', 'ID'])['partial_matches'].mean().reset_index()
@@ -153,9 +163,13 @@ def plot_lineplot(data, output_path):
     fig.update_yaxes(title_text='Mean Full Matches', title_font=dict(size=12))
     fig.write_html(output_html_full)
 
+    
+    
+    print(f"Partial Overalps Combined Lineplot saved as {output_html_partial}")
+    print(f"Full Overlaps Combined Lineplot saved as {output_html_full}")
     return str(output_html_full), str(output_html_partial)
     
-#plot_lineplot(data, output_path="./output/tcr_20/")
+#plot_lineplot(data, output_path="../out/insertion_test/plots/")
 
 #%%
 def plot_isolated_lineplot(data, output_path, filter=20, id_list=None):
@@ -171,7 +185,11 @@ def plot_isolated_lineplot(data, output_path, filter=20, id_list=None):
     output_html_full = os.path.join(output_path, "panel_lineplot_full_matches.html")
 
     # Use loaded data
-    data[["ID", "Barcode", "Iteration"]] = data["Insertion"].str.split("_", expand=True)
+    if data["Insertion"].str.contains("insertion").any():
+        data[["temp1","Barcode","ID1","ID2","Iteration"]] = data["Insertion"].str.split("_", expand=True)
+        data["ID"] = data["ID1"] + "_" + data["ID2"]
+    else:
+        data[["ID", "Barcode", "Iteration"]] = data["Insertion"].str.split("_", expand=True)
 
     numeric_cols = ["full_matches",
                     "partial_matches", 
@@ -181,8 +199,8 @@ def plot_isolated_lineplot(data, output_path, filter=20, id_list=None):
                     "Iteration"]
 
     data = data[["ID"] + numeric_cols]
-
-    data[numeric_cols] = data[numeric_cols].apply(pd.to_numeric, errors="coerce")
+    
+    data.loc[:, numeric_cols] = data[numeric_cols].apply(pd.to_numeric, errors="coerce")
     
     grouped_partial = data.groupby(['coverage', 'mean_read_length', 'Barcode', 'Iteration', 'ID'])['partial_matches'].mean().reset_index()
     grouped_full = data.groupby(['coverage', 'mean_read_length', 'Barcode', 'Iteration', 'ID'])['full_matches'].mean().reset_index()
@@ -285,10 +303,99 @@ def plot_isolated_lineplot(data, output_path, filter=20, id_list=None):
     fig.write_html(output_html_full)
     fig.write_image(output_path_full, scale=3, width=1200, height=1200)
 
+    
+    print(f"Partial Overalps Lineplot panel saved as {output_html_partial}")
+    print(f"Full Overlaps Lineplot panel saved as {output_html_full}")
     return str(output_html_full), str(output_html_partial)
+
 
 #plot_isolated_lineplot(data, output_path="./output/tcr_20/", filter=2, id_list=["TRAC", "TRBC1", "TRBV1", "TRAV3"])
 #plot_isolated_lineplot(data, output_path="./output/tcr_20/", filter=20)
+
+#%%
+# log file plot
+
+import re
+import matplotlib.pyplot as plt
+from datetime import datetime
+from plotly.subplots import make_subplots
+
+def parse_log(log_file):
+    """Parses a log file to extract timestamps, memory usage, execution times, and iteration labels for specific iterations."""
+    log_data = {}
+    
+    with open(log_file, 'r') as file:
+        for line in file:
+            process_match = re.search(r'Process: (\w+)', line)
+            if not process_match:
+                continue
+            
+            timestamp_match = re.search(r'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d+)', line)
+            cpu_match = re.search(r'CPU: (\d+\.\d+)%', line)
+            memory_match = re.search(r'Memory: (\d+\.\d+)%', line)
+            
+            if timestamp_match:
+                timestamp = datetime.strptime(timestamp_match.group(1).split(',')[0], "%Y-%m-%d %H:%M:%S")
+                formatted_timestamp = timestamp.strftime("%Y-%m-%d-%H-%M-%S")
+                if formatted_timestamp not in log_data:
+                    log_data[formatted_timestamp] = {'memory_usage': None, 'cpu_usage': None, 'label': None}
+            
+            if memory_match:
+                log_data[formatted_timestamp]['memory_usage'] = float(memory_match.group(1))
+            
+            if cpu_match:
+                log_data[formatted_timestamp]['cpu_usage'] = float(cpu_match.group(1))
+            
+            log_data[formatted_timestamp]['label'] = process_match.group(1)
+    
+    return log_data
+
+
+#process_data = parse_log("../out/insertion_test3/insertion_test3_log.log")
+
+#%%
+# Extract data for plotting
+def plot_log_data(logfile, output_path):
+
+    process_data=parse_log(logfile)
+    
+    timestamps = sorted(process_data.keys(), key=lambda x: datetime.strptime(x, "%Y-%m-%d-%H-%M-%S"))
+    memory_usage = [process_data[timestamp]['memory_usage'] for timestamp in timestamps]
+    cpu_usage = [process_data[timestamp]['cpu_usage'] for timestamp in timestamps]
+
+    # Plot with Plotly and save as HTML
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    fig.add_trace(go.Scatter(x=timestamps, y=memory_usage, mode='lines+markers', name='Memory Usage (%)', line=dict(color='black', width=4), marker=dict(size=8)), secondary_y=False)
+    fig.add_trace(go.Scatter(x=timestamps, y=cpu_usage, mode='lines+markers', name='CPU Usage (%)', line=dict(color='red', width=4), marker=dict(size=8)), secondary_y=True)
+    #for timestamp in timestamps:
+    #    label = process_data[timestamp]['label']
+    #    if label:
+    #        fig.add_annotation(x=timestamp, y=50, showarrow=False, ax=5, text=label, textangle=270, font=dict(size=12))
+
+    # Add semi-transparent red box between 80 and 100
+    fig.add_shape(type="rect", x0=timestamps[0], x1=timestamps[-1], y0=80, y1=100,
+                  fillcolor="red", opacity=0.1, line_width=0, secondary_y=True)
+
+    # Add semi-transparent yellow box between 60 and 80
+    fig.add_shape(type="rect", x0=timestamps[0], x1=timestamps[-1], y0=60, y1=80,
+                  fillcolor="yellow", opacity=0.1, line_width=0, secondary_y=False)
+
+    fig.update_xaxes(title_text='Timestamp')
+    fig.update_yaxes(title_text='Memory Usage (%)', range=[0, 100], secondary_y=False)
+    fig.update_yaxes(title_text='CPU Usage (%)', range=[0, 100], secondary_y=True)
+    fig.update_layout(title_text='Memory and CPU Usage Over Time', legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="right", x=1))
+
+    html_output_path = os.path.join(output_path, "log_plot.html")
+    fig.write_html(html_output_path)
+    
+    svg_output_path = os.path.join(output_path, "log_plot.svg")
+    fig.write_image(svg_output_path, format='svg')
+
+    print(f"Ressource plot saved as {html_output_path}")
+    return html_output_path
+
+#plot_log_data(, output_dir="../out/insertion_test3/plots/")
+#%%
 
 #%%
 def generate_html_report(image_paths, config=None, output_html="report.html"):
@@ -309,15 +416,15 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
         <style>
             body {{ 
                 font-family: Arial, sans-serif; 
-                margin: 30px;
+                margin: 25px;
                 text-align: center; 
-                background-color: #f4f4f4;
+                background-color:  #f0f3f4;
             }}
             h1, h2, h3 {{ color: #333; }}
-            h3 {{ margin-top: 40px; border-bottom: 2px solid #444; padding-bottom: 5px; }}
+            h3 {{ margin-top: 40px; border-bottom: 3px solid #444; padding-bottom: 5px; }}
             .grid-container {{
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(800px, 1fr));
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
                 gap: 50px;
                 justify-content: center;
                 margin: 20px auto;
@@ -325,11 +432,11 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
             }}
             .grid-container iframe {{
                 width: 100%;
-                height: 800px;
-                border: 5px solid #ccc;
-                border-radius: 8px;
+                height: 600px;
+                border: none;
+                border-radius: 25px;
                 background: white;
-                box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+                box-shadow: 4px 4px 10px rgba(0,0,0,0.1);
                 transition: transform 0.2s ease-in-out;
             }}
             .grid-container iframe:hover {{
@@ -340,20 +447,19 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
                 text-align: left;
                 background: #fff;
                 padding: 15px;
-                border-radius: 5px;
-                box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
+                border-radius: 25px;
+                box-shadow: 4px 4px 10px rgba(0,0,0,0.1);
                 max-width: 80%;
                 margin: 20px auto;
                 overflow: auto;
                 white-space: pre-wrap;
-                border-left: 4px solid #ccc;
             }}
         </style>
     </head>
     <body>
         <h1>Analysis Report</h1>
         
-        <h3>Overview Plots</h3>
+        <h3>Overview</h3>
         <div class="grid-container">
             <iframe src="{image_paths[0]}" title="Total Reads"></iframe>
             <iframe src="{image_paths[1]}" title="Percentage Reads"></iframe>
@@ -367,8 +473,12 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
 
         <h3>Region-Specific Read Overlaps</h3>
         <div class="grid-container">
-            <iframe src="{image_paths[4]}" title="Full Match Panel"></iframe>
-            <iframe src="{image_paths[5]}" title="Partial Match Panel"></iframe>
+            <iframe src="{image_paths[4]}" title="Full Match Panel" style="height: 1200px; border: none;"></iframe>
+            <iframe src="{image_paths[5]}" title="Partial Match Panel" style="height: 1200px; border: none;"></iframe>
+        </div>
+        <h3>CPU and Memory Usage</h3>
+        <div class="grid-container">
+            <iframe src="{image_paths[6]}" title="Ressources"></iframe>
         </div>
     """
 
@@ -390,21 +500,3 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
         f.write(html_content)
 
     print(f"HTML report saved as {output_html}")
-
-# Run the function
-'''
-generate_html_report("./output/tcr_20/",
-    config="../sim_config_roi.ini", 
-    output_html="./output/report.html")
-
-
-   image_paths=[
-        "./tcr_20/barplot_total_reads.html",
-        "./tcr_20/barplot_percentage_reads.html",
-        "./tcr_20/lineplot_full_matches.html", 
-        "./tcr_20/lineplot_partial_matches.html",
-        "./tcr_20/panel_lineplot_full_matches.html",
-        "./tcr_20/panel_lineplot_partial_matches.html"
-    ], 
-
-'''

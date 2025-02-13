@@ -3,30 +3,42 @@ import logging
 import time
 import psutil
 import os
+from functools import wraps
 
-def elapsed_since(start):
-	return time.strftime("%H:%M:%S", time.gmtime(time.time() - start))
+def track_usage(label=None):
+    cpu_usage = psutil.cpu_percent(interval=None)
+    memory_usage = psutil.virtual_memory().percent
+    logging.info(f"Process: {label}, CPU: {cpu_usage}%, Memory: {memory_usage}%")
 
-def get_process_memory():
-	process = psutil.Process(os.getpid())
-	return process.memory_info().rss
+def setup_logging(filename):
+    logging.basicConfig(
+		filename=filename,
+    	level=logging.INFO,
+    	format='%(asctime)s - %(levelname)s - %(message)s',
+    	filemode='a'
+    )
 
-def profile(func):
-	'''
-	Wrapper to monitor the resources used by key steps.
-	'''
-	def wrapper(*args, **kwargs):
-		mem_before = get_process_memory()
-		start = time.time()
-		result = func(*args, **kwargs)
-		elapsed_time = elapsed_since(start)
-		mem_after = get_process_memory()
-		logging.info("{}: memory before: {:,}, after: {:,}, consumed: {:,}; exec time: {}".format(
-			func.__name__,
-			mem_before, mem_after, mem_after - mem_before,
-			elapsed_time))
-		return result
-	return wrapper
+def profile_iteration(func):
+    """Decorator to profile CPU, memory, and time usage for each iteration."""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        pid = os.getpid()
+        process = psutil.Process(pid)
+        
+        start_time = time.time()
+        start_memory = process.memory_info().rss / (1024 * 1024)  # in MB
+        start_cpu = process.cpu_percent(interval=None)
+        
+        result = func(*args, **kwargs)  # Run the function
+        
+        end_time = time.time()
+        end_memory = process.memory_info().rss / (1024 * 1024)  # in MB
+        end_cpu = process.cpu_percent(interval=None)
+        
+        logging.info(f"Iteration {args[0]}: Time={end_time - start_time:.2f}s, "
+              f"Memory Used={end_memory - start_memory:.2f}MB, CPU={end_cpu - start_cpu}%")
+        return result
+    return wrapper
 
 def get_chromosome(insert_position, chromosome_dir):
 	'''

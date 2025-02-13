@@ -4,7 +4,7 @@ import numpy as np
 import logging
 import sys
 
-from utils import profile
+from utils import track_usage
 
 def get_read_length_distribution_from_real_data(path_to_sequenced_fasta):
     '''
@@ -84,7 +84,6 @@ def get_weighted_probabilities(insertion_name,n_barcodes, weights_dict):
 		else:
 			return 1 / n_barcodes
 
-@profile
 def generate_reads_based_on_coverage(genome_size, coverage, precomputed_lengths, n_barcodes, barcode_weights, masked_regions=None):
     '''
     Randomly pulls a read of size X derived from the read length distribution from the fasta until the fasta is N times covered (coverage).
@@ -112,5 +111,6 @@ def generate_reads_based_on_coverage(genome_size, coverage, precomputed_lengths,
         read_coordinates[f"Read_{len(read_coordinates)}_{random_barcode}"] = (start_position, start_position + read_length)
         # Update the total covered length
         covered_length += read_length
+    track_usage("generate_reads_based_on_coverage")
     return read_coordinates, covered_length
 
