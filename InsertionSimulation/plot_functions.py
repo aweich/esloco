@@ -14,16 +14,9 @@ import plotly.io as pio
 from plotly.subplots import make_subplots
 
 pio.kaleido.scope.mathjax = None
-pio.templates.default = "seaborn"
+pio.templates.default = "plotly_white"
 
-#sns.set_theme(style="ticks")
-
-def get_barcode_color_mapping(barcodes):
-    if isinstance(barcodes, (list, pd.Series, np.ndarray)):
-        barcodes = pd.Series(barcodes)
-    colors = px.colors.qualitative.Plotly  # Use Plotly's qualitative color palette
-    barcode_colors = (colors * (len(barcodes) // len(colors) + 1))[:len(barcodes)]  # Repeat colors if needed
-    return dict(zip(barcodes, barcode_colors))  # Return barcode-to-color mapping
+from plotting import get_barcode_color_mapping
 
 def read_data(filepath):
     data = pd.read_csv(filepath, sep='\t')
@@ -428,7 +421,7 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
                 gap: 50px;
                 justify-content: center;
                 margin: 20px auto;
-                max-width: 90%;
+                max-width: 80%;
             }}
             .grid-container iframe {{
                 width: 100%;
@@ -439,17 +432,13 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
                 box-shadow: 4px 4px 10px rgba(0,0,0,0.1);
                 transition: transform 0.2s ease-in-out;
             }}
-            .grid-container iframe:hover {{
-                transform: scale(1.02);
-                border-color: #007bff;
-            }}
             .config-box {{
                 text-align: left;
                 background: #fff;
                 padding: 15px;
                 border-radius: 25px;
                 box-shadow: 4px 4px 10px rgba(0,0,0,0.1);
-                max-width: 80%;
+                max-width: 50%;
                 margin: 20px auto;
                 overflow: auto;
                 white-space: pre-wrap;
@@ -458,7 +447,7 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
     </head>
     <body>
         <h1>Analysis Report</h1>
-        
+        <p>Results in "{output_html}"...</p>
         <h3>Overview</h3>
         <div class="grid-container">
             <iframe src="{image_paths[0]}" title="Total Reads"></iframe>
@@ -476,9 +465,21 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
             <iframe src="{image_paths[4]}" title="Full Match Panel" style="height: 1200px; border: none;"></iframe>
             <iframe src="{image_paths[5]}" title="Partial Match Panel" style="height: 1200px; border: none;"></iframe>
         </div>
+        <h3>Coverage Overview</h3>
+    """
+    for i in range(7, len(image_paths), 2):
+        html_content += f"""
+        <div class="grid-container">
+            <iframe src="{image_paths[i]}" title="Additional Plot" style="height: 600px;"></iframe>
+            {"<iframe src='" + image_paths[i+1] + "' title='Additional Plot' style='height: 600px;'></iframe>" if i+1 < len(image_paths) else ""}
+        </div>
+        """
+    
+    html_content += f"""
         <h3>CPU and Memory Usage</h3>
         <div class="grid-container">
             <iframe src="{image_paths[6]}" title="Ressources"></iframe>
+        </div>
         </div>
     """
 

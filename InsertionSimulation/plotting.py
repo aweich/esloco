@@ -1,12 +1,28 @@
 import os
 import logging
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.lines import Line2D
 from scipy.ndimage import gaussian_filter1d
 
 from utils import track_usage
+
+import plotly.graph_objects as go
+import plotly.io as pio
+import plotly.express as px
+
+pio.kaleido.scope.mathjax = None
+
+def get_barcode_color_mapping(barcodes):
+    if isinstance(barcodes, (list, pd.Series, np.ndarray)):
+        barcodes = pd.Series(barcodes)
+    barcodes = sorted(barcodes)
+    colors = px.colors.qualitative.Plotly
+    barcode_colors = (colors * (len(barcodes) // len(colors) + 1))[:len(barcodes)]
+    print(barcode_colors)
+    return dict(zip(barcodes, barcode_colors))
 
 def bin_coverage(coverage, bin_size):
     """
@@ -22,7 +38,8 @@ def bin_coverage(coverage, bin_size):
     
     return binned_coverage
 
-def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, current_coverage, insertion_dict, outputpath):
+
+def plot_reads_coverage(ref_length, bin_size, reads_dict, mean_read_length, current_coverage, insertion_dict, outputpath):
     """
     Plots a coverage-like plot using the reference genome and reads information.
     """
@@ -31,16 +48,17 @@ def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, curre
         logging.info("Skipping plot due to missing output path.")
         return  # Stop execution
     
-    output_file = f"{outputpath}/{mean_read_length}_{current_coverage}_coverage.png"
+    output_file_svg = f"{outputpath}/{mean_read_length}_{current_coverage}_coverage.svg"
+    output_file_html = f"{outputpath}/{mean_read_length}_{current_coverage}_coverage.html"
     
-    if os.path.exists(output_file):
-        logging.info(f"Skipping plot generation: Output file '{output_file}' already exists.")
+    if os.path.exists(output_file_svg) and os.path.exists(output_file_html):
+        logging.info(f"Skipping plot generation: Output files '{output_file_svg}' and '{output_file_html}' already exist.")
         return  # Stop execution
     else:
         os.makedirs(outputpath, exist_ok=True)
-        logging.info(f"Generating plot: {output_file}")
+        logging.info(f"Generating plots: {output_file_svg} and {output_file_html}")
 
-    #start plotting
+    # Start plotting
 
     smooth_sigma = 3
     # Initialize coverage array
@@ -48,8 +66,7 @@ def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, curre
     
     # Extract unique suffixes and assign colors
     unique_suffixes = set(read_id.split('_')[-1] for read_id in reads_dict.keys())
-    colors = list(mcolors.TABLEAU_COLORS.keys())
-    suffix_color_map = {suffix: colors[i % len(colors)] for i, suffix in enumerate(unique_suffixes)}
+    suffix_color_map = get_barcode_color_mapping(unique_suffixes)
     
     # Populate coverage array based on reads
     for read_id, (start, stop) in reads_dict.items():
@@ -63,11 +80,12 @@ def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, curre
     # Smooth the binned coverage using a Gaussian filter
     smoothed_binned_coverage = gaussian_filter1d(binned_coverage, sigma=smooth_sigma)
 
+    # Create the plotly figure
+    fig = go.Figure()
+
     # Plot the binned coverage
-    plt.figure(figsize=(20, 6))
-    plt.plot(bin_positions[:len(smoothed_binned_coverage)], smoothed_binned_coverage, drawstyle='steps-pre', color='gray', alpha=0.5)
-    #plt.plot(bin_positions[:len(binned_coverage)], binned_coverage, color='r', marker='o')
-    
+    fig.add_trace(go.Scatter(x=bin_positions[:len(smoothed_binned_coverage)], y=smoothed_binned_coverage, mode='lines', name='Combined', line=dict(color='gray', width=2)))
+
     # Plot individual reads with different colors based on suffix
     for suffix in unique_suffixes:
         coverage_suffix = np.zeros(ref_length)
@@ -76,33 +94,39 @@ def plot_reads_coverage(ref_length,bin_size, reads_dict, mean_read_length, curre
                 coverage_suffix[start:stop] += 1
         binned_coverage_suffix = bin_coverage(coverage_suffix, bin_size)
         smoothed_binned_coverage_suffix = gaussian_filter1d(binned_coverage_suffix, sigma=smooth_sigma)
-        plt.plot(bin_positions[:len(smoothed_binned_coverage_suffix)], smoothed_binned_coverage_suffix, drawstyle='steps-pre', color=suffix_color_map[suffix], label=suffix, alpha=0.5)
+        fig.add_trace(go.Scatter(x=bin_positions[:len(smoothed_binned_coverage_suffix)], y=smoothed_binned_coverage_suffix, mode='lines', name=suffix, line=dict(color=suffix_color_map[suffix], width=2)))
 
-    # Add vertical lines at specified positions
+    # Add triangles at specified positions
     for key, positions in insertion_dict.items():
         suffix = key.split('_')[1]
 
         if isinstance(positions, dict):
             positions = list(positions.values())  # Convert dict_values to a list
             positions = positions[0:2]
-        for pos in positions:
-            max_height = max(smoothed_binned_coverage) * 1.1  # Slightly above the highest line
-            plt.plot(pos, max_height, marker='v', color=suffix_color_map[suffix], markersize=4, linestyle='None', alpha=0.7)
-        
+        max_height = max(smoothed_binned_coverage) * 1.1  # Slightly above the highest line
+        fig.add_trace(go.Scatter(x=positions, y=[max_height] * len(positions), mode='markers', name=key, marker=dict(symbol='triangle-down', size=10, color=suffix_color_map[suffix])))
 
-    # Create custom legend
-    legend_handles = [Line2D([0], [0], color=suffix_color_map[suffix], lw=2, label=suffix) for suffix in unique_suffixes]
-    legend_handles.append(Line2D([0], [0], color='gray', lw=2, label="Combined")) #manual adding of the combined line
-    plt.legend(handles=legend_handles, title='Barcode', bbox_to_anchor=(1.05, 1), loc='upper left')
-    
-    plt.xlabel('Position on "one-string" Reference Genome (1e6 binned)')
-    plt.ylabel('Read Coverage')
-    plt.title('Read Coverage Plot')
-    #plt.show()
+    # Update layout
+    fig.update_layout(
+        title=f'Read Coverage Plot for {mean_read_length} bp Reads and {current_coverage}x Coverage',
+        xaxis_title='Position on "one-string" Reference Genome (1e6 binned)',
+        yaxis_title='Read Coverage',
+        legend_title='Barcode',
+        template='plotly_white',
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.3,
+            xanchor="center",
+            x=0.5
+        )
+    )
 
-    # Save the plot
+    # Save the plot as HTML and SVG
     track_usage("plot_reads_coverage")
-    plt.savefig(output_file)
-    plt.close()
+    pio.write_html(fig, output_file_html)
     
-    logging.info(f"Plot saved as {output_file}")
+    fig.update_layout(legend=dict(y=-0.5)) #slighty lower for the static plot
+    pio.write_image(fig, output_file_svg)
+
+    logging.info(f"Plots saved as {output_file_svg} and {output_file_html}")
