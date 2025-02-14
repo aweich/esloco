@@ -167,7 +167,7 @@ def plot_lineplot(data, output_path):
 #%%
 def plot_isolated_lineplot(data, output_path, filter=20, id_list=None):
 
-    if filter > 20:
+    if filter > 20 or len(id_list) > 20:
         print("Individual plots are limited to 20 IDs. Please reduce the filter value or select up to 20 specific IDs.")
         sys.exit()
     
@@ -465,15 +465,39 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
             <iframe src="{image_paths[4]}" title="Full Match Panel" style="height: 1200px; border: none;"></iframe>
             <iframe src="{image_paths[5]}" title="Partial Match Panel" style="height: 1200px; border: none;"></iframe>
         </div>
-        <h3>Coverage Overview</h3>
     """
-    for i in range(7, len(image_paths), 2):
-        html_content += f"""
-        <div class="grid-container">
-            <iframe src="{image_paths[i]}" title="Additional Plot" style="height: 600px;"></iframe>
-            {"<iframe src='" + image_paths[i+1] + "' title='Additional Plot' style='height: 600px;'></iframe>" if i+1 < len(image_paths) else ""}
-        </div>
-        """
+    html_content += f"""
+    <h3>Coverage Overview</h3>
+    <div class="grid-container">
+        <button onclick="prevPlot()">Previous</button>
+        <button onclick="nextPlot()">Next</button>
+    </div>
+    <div class="grid-container">
+        <iframe id="plotFrame" src="{image_paths[7]}" title="Coverage Plot" style="height: 1200px;"></iframe>
+    </div>
+    <script>
+        var plots = {image_paths};
+        var currentPlotIndex = 7;
+
+        function showPlot(index) {{
+            document.getElementById('plotFrame').src = plots[index];
+        }}
+
+        function prevPlot() {{
+            if (currentPlotIndex > 7) {{
+                currentPlotIndex--;
+                showPlot(currentPlotIndex);
+            }}
+        }}
+
+        function nextPlot() {{
+            if (currentPlotIndex < plots.length - 1) {{
+                currentPlotIndex++;
+                showPlot(currentPlotIndex);
+            }}
+        }}
+    </script>
+    """
     
     html_content += f"""
         <h3>CPU and Memory Usage</h3>

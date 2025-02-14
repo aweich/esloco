@@ -41,7 +41,7 @@ def main():
     print("Starting plot generation...")
     plot1, plot2 = plot_barcode_distribution(basic_data, output_path=output_path_plots)
     plot3, plot4 = plot_lineplot(matches_data, output_path=output_path_plots)
-    plot5, plot6 = plot_isolated_lineplot(matches_data, output_path=output_path_plots, filter=20) #make command line args possible? 
+    plot5, plot6 = plot_isolated_lineplot(matches_data, output_path=output_path_plots, filter=16) #make command line args possible? 
     plot7 = plot_log_data(log, output_path=output_path_plots)
     all_plots = [plot1, plot2, plot3, plot4, plot5, plot6, plot7] + coverage_plots
     

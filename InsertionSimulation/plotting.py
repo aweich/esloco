@@ -103,7 +103,10 @@ def plot_reads_coverage(ref_length, bin_size, reads_dict, mean_read_length, curr
         if isinstance(positions, dict):
             positions = list(positions.values())  # Convert dict_values to a list
             positions = positions[0:2]
-        max_height = max(smoothed_binned_coverage) * 1.1  # Slightly above the highest line
+        # Adjust y value based on suffix
+        y_adjustment = 0.01 * int(suffix)  # Adjust dynamically based on suffix
+        max_height = max(smoothed_binned_coverage) * (1.1 + y_adjustment)  # Slightly above the highest line
+        
         fig.add_trace(go.Scatter(x=positions, y=[max_height] * len(positions), mode='markers', name=key, marker=dict(symbol='triangle-down', size=10, color=suffix_color_map[suffix])))
 
     # Update layout
@@ -115,8 +118,8 @@ def plot_reads_coverage(ref_length, bin_size, reads_dict, mean_read_length, curr
         template='plotly_white',
         legend=dict(
             orientation="h",
-            yanchor="bottom",
-            y=-0.3,
+            yanchor="top",
+            y=-0.2,  # Adjust this value to ensure the legend is below the x-axis title
             xanchor="center",
             x=0.5
         )
@@ -124,9 +127,6 @@ def plot_reads_coverage(ref_length, bin_size, reads_dict, mean_read_length, curr
 
     # Save the plot as HTML and SVG
     track_usage("plot_reads_coverage")
-    pio.write_html(fig, output_file_html)
-    
-    fig.update_layout(legend=dict(y=-0.5)) #slighty lower for the static plot
     pio.write_image(fig, output_file_svg)
-
+    pio.write_html(fig, output_file_html)
     logging.info(f"Plots saved as {output_file_svg} and {output_file_html}")
