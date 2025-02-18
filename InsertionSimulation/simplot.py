@@ -33,9 +33,9 @@ def main():
 
     basic_data = read_data(f"{output_path}/{experiment_name}_barcode_distribution_table.csv")
     matches_data = read_data(f"{output_path}/{experiment_name}_matches_table.csv")
+    print(matches_data.head())
     log = f"{output_path}/{experiment_name}_log.log"
     coverage_plots = [f"{output_path_plots}/{combination[0]}_{combination[1]}_coverage.html" for combination in combinations]
-    print(coverage_plots)
 
     #specific plots
     print("Starting plot generation...")

@@ -85,7 +85,7 @@ def normalize_ROI_by_length(roi_input_bed, roi_counted_insertions, scaling_facto
         
         # Iterate through each row in df1 to find partial match
         for _, row_initial in roi_input_bed.iterrows():
-            if row_initial.ID in row_counted.Insertion:
+            if row_initial.id in row_counted.Insertion:
                 # Calculate the length
                 length = row_initial.end - row_initial.start
                 lengths.append(length)

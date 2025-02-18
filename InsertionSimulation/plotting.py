@@ -1,4 +1,5 @@
 import os
+import sys
 import logging
 import numpy as np
 import pandas as pd
@@ -21,7 +22,6 @@ def get_barcode_color_mapping(barcodes):
     barcodes = sorted(barcodes)
     colors = px.colors.qualitative.Plotly
     barcode_colors = (colors * (len(barcodes) // len(colors) + 1))[:len(barcodes)]
-    print(barcode_colors)
     return dict(zip(barcodes, barcode_colors))
 
 def bin_coverage(coverage, bin_size):
@@ -98,7 +98,8 @@ def plot_reads_coverage(ref_length, bin_size, reads_dict, mean_read_length, curr
 
     # Add triangles at specified positions
     for key, positions in insertion_dict.items():
-        suffix = key.split('_')[1]
+        split_key = key.rsplit("_", 1)  # Split the key into the main part and suffix, handling cases like id_id_id_0, id_0, and id_id_0
+        suffix = split_key[1]
 
         if isinstance(positions, dict):
             positions = list(positions.values())  # Convert dict_values to a list
@@ -106,9 +107,11 @@ def plot_reads_coverage(ref_length, bin_size, reads_dict, mean_read_length, curr
         # Adjust y value based on suffix
         y_adjustment = 0.01 * int(suffix)  # Adjust dynamically based on suffix
         max_height = max(smoothed_binned_coverage) * (1.1 + y_adjustment)  # Slightly above the highest line
-        
-        fig.add_trace(go.Scatter(x=positions, y=[max_height] * len(positions), mode='markers', name=key, marker=dict(symbol='triangle-down', size=10, color=suffix_color_map[suffix])))
-
+        try:
+            fig.add_trace(go.Scatter(x=positions, y=[max_height] * len(positions), mode='markers', name=key, marker=dict(symbol='triangle-down', size=10, color=suffix_color_map[suffix])))
+        except:
+            fig.add_trace(go.Scatter(x=positions, y=[max_height] * len(positions), mode='markers', name=key, marker=dict(symbol='triangle-down', size=10, color="black")))
+    
     # Update layout
     fig.update_layout(
         title=f'Read Coverage Plot for {mean_read_length} bp Reads and {current_coverage}x Coverage',

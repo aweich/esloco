@@ -59,11 +59,11 @@ def plot_barcode_distribution(data, output_path):
     for barcode in barcode_columns:
         grouped[barcode] = grouped[barcode] / grouped["sum"] * 100
 
-    grouped_melted = grouped.melt(id_vars=['coverage_mean_read_length'], value_vars=barcode_columns, var_name='Barcode', value_name='Percentage')
-    grouped_melted = grouped_melted.sort_values('Barcode', key=pd.to_numeric)
+    grouped_melted = grouped.melt(id_vars=['coverage_mean_read_length'], value_vars=barcode_columns, var_name='barcode', value_name='Percentage')
+    grouped_melted = grouped_melted.sort_values('barcode', key=pd.to_numeric)
 
     # Interactive plot
-    fig = px.bar(grouped_melted, x='coverage_mean_read_length', y='Percentage', color='Barcode', title='Percentage Share of Barcodes by Coverage and Mean Read Length', color_discrete_map=barcode_color_map)
+    fig = px.bar(grouped_melted, x='coverage_mean_read_length', y='Percentage', color='barcode', title='Percentage Share of Barcodes by Coverage and Mean Read Length', color_discrete_map=barcode_color_map)
     fig.update_xaxes(title_text='Coverage and Mean Read Length', title_font=dict(size=12))
     fig.update_yaxes(title_text='Percentage Share of Barcodes', title_font=dict(size=12))
     fig.write_html(output_html_perc)
@@ -93,30 +93,32 @@ def plot_lineplot(data, output_path):
 
     #Barcode_0_insertion_0_0
     #TRA1_0_0
-
+    print(data["Insertion"].str.split("_", expand=True))
     if data["Insertion"].str.contains("insertion").any():
-        data[["temp1","Barcode","ID1","ID2","Iteration"]] = data["Insertion"].str.split("_", expand=True)
-        data["ID"] = data["ID1"] + "_" + data["ID2"]
+        data[["temp1","barcode","ID1","ID2","Iteration"]] = data["Insertion"].str.split("_", expand=True)
+        data["id"] = data["ID1"] + "_" + data["ID2"]
     else:
-        data[["ID", "Barcode", "Iteration"]] = data["Insertion"].str.split("_", expand=True)
+        split_data = data["Insertion"].str.rsplit("_", n=2)
+        data["id"] = split_data.str[0]
+        data["barcode"] = split_data.str[1]
+        data["Iteration"] = split_data.str[2]
 
     numeric_cols = ["full_matches",
                     "partial_matches", 
                     "mean_read_length", 
                     "coverage",
-                    "Barcode", 
+                    "barcode", 
                     "Iteration"]
 
-    data = data[["ID"] + numeric_cols]
+    data = data[["id"] + numeric_cols]
 
     data.loc[:, numeric_cols] = data[numeric_cols].apply(pd.to_numeric, errors="coerce")
-    
     # Partial matches plot
-    grouped = data.groupby(['coverage', 'mean_read_length', 'ID'])['partial_matches'].mean().reset_index()
+    grouped = data.groupby(['coverage', 'mean_read_length', 'id'])['partial_matches'].mean().reset_index()
     
     # Static plot with seaborn
     plt.figure(figsize=(40, 10))
-    sns.lineplot(data=grouped, x='ID', y='partial_matches', 
+    sns.lineplot(data=grouped, x='id', y='partial_matches', 
                  hue='coverage', style='mean_read_length', 
                  markers=True, dashes=False)
     plt.xlabel('ID')
@@ -128,18 +130,18 @@ def plot_lineplot(data, output_path):
     plt.close()
     
     # Interactive plot with Plotly for partial matches
-    fig = px.line(grouped, x='ID', y='partial_matches', color='coverage', line_dash='mean_read_length', markers=True, title='Lineplot of Partial Matches by Coverage and Mean Read Length')
+    fig = px.line(grouped, x='id', y='partial_matches', color='coverage', line_dash='mean_read_length', markers=True, title='Lineplot of Partial Matches by Coverage and Mean Read Length')
     fig.update_xaxes(title_text='ID', title_font=dict(size=12))
     fig.update_yaxes(title_text='Mean Partial Matches', title_font=dict(size=12))
     fig.write_html(output_html_partial)
     
     
     # Full matches plot
-    grouped = data.groupby(['coverage', 'mean_read_length', 'ID'])['full_matches'].mean().reset_index()
+    grouped = data.groupby(['coverage', 'mean_read_length', 'id'])['full_matches'].mean().reset_index()
     
     # Static plot with seaborn
     plt.figure(figsize=(40, 10))
-    sns.lineplot(data=grouped, x='ID', y='full_matches', 
+    sns.lineplot(data=grouped, x='id', y='full_matches', 
                  hue='coverage', style='mean_read_length', 
                  markers=True, dashes=False)  
     plt.xlabel('ID')
@@ -151,7 +153,7 @@ def plot_lineplot(data, output_path):
     plt.close()
     
     # Interactive plot with Plotly
-    fig = px.line(grouped, x='ID', y='full_matches', color='coverage', line_dash='mean_read_length', markers=True, title='Lineplot of Full Matches by Coverage and Mean Read Length')
+    fig = px.line(grouped, x='id', y='full_matches', color='coverage', line_dash='mean_read_length', markers=True, title='Lineplot of Full Matches by Coverage and Mean Read Length')
     fig.update_xaxes(title_text='ID', title_font=dict(size=12))
     fig.update_yaxes(title_text='Mean Full Matches', title_font=dict(size=12))
     fig.write_html(output_html_full)
@@ -165,7 +167,7 @@ def plot_lineplot(data, output_path):
 #plot_lineplot(data, output_path="../out/insertion_test/plots/")
 
 #%%
-def plot_isolated_lineplot(data, output_path, filter=20, id_list=None):
+def plot_isolated_lineplot(data, output_path, filter=20, id_list=[]):
 
     if filter > 20 or len(id_list) > 20:
         print("Individual plots are limited to 20 IDs. Please reduce the filter value or select up to 20 specific IDs.")
@@ -179,24 +181,27 @@ def plot_isolated_lineplot(data, output_path, filter=20, id_list=None):
 
     # Use loaded data
     if data["Insertion"].str.contains("insertion").any():
-        data[["temp1","Barcode","ID1","ID2","Iteration"]] = data["Insertion"].str.split("_", expand=True)
-        data["ID"] = data["ID1"] + "_" + data["ID2"]
+        data[["temp1","barcode","ID1","ID2","Iteration"]] = data["Insertion"].str.split("_", expand=True)
+        data["id"] = data["ID1"] + "_" + data["ID2"]
     else:
-        data[["ID", "Barcode", "Iteration"]] = data["Insertion"].str.split("_", expand=True)
+        split_data = data["Insertion"].str.rsplit("_", n=2)
+        data["id"] = split_data.str[0]
+        data["barcode"] = split_data.str[1]
+        data["Iteration"] = split_data.str[2]
 
     numeric_cols = ["full_matches",
                     "partial_matches", 
                     "mean_read_length", 
                     "coverage",
-                    "Barcode", 
+                    "barcode", 
                     "Iteration"]
 
-    data = data[["ID"] + numeric_cols]
+    data = data[["id"] + numeric_cols]
     
     data.loc[:, numeric_cols] = data[numeric_cols].apply(pd.to_numeric, errors="coerce")
     
-    grouped_partial = data.groupby(['coverage', 'mean_read_length', 'Barcode', 'Iteration', 'ID'])['partial_matches'].mean().reset_index()
-    grouped_full = data.groupby(['coverage', 'mean_read_length', 'Barcode', 'Iteration', 'ID'])['full_matches'].mean().reset_index()
+    grouped_partial = data.groupby(['coverage', 'mean_read_length', 'barcode', 'Iteration', 'id'])['partial_matches'].mean().reset_index()
+    grouped_full = data.groupby(['coverage', 'mean_read_length', 'barcode', 'Iteration', 'id'])['full_matches'].mean().reset_index()
     
     # Create a new column for the combination of coverage and mean_read_length
     grouped_partial['coverage_mean_read_length'] = grouped_partial['coverage'].astype(str) + '_' + grouped_partial['mean_read_length'].astype(str)
@@ -204,29 +209,29 @@ def plot_isolated_lineplot(data, output_path, filter=20, id_list=None):
     
     # Filter IDs
     if id_list:
-        ids = grouped_partial['ID'].unique()
+        ids = grouped_partial['id'].unique()
         filtered_ids = [id for id in ids if id in id_list]
-        filtered_partial = grouped_partial[grouped_partial['ID'].isin(filtered_ids)]
-        filtered_full = grouped_full[grouped_full['ID'].isin(filtered_ids)]
+        filtered_partial = grouped_partial[grouped_partial['id'].isin(filtered_ids)]
+        filtered_full = grouped_full[grouped_full['id'].isin(filtered_ids)]
     else:
-        first_ids = grouped_partial['ID'].unique()[:filter]
-        filtered_partial = grouped_partial[grouped_partial['ID'].isin(first_ids)]
-        filtered_full = grouped_full[grouped_full['ID'].isin(first_ids)]
+        first_ids = grouped_partial['id'].unique()[:filter]
+        filtered_partial = grouped_partial[grouped_partial['id'].isin(first_ids)]
+        filtered_full = grouped_full[grouped_full['id'].isin(first_ids)]
 
     # Calculate mean and standard deviation for partial matches
-    partial_stats = filtered_partial.groupby(['coverage_mean_read_length', 'ID', 'Barcode']).agg(
+    partial_stats = filtered_partial.groupby(['coverage_mean_read_length', 'id', 'barcode']).agg(
         mean_partial_matches=('partial_matches', 'mean'),
         std_partial_matches=('partial_matches', 'std')
     ).reset_index()
 
     # Calculate mean and standard deviation for full matches
-    full_stats = filtered_full.groupby(['coverage_mean_read_length', 'ID', 'Barcode']).agg(
+    full_stats = filtered_full.groupby(['coverage_mean_read_length', 'id', 'barcode']).agg(
         mean_full_matches=('full_matches', 'mean'),
         std_full_matches=('full_matches', 'std')
     ).reset_index()
 
     #dimensions
-    num_plots = len(filtered_partial['ID'].unique())
+    num_plots = len(filtered_partial['id'].unique())
     
     if num_plots < 5:
         rows = 1
@@ -266,14 +271,14 @@ def plot_isolated_lineplot(data, output_path, filter=20, id_list=None):
     # Interactive plot for partial matches
     
     #color
-    barcode_color_map = get_barcode_color_mapping(filtered_partial["Barcode"].unique())
-    fig = make_subplots(rows=rows, cols=cols, shared_yaxes=True, subplot_titles=filtered_partial['ID'].unique())
-    for i, unique_id in enumerate(filtered_partial['ID'].unique(), start=1):
-        subset = partial_stats[partial_stats['ID'] == unique_id]
+    barcode_color_map = get_barcode_color_mapping(filtered_partial["barcode"].unique())
+    fig = make_subplots(rows=rows, cols=cols, shared_yaxes=True, subplot_titles=filtered_partial['id'].unique())
+    for i, unique_id in enumerate(filtered_partial['id'].unique(), start=1):
+        subset = partial_stats[partial_stats['id'] == unique_id]
         row = (i - 1) // cols + 1
         col = (i - 1) % cols + 1
-        for barcode in subset['Barcode'].unique():
-            barcode_data = subset[subset['Barcode'] == barcode]
+        for barcode in subset['barcode'].unique():
+            barcode_data = subset[subset['barcode'] == barcode]
             fig.add_trace(go.Scatter(x=barcode_data['coverage_mean_read_length'], y=barcode_data['mean_partial_matches'], mode='lines+markers', name=str(barcode), legendgroup=str(barcode), showlegend=(i == 1), line=dict(color=barcode_color_map[barcode])), row=row, col=col)
     fig.update_xaxes(title_text='Coverage and Mean Read Length', title_font=dict(size=8), title_standoff=5)
     fig.update_yaxes(title_text='Mean Partial Matches', title_font=dict(size=8), title_standoff=5)
@@ -282,13 +287,13 @@ def plot_isolated_lineplot(data, output_path, filter=20, id_list=None):
     fig.write_image(output_path_partial, scale=3, width=1200, height=1200)
 
     # Interactive plot for full matches
-    fig = make_subplots(rows=rows, cols=cols, shared_yaxes=True, subplot_titles=filtered_full['ID'].unique())
-    for i, unique_id in enumerate(filtered_full['ID'].unique(), start=1):
-        subset = full_stats[full_stats['ID'] == unique_id]
+    fig = make_subplots(rows=rows, cols=cols, shared_yaxes=True, subplot_titles=filtered_full['id'].unique())
+    for i, unique_id in enumerate(filtered_full['id'].unique(), start=1):
+        subset = full_stats[full_stats['id'] == unique_id]
         row = (i - 1) // cols + 1
         col = (i - 1) % cols + 1
-        for barcode in subset['Barcode'].unique():
-            barcode_data = subset[subset['Barcode'] == barcode]
+        for barcode in subset['barcode'].unique():
+            barcode_data = subset[subset['barcode'] == barcode]
             fig.add_trace(go.Scatter(x=barcode_data['coverage_mean_read_length'], y=barcode_data['mean_full_matches'], mode='lines+markers', name=str(barcode), legendgroup=str(barcode), showlegend=(i == 1), line=dict(color=barcode_color_map[barcode])), row=row, col=col)
     fig.update_xaxes(title_text='Coverage and Mean Read Length', title_font=dict(size=8), title_standoff=5)
     fig.update_yaxes(title_text='Mean Partial Matches', title_font=dict(size=8), title_standoff=5)

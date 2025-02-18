@@ -67,7 +67,9 @@ def roi_barcoding(roi_dict, n_barcodes):
 	Add _i suffix to each key in the dictionary for each index i in the specified range.
 	'''
 	new_dict = {}
+	print(roi_dict)
 	for key, value in roi_dict.items():
+		
 		for i in range(n_barcodes):
 			new_key = f"{key}_{i}"
 			new_dict[new_key] = value

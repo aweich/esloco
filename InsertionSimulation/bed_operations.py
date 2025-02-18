@@ -38,7 +38,7 @@ def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
         # Read only the available columns initially
         bed = pd.read_csv(bedpath, sep="\t", header=None, dtype=str)
         
-        # Check if first row is a header (contains "chr" and "start")
+        # Check if first row is a header (contains "chr" and column 1 is "start")
         if "chr" in bed.iloc[0, 0].lower() and bed.iloc[0, 1].lower() == "start":
             bed = pd.read_csv(bedpath, sep="\t", header=0, dtype=str)
         else:
@@ -51,14 +51,15 @@ def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
 
         if not bedcheck(bed):
             return None
-              
-        all_cols = ["chrom", "start", "end", "ID", "Barcode", "weight"]
+
+        bed.columns = bed.columns.str.lower()      
+        all_cols = ["chrom", "start", "end", "id", "barcode", "weight"]
         missing_cols = list(set(all_cols) - set(bed.columns))
         logging.info(f"Your BED is missing the following columns: {missing_cols}. Trying to fill in default values where possible...")
         for missing_col in missing_cols: 
             if missing_col == "weight":
                 bed[missing_col] = 1 
-            elif missing_col == "ID":
+            elif missing_col == "id":
                 bed[missing_col] = bed["chrom"].astype(str) + "_" + bed["start"].astype(str) + "_" + bed["end"].astype(str) + "_" + bed["weight"] .astype(str)
             else:
                 bed[missing_col] = [[]] * len(bed)
@@ -67,7 +68,7 @@ def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
         bed['weight'] = bed['weight'].apply(lambda x: 1 if x in ["", None] or (isinstance(x, float) and math.isnan(x)) else x)
     
         # Fill NaN values in the 'Barcode' column with an empty list
-        bed['Barcode'] = bed['Barcode'].apply(lambda x: [] if x in ["", None] or (isinstance(x, float) and math.isnan(x)) else x)
+        bed['barcode'] = bed['barcode'].apply(lambda x: [] if x in ["", None] or (isinstance(x, float) and math.isnan(x)) else x)
         
         # Apply barcoding transformation if required
         if barcoding:
@@ -97,7 +98,7 @@ def chromosome_to_global_coordinates(beddf, input_chromosome_dict):
         #weight_exists = 'weight' in beddf.columns
         
         for index, row in beddf.iterrows():
-            ID=row["ID"]
+            ID=row["id"]
             chrom = row['chrom']
             
             if row["start"] == row["end"] == 0: #full chromosome mode
@@ -109,7 +110,7 @@ def chromosome_to_global_coordinates(beddf, input_chromosome_dict):
                 end = row['end'] + input_chromosome_dict[chrom][0]
 
             # Prepare the entry for updated_coordinates based on conditions
-            entry = {'start': start, 'end': end, 'weight': row['weight'], 'Barcode': row['Barcode']}
+            entry = {'start': start, 'end': end, 'weight': row['weight'], 'barcode': row['barcode']}
             updated_coordinates[ID] = entry
         return updated_coordinates
     except:
