@@ -3,9 +3,5 @@ InsertionSimulation/output/
 InsertionSimulation/other/
 InsertionSimulation/__pycache__/
 *.svg
-LICENSE
-README.md
-VIS_Simulation.git/
-setup.py
 test/
 out/
