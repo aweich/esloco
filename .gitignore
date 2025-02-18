@@ -1,7 +1,9 @@
 InsertionSimulation/out/
 InsertionSimulation/output/
+InsertionSimulation/.output/
 InsertionSimulation/other/
 InsertionSimulation/__pycache__/
 *.svg
 test/
 out/
+output/
