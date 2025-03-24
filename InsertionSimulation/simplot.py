@@ -2,7 +2,7 @@ import sys
 import os
 
 from config_handler import parse_config
-from plot_functions import read_data, plot_barcode_distribution, plot_lineplot, plot_isolated_lineplot, plot_log_data, generate_html_report
+from plot_functions import read_data, barplot_absolute_matches, barplot_absolute_matches_barcodes, plot_barcode_distribution, plot_lineplot, plot_isolated_lineplot, plot_log_data, generate_html_report
 
 
 def main():
@@ -39,11 +39,18 @@ def main():
 
     #specific plots
     print("Starting plot generation...")
-    plot1, plot2 = plot_barcode_distribution(basic_data, output_path=output_path_plots)
-    plot3, plot4 = plot_lineplot(matches_data, output_path=output_path_plots)
-    plot5, plot6 = plot_isolated_lineplot(matches_data, output_path=output_path_plots, filter=16) #make command line args possible? 
-    plot7 = plot_log_data(log, output_path=output_path_plots)
-    all_plots = [plot1, plot2, plot3, plot4, plot5, plot6, plot7] + coverage_plots
+    barplot_absolute= barplot_absolute_matches(matches_data, output_path=output_path_plots)
+    barplot_barcodes = barplot_absolute_matches_barcodes(matches_data, output_path=output_path_plots)
+    total_reads, reads_per_barcode = plot_barcode_distribution(basic_data, output_path=output_path_plots)
+    lineplot_full, lineplot_partial = plot_lineplot(matches_data, output_path=output_path_plots)
+    lineplot_panel_full, lineplot_panel_partial = plot_isolated_lineplot(matches_data, output_path=output_path_plots, filter=12) #make command line args possible?
+    ressources = plot_log_data(log, output_path=output_path_plots)
+    
+    all_plots = [barplot_absolute, barplot_barcodes,
+                 total_reads, reads_per_barcode, 
+                 lineplot_full, lineplot_partial, 
+                 lineplot_panel_full, lineplot_panel_partial, 
+                 ressources] + coverage_plots
     
     # HTML report
     # The html report only points to the plots it displays. 

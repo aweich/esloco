@@ -13,6 +13,10 @@ import plotly.graph_objects as go
 import plotly.io as pio
 from plotly.subplots import make_subplots
 
+import re
+from datetime import datetime
+
+
 pio.kaleido.scope.mathjax = None
 pio.templates.default = "plotly_white"
 
@@ -24,6 +28,141 @@ def read_data(filepath):
 
 #data = read_data('../out/insertion_test/insertion_test_matches_table.csv')
 #basic_data = read_data('../out/tcr_20/tcr_20_barcode_distribution_table.csv')
+#%%
+
+#%%
+
+def barplot_absolute_matches(data, output_path):
+
+    # Output paths
+    output_svg = os.path.join(output_path, "Barplot_absolute_numbers.svg")
+    output_html = os.path.join(output_path, "Barplot_absolute_numbers.html")
+
+    # Extract iteration number from the 'Insertion' column
+    data['Iteration'] = data['Insertion'].str.extract(r'_(\d+)$').astype(int)
+
+    # Group by mean_read_length, coverage, and iteration
+    summary = data.groupby(['mean_read_length', 'coverage', 'Iteration']).agg(
+        full_matches_total=('full_matches', 'sum'),
+        partial_matches_total=('partial_matches', 'sum')
+    ).reset_index()
+
+    # Aggregate across iterations to compute mean and standard error
+    final_summary = summary.groupby(['mean_read_length', 'coverage']).agg(
+        full_matches_mean=('full_matches_total', 'mean'),
+        full_matches_se=('full_matches_total', lambda x: x.std() / np.sqrt(len(x))),
+        partial_matches_mean=('partial_matches_total', 'mean'),
+        partial_matches_se=('partial_matches_total', lambda x: x.std() / np.sqrt(len(x)))
+    ).reset_index()
+
+    print(final_summary)
+
+    x_labels = [f"{row['mean_read_length']}, {row['coverage']}" for _, row in final_summary.iterrows()]
+    x = np.arange(len(x_labels))
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Bar(
+        x=x,
+        y=final_summary['full_matches_mean'],
+        error_y=dict(type='data', array=final_summary['full_matches_se']),
+        name='Full Matches',
+        marker_color='black'
+    ))
+
+    fig.add_trace(go.Bar(
+        x=x,
+        y=final_summary['partial_matches_mean'],
+        error_y=dict(type='data', array=final_summary['partial_matches_se']),
+        name='Partial Matches',
+        marker_color='grey'
+    ))
+
+    fig.update_layout(
+        title='Full and Partial Matches Across Conditions',
+        xaxis=dict(
+            tickmode='array',
+            tickvals=x,
+            ticktext=x_labels,
+            title='Mean Read Length, Coverage'
+        ),
+        yaxis=dict(
+            title='Mean Count across Iterations'
+        ),
+        barmode='group'
+    )
+
+    #fig.show()
+
+    fig.write_html(output_html)
+    fig.write_image(output_svg, width=600, height=400)
+    
+    print(f"Barplot absolute numbers saved as {output_html}")
+    return str(output_html)
+
+#data = pd.read_csv("/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/insertion_test3/insertion_test3_matches_table.csv", sep="\t")  # Assuming tab-separated values
+#data = pd.read_csv("/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/roi_tcr_test/roi_tcr_test_matches_table.csv", sep="\t")  # Assuming tab-separated values
+#barplot_absolute_matches(data, output_path="/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/roi_tcr_test/")
+#%%
+def barplot_absolute_matches_barcodes(data, output_path):
+
+     # Output paths
+    output_svg = os.path.join(output_path, "Barplot_Barcode_absolute_numbers.svg")
+    output_html = os.path.join(output_path, "Barplot_Barcode_absolute_numbers.html")
+        
+    data['Barcode'] = data['Insertion'].str.extract(r'_(\d+)_').astype(int)
+    barcode_color_map = get_barcode_color_mapping(data['Barcode'].unique())
+    # Stacked bar plot colored by barcodes
+    # Group by mean_read_length, coverage, and barcode
+    barcode_summary = data.groupby(['mean_read_length', 'coverage', "Barcode"]).agg(
+        full_matches_total=('full_matches', 'sum'),
+        partial_matches_total=('partial_matches', 'sum')
+    ).reset_index()
+
+    print(barcode_summary)
+
+    # Melt the dataframe for easier plotting with Plotly
+    barcode_summary_melted = barcode_summary.melt(id_vars=['mean_read_length', 'coverage', 'Barcode'], 
+                                                value_vars=['full_matches_total', 'partial_matches_total'], 
+                                                var_name='match_type', value_name='count')
+
+    print(barcode_summary_melted)
+
+    # Create combined bar plot
+
+    fig = make_subplots(rows=1, cols=2, subplot_titles=['Full Matches', 'Partial Matches'], shared_yaxes=True)
+
+    for match_type in barcode_summary_melted['match_type'].unique():
+        subset = barcode_summary_melted[barcode_summary_melted['match_type'] == match_type]
+        subset['color'] = subset['Barcode'].map(barcode_color_map)
+        col = 1 if match_type == 'full_matches_total' else 2
+        for barcode in subset['Barcode'].unique():
+            barcode_data = subset[subset['Barcode'] == barcode]
+            fig.add_trace(go.Bar(
+                x=barcode_data['mean_read_length'].astype(str) + ', ' + barcode_data['coverage'].astype(str),
+                y=barcode_data['count'],
+                name=f"{barcode}",
+                marker_color=barcode_color_map[barcode],
+                showlegend=(col == 1)
+            ), row=1, col=col)
+
+    fig.update_xaxes(title_text='Mean Read Length, Coverage', row=1, col=1)
+    fig.update_xaxes(title_text='Mean Read Length, Coverage', row=1, col=2)
+    fig.update_yaxes(title_text='Mean Count across iterations', row=1, col=1)
+    fig.update_yaxes(title_text='Mean Count across iterations', row=1, col=2)
+    fig.update_layout(title_text='Full and Partial Matches Across Conditions (stacked by barcodes)', barmode='stack')
+
+    #fig.show()
+    
+    fig.write_html(output_html)
+    fig.write_image(output_svg, width=800, height=400)
+    
+    print(f"Barplot absolute numbers with barcodes saved as {output_html}")
+    return str(output_html)
+
+#data = pd.read_csv("/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/roi_tcr_test/roi_tcr_test_matches_table.csv", sep="\t")
+#barplot_absolute_matches_barcodes(data, output_path="/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/roi_tcr_test/")
+
 #%%
 def plot_barcode_distribution(data, output_path):
 
@@ -310,14 +449,9 @@ def plot_isolated_lineplot(data, output_path, filter=20, id_list=[]):
 #plot_isolated_lineplot(data, output_path="./output/tcr_20/", filter=2, id_list=["TRAC", "TRBC1", "TRBV1", "TRAV3"])
 #plot_isolated_lineplot(data, output_path="./output/tcr_20/", filter=20)
 
+
 #%%
 # log file plot
-
-import re
-import matplotlib.pyplot as plt
-from datetime import datetime
-from plotly.subplots import make_subplots
-
 def parse_log(log_file):
     """Parses a log file to extract timestamps, memory usage, execution times, and iteration labels for specific iterations."""
     log_data = {}
@@ -453,22 +587,25 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
     <body>
         <h1>Analysis Report</h1>
         <p>Results in "{output_html}"...</p>
-        <h3>Overview</h3>
+        <h3>Match Overview</h3>
         <div class="grid-container">
             <iframe src="{image_paths[0]}" title="Total Reads"></iframe>
             <iframe src="{image_paths[1]}" title="Percentage Reads"></iframe>
         </div>
-
-        <h3>Match Statistics</h3>
+        <h3>Read Overview</h3>
         <div class="grid-container">
-            <iframe src="{image_paths[2]}" title="Partial Matches"></iframe>
+             <iframe src="{image_paths[2]}" title="Partial Matches"></iframe>
             <iframe src="{image_paths[3]}" title="Full Matches"></iframe>
         </div>
-
+        <h3>Match Statistics</h3>
+        <div class="grid-container">
+            <iframe src="{image_paths[4]}" title="Partial Matches"></iframe>
+            <iframe src="{image_paths[5]}" title="Full Matches"></iframe>
+        </div>
         <h3>Region-Specific Read Overlaps</h3>
         <div class="grid-container">
-            <iframe src="{image_paths[4]}" title="Full Match Panel" style="height: 1200px; border: none;"></iframe>
-            <iframe src="{image_paths[5]}" title="Partial Match Panel" style="height: 1200px; border: none;"></iframe>
+            <iframe src="{image_paths[6]}" title="Full Match Panel" style="height: 1200px; border: none;"></iframe>
+            <iframe src="{image_paths[7]}" title="Partial Match Panel" style="height: 1200px; border: none;"></iframe>
         </div>
     """
     html_content += f"""
@@ -478,18 +615,18 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
         <button onclick="nextPlot()">Next</button>
     </div>
     <div class="grid-container">
-        <iframe id="plotFrame" src="{image_paths[7]}" title="Coverage Plot" style="height: 1200px;"></iframe>
+        <iframe id="plotFrame" src="{image_paths[9]}" title="Coverage Plot" style="height: 1200px;"></iframe>
     </div>
     <script>
         var plots = {image_paths};
-        var currentPlotIndex = 7;
+        var currentPlotIndex = 9;
 
         function showPlot(index) {{
             document.getElementById('plotFrame').src = plots[index];
         }}
 
         function prevPlot() {{
-            if (currentPlotIndex > 7) {{
+            if (currentPlotIndex > 9) {{
                 currentPlotIndex--;
                 showPlot(currentPlotIndex);
             }}
@@ -507,7 +644,7 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
     html_content += f"""
         <h3>CPU and Memory Usage</h3>
         <div class="grid-container">
-            <iframe src="{image_paths[6]}" title="Ressources"></iframe>
+            <iframe src="{image_paths[8]}" title="Ressources"></iframe>
         </div>
         </div>
     """
