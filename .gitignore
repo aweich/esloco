@@ -7,3 +7,5 @@ InsertionSimulation/__pycache__/
 /test/*
 /out/*
 /output/*
+path-deleted.txt
+setup.py

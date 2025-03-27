@@ -9,7 +9,7 @@ simcov can be used to simulate DNA sequencing experiments to ensure sufficient c
 The simulation and all its dependencies can be installed using `pip` via
 
 ```bash
-pip install xoxo
+pip install simcov
 ```
 
 ---
@@ -19,7 +19,7 @@ pip install xoxo
 Run the simulation on the command line using
 
 ```bash
-python xoxo.px configfile.ini
+python .px configfile.ini
 ```
 
 After the simulation, some basic plots and an interactive overview can be created from the simulation output tables using
@@ -134,6 +134,7 @@ For a more comprehensive analysis, the `simplot.py {config.ini}` command can gen
         <p style="text-align: center;">Log Plot</p>
     </div>
 </div>
+
 ---
 
 ## Advanced Usage
