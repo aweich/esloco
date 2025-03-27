@@ -5,13 +5,16 @@ import logging
 import sys
 
 from utils import track_usage
+import gzip
 
 def get_read_length_distribution_from_real_data(path_to_sequenced_fasta):
     '''
-    Uses an input fasta and generates a custom read length distribution.
+    Uses an input fasta (supports gzipped fasta) and generates a custom read length distribution.
     '''
-    lengths=[]
-    for record in SeqIO.parse(path_to_sequenced_fasta, 'fasta'):
+    lengths = []
+    open_func = gzip.open if path_to_sequenced_fasta.endswith('.gz') else open
+    with open_func(path_to_sequenced_fasta, 'rt') as handle:
+        for record in SeqIO.parse(handle, 'fasta'):
             lengths.append(len(record.seq))
     return lengths
 
