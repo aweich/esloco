@@ -1,6 +1,6 @@
 # SIMCOV - Simulation of coverage expectancy from DNA sequencing experiments
 
-simcov can be used to simulate DNA sequencing experiments to ensure sufficient coverage of critical regions of interests (ROI) or insertions (I).
+> simcov can be used to simulate DNA sequencing experiments to ensure sufficient coverage of critical regions of interests (ROI) or insertions (I).
 
 ### Summary
 
@@ -183,5 +183,21 @@ Generally, if any of the `BED` files provided contain entries with only a chromo
 
 It is also possible to fix the number and/or location of insertions. For this, the `insertion_number_distribution` in the `configurationfile.ini` needs to be set to anything else than `poisson`, which is the default. By doing this, the `insertion_numbers` option will use the defined value as a fixed value, and not as the mean value of a poisson distribution. If the goal is to identify a fixed number of insertions at specific locations, this can be achieved by providing a `bedpath` in the `[I]` section of the `configurationfile.ini`, whhich has the exact same number of entries as `insertion_numbers`.
 
+---
+
 ## Citation & Contribution
 
+> [!NOTE]
+> Useful information that users should know, even when skimming content.
+
+> [!TIP]
+> Helpful advice for doing things better or more easily.
+
+> [!IMPORTANT]
+> Key information users need to know to achieve their goal.
+
+> [!WARNING]
+> Urgent info that needs immediate user attention to avoid problems.
+
+> [!CAUTION]
+> Advises about risks or negative outcomes of certain actions.
