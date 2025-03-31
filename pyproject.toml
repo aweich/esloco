@@ -1,14 +1,23 @@
 [build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "simsim"
-authors = [{name = "aw", email = "aw@aw.com"}]
-readme = "README.md"
-license = {file = "LICENSE"}
-classifiers = ["License :: OSI Approved :: MIT License"]
-dynamic = ["version", "description"]
-
-[project.urls]
-Home = "https://aw.com"
+name = "your_package_name"
+version = "0.1.0"
+description = "Your package description"
+[project]
+name = "your_package_name"
+version = "0.1.0"
+description = "Your package description"
+dependencies = [
+    "biopython",
+    "numpy",
+    "pandas",
+    "joblib",
+    "tqdm_joblib",
+    "psutil",
+    "matplotlib",
+    "scipy",
+    "plotly"
+]
