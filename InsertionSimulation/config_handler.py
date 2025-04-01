@@ -63,6 +63,7 @@ def parse_config(config_file):
         n_barcodes = config.getint("COMMON", "n_barcodes", fallback=1)
         iterations = config.getint("COMMON", "iterations", fallback=1)
         scaling = config.getfloat("COMMON", "scaling", fallback=1.0)
+        no_cov_plots = config.getboolean("COMMON", "no_cov_plots", fallback=False)
         parallel_jobs = config.getint("COMMON", "parallel_jobs", fallback=1)
 
         # Handle coverages and mean_read_lengths safely

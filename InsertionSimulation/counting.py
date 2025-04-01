@@ -45,9 +45,12 @@ def count_matches(insertion_dict, read_dir, scaling, min_overlap):
 
 
                     # Partial insertion: check if the read partially overlaps with the insertion
-                    elif (start < read_start and end > read_start) or \
-                            (start < read_end and end > read_end) or \
-                            (start > read_start and read_end > start):
+                    #---[-- ]
+                    #   [ - ]
+                    #   [ --]---
+                    elif (start >= read_start and end > read_end) or \
+                            ((start <= read_start and end >= read_end) and (start != read_start and end != read_end)) or \
+                            (start < read_start and end <= read_end):
                         if overlap >= min_overlap:  # Ensure the overlap is at least 'x'
                             if random.random() <= scaling:
                                 partial_count += 1

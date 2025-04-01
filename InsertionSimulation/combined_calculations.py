@@ -7,7 +7,7 @@ from counting import count_matches, count_barcode_occurrences
 from read_operations import get_read_length_distribution_from_real_data, generate_read_length_distribution, generate_reads_based_on_coverage 
 from utils import profile_iteration, setup_logging, track_usage
 
-def process_combination(mean_read_length, coverage, genome_size, target_regions, iteration, sequenced_data_path, n_barcodes, barcode_weights, masked_regions,  output_path, scaling, min_overlap_for_detection):
+def process_combination(mean_read_length, coverage, genome_size, target_regions, iteration, sequenced_data_path, n_barcodes, barcode_weights, masked_regions,  output_path, scaling, min_overlap_for_detection, no_cov_plots):
     '''
     Creates a read length distribution based on mean read length and draws artificial reads from it until desired coverage is reached. 
     Then it compares the coordinates of the target regions (ROI or I) with the coordinates of artifical reads of each barcode and checks whether they are partially or fully contained.
@@ -26,7 +26,7 @@ def process_combination(mean_read_length, coverage, genome_size, target_regions,
     custom_cov_coordinates, covered_length = generate_reads_based_on_coverage(genome_size, coverage, precomputed_lengths, n_barcodes, barcode_weights, masked_regions)
     
     #plot coverage only for first iteration of each parameter combination
-    if iteration < 1:
+    if iteration < 1 and not no_cov_plots:
         plot_reads_coverage(genome_size, 1000000, custom_cov_coordinates, mean_read_length, coverage, target_regions, output_path)
     
     # Sanity check for barcoding
@@ -66,7 +66,7 @@ def run_simulation_iteration(iteration_id, param_dictionary, genome_size, target
             param_dictionary['sequenced_data_path'], param_dictionary['n_barcodes'],
             param_dictionary['barcode_weights'], masked_regions,
             param_dictionary['output_path_plots'], param_dictionary['scaling'],
-            param_dictionary['min_overlap_for_detection']
+            param_dictionary['min_overlap_for_detection'], param_dictionary['no_cov_plots']
         )
         results.append(out)
         barcode_distributions.append(barcode_distribution)
