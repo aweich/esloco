@@ -10,7 +10,7 @@ custom_params = {"axes.spines.right": False, "axes.spines.top": False}
 sns.set_theme(style="ticks", rc=custom_params)
 
 #%% preprocessing the simulation output
-raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/test_Case1/Case1_matches_only.csv", sep="\t", header=0)
+raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/Case1_refined/Case1_overlap_matches_only.csv", sep="\t", header=0)
 print(raw["Insertion"].unique())
 
 # Split using the last two underscores to handle problematic entries like 'GBA_x_0_999'
@@ -27,7 +27,7 @@ raw["full_matches"] = raw["full_matches"].astype(int)
 raw["partial_matches"] = raw["partial_matches"].astype(int)
 
 # Group by gene, mean_read_length, and coverage, then average full_matches and partial_matches across all iterations
-averaged_data = raw.groupby(["gene", "mean_read_length", "coverage"], as_index=False)[["full_matches", "partial_matches"]].median()
+averaged_data = raw.groupby(["gene", "mean_read_length", "coverage"], as_index=False)[["full_matches", "partial_matches"]].mean()
 
 print(averaged_data.head())
 #%%
@@ -48,9 +48,9 @@ This is the code that works with multi-columned simulation input data
 
 # Load data (assuming two DataFrames: sequencing_data and simulation_data)
 
-sequencing_data = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/full_matches.bed", sep="\t",  
+sequencing_data = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/full_matches_filtered.bed", sep="\t",  
                               usecols=[3,4], index_col=0, names=["gene", "count"])
-sequencing_data_partial = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/partial_matches_final.bed", sep="\t",  
+sequencing_data_partial = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/partial_matches_filtered_final.bed", sep=" ",  
                               usecols=[3,4], index_col=0, names=["gene", "count"])
 
 #simulation_data = pd.read_csv("/home/weichan/temporary/Data/Simulation/dummy_full_matches.bed", sep="\t",  
@@ -147,7 +147,6 @@ plt.ylabel("Pearson Correlation")
 plt.title("Covariate-Level Correlation (Partial)")
 plt.show()
 
-sys.exit()
 
 #%% Band Altmann to assess whetehr there are udnerlyign biases
 
@@ -155,14 +154,15 @@ sys.exit()
 
 full_combined = pd.concat([sequencing_data, simulation_data], axis=1).fillna(0)
 
-mean_counts = (full_combined["count"].values + full_combined.iloc[:,-1].values) / 2
-diff_counts = full_combined["count"].values - full_combined.iloc[:,-1].values
+mean_counts = (full_combined["count"].values + full_combined.loc[:,25].values) / 2 #18 is coverage
+diff_counts = full_combined["count"].values - full_combined.loc[:,25].values
 
 diff_counts = np.cbrt(diff_counts)
 mean_counts = np.cbrt(mean_counts)
 
 mean_diff = np.mean(diff_counts)
 std_diff = np.std(diff_counts)
+
 
 plt.figure(figsize=(5, 5))
 plt.scatter(mean_counts, diff_counts, alpha=0.5, edgecolors='k', linewidth=0.5, label='Data Points')
@@ -175,11 +175,25 @@ plt.title("Bland-Altman Plot (Full) (CBRT)")
 plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 plt.show()
 
+upper_limit = mean_diff + 1.96 * std_diff
+lower_limit = mean_diff - 1.96 * std_diff
+
+# Count the number of points within the range
+within_limits = np.sum((diff_counts >= lower_limit) & (diff_counts <= upper_limit))
+total_points = len(diff_counts)
+
+print(within_limits)
+print(total_points)
+# Calculate the percentage of points within limits
+percentage_within_limits = (within_limits / total_points) * 100
+
+print(f"Percentage of points within ±1.96 SD: {percentage_within_limits:.2f}%")
+
 #%%
 partial_combined = pd.concat([sequencing_data_partial, simulation_data_partial], axis=1).fillna(0)
 print(partial_combined.tail())
-partial_mean_counts = (partial_combined["count"].values + partial_combined.iloc[:,-1].values) / 2
-partial_diff_counts = partial_combined["count"].values - partial_combined.iloc[:,-1].values
+partial_mean_counts = (partial_combined["count"].values + partial_combined.loc[:,25].values) / 2
+partial_diff_counts = partial_combined["count"].values - partial_combined.loc[:,25].values
 
 print(len(partial_diff_counts))
 partial_diff_counts = np.cbrt(partial_diff_counts)
@@ -194,13 +208,28 @@ print(partial_mean_diff)
 plt.figure(figsize=(5, 5))
 plt.scatter(partial_mean_counts, partial_diff_counts, alpha=0.5, edgecolors='k', linewidth=0.5, label='Data Points')
 plt.axhline(partial_mean_diff, color='red', linestyle='--', label='Mean Difference')
-plt.axhline(partial_mean_diff + 1.96 * std_diff, color='blue', linestyle='--', label='+1.96 SD')
-plt.axhline(partial_mean_diff - 1.96 * std_diff, color='blue', linestyle='--', label='-1.96 SD')
+plt.axhline(partial_mean_diff + 1.96 * partial_std_diff, color='blue', linestyle='--', label='+1.96 SD')
+plt.axhline(partial_mean_diff - 1.96 * partial_std_diff, color='blue', linestyle='--', label='-1.96 SD')
 plt.xlabel("Mean of Counts")
 plt.ylabel("Difference (Seq - Sim)")
 plt.title("Bland-Altman Plot (Partial) (CBRT)")
 plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 plt.show()
+
+# Define upper and lower limits of agreement
+upper_limit = partial_mean_diff + 1.96 * partial_std_diff
+lower_limit = partial_mean_diff - 1.96 * partial_std_diff
+
+# Count the number of points within the range
+within_limits = np.sum((partial_diff_counts >= lower_limit) & (partial_diff_counts <= upper_limit))
+total_points = len(partial_diff_counts)
+print(within_limits)
+print(total_points)
+
+# Calculate the percentage of points within limits
+percentage_within_limits = (within_limits / total_points) * 100
+
+print(f"Percentage of points within ±1.96 SD: {percentage_within_limits:.2f}%")
 
 ###
 ###
@@ -219,7 +248,7 @@ print(combined_data_partial.head())
 plt.figure(figsize=(15, 10))
 for n, gene in enumerate(combined_data_partial.index):
     # Plot the rest of the columns as a connected line
-    plt.plot(range(len(combined_data_partial.columns)), np.log10(combined_data_partial.loc[gene]), marker='o', label=gene)
+    plt.plot(combined_data_partial.columns.astype(str), np.log10(combined_data_partial.loc[gene]), marker='o', label=gene)
 
 # Plot horizontal line for the first column
 for n, gene in enumerate(combined_data_partial.index):
@@ -230,7 +259,7 @@ for n, gene in enumerate(combined_data_partial.index):
     plt.text(x=len(combined_data_partial.columns[1:]) + 0.5, y=np.log10(combined_data_partial.iloc[n, 0]), s=gene,
              ha='left', va='center', fontsize=10, alpha=0.7)
 
-plt.xlabel("Coverage / 2")
+plt.xlabel("Coverage")
 plt.ylabel("Log10 Counts")
 plt.title("Lineplot of Partial Counts for Each Gene")
 plt.xticks()
@@ -248,7 +277,7 @@ print(combined_data_full.head())
 plt.figure(figsize=(15, 10))
 for n, gene in enumerate(combined_data_full.index):
     # Plot the rest of the columns as a connected line
-    plt.plot(range(len(combined_data_full.columns)), combined_data_full.loc[gene], marker='o', label=gene)
+    plt.plot(combined_data_full.columns.astype(str), combined_data_full.loc[gene], marker='o', label=gene)
 
 # Plot horizontal line for the first column
 for n, gene in enumerate(combined_data_full.index):
@@ -259,7 +288,7 @@ for n, gene in enumerate(combined_data_full.index):
     plt.text(x=len(combined_data_full.columns[1:]) + 0.5, y=combined_data_full.iloc[n, 0], s=gene,
              ha='left', va='center', fontsize=10, alpha=0.7)
 
-plt.xlabel("Coverage / 2")
+plt.xlabel("Coverage")
 plt.ylabel("Counts")
 plt.title("Lineplot of Full Counts for Each Gene")
 plt.xticks()
@@ -267,49 +296,118 @@ plt.legend(title="Gene", bbox_to_anchor=(0.5, -0.1), loc='upper center', ncol=8)
 plt.tight_layout()
 plt.show()
 
-# %%
-"""
-This is the code, if the input data only has one column, i.e. if one specific condition is present that needs to be compared against the True Positive
-"""
-
-sequencing_data = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/full_matches.bed", sep="\t",  
-                              usecols=[3,4], index_col=0, names=["gene", "count"])
-sequencing_data_partial = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/partial_matches_final.bed", sep="\t",  
-                              usecols=[3,4], index_col=0, names=["gene", "count"])
-
-
-simulation_data = pd.read_csv("/home/weichan/temporary/Data/Simulation/dummy_full_matches.bed", sep="\t",  
-                              usecols=[3,4], index_col=0, names=["gene", "count"])
-simulation_data_partial = pd.read_csv("/home/weichan/temporary/Data/Simulation/dummy_partial_matches_final.bed", sep="\t",  
-                              usecols=[3,4], index_col=0, names=["gene", "count"])
-
-# Ensure both have the same order of genes
-sequencing_data = sequencing_data.sort_index()
-simulation_data = simulation_data.sort_index()
-sequencing_data_partial = sequencing_data_partial.sort_index()
-simulation_data_partial = simulation_data_partial.sort_index()
-
-print(simulation_data_partial.head())
-#%%
-# Compute correlation
-pearson_corr, _ = pearsonr(sequencing_data.values.flatten(), simulation_data.values.flatten())
-pearson_corr_partial, _ = pearsonr(sequencing_data_partial.values.flatten(), simulation_data_partial.values.flatten())
-
-print(f"Pearson Correlation (Full): {pearson_corr:.3f}")
-print(f"Pearson Correlation (Partial): {pearson_corr_partial:.3f}")
 
 #%%
-plt.figure(figsize=(6,6))
-sns.regplot(x=sequencing_data.values.flatten(), y=simulation_data.values.flatten(), scatter_kws={'alpha': 0.5}, line_kws={"color": "red"})
-plt.xlabel("Sequencing Counts")
-plt.ylabel("Simulation Counts")
-plt.title(f"Pearson Correlation (Full): {pearson_corr:.3f}")
+
+data = combined_data_full.reset_index().melt(id_vars='gene', var_name='Coverage', value_name='Full Matches')
+# Static plot with seaborn
+plt.figure(figsize=(20, 10))
+sns.lineplot(data=data,
+             x='gene', y='Full Matches', hue='Coverage', markers=True, dashes=False, linewidth=3, alpha=0.7,
+             palette=['red' if cov == 'count' else 'grey' for cov in data['Coverage'].unique()])
+plt.xlabel('Coverage')
+plt.ylabel('Mean Full Matches')
+plt.title('Lineplot of Full Matches by Coverage and Gene')
+plt.legend(title='Gene', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.xticks(rotation=90)
+plt.tight_layout()
 plt.show()
 
-plt.figure(figsize=(6,6))
-sns.regplot(x=sequencing_data_partial.values.flatten(), y=simulation_data_partial.values.flatten(), scatter_kws={'alpha': 0.5}, line_kws={"color": "red"})
-plt.xlabel("Sequencing Counts")
-plt.ylabel("Simulation Counts")
-plt.title(f"Pearson Correlation (Partial): {pearson_corr_partial:.3f}")
+data2 = combined_data_partial.reset_index().melt(id_vars='gene', var_name='Coverage', value_name='Partial Matches')
+# Static plot with seaborn
+plt.figure(figsize=(20, 10))
+sns.lineplot(data=data2,
+             x='gene', y='Partial Matches', hue='Coverage', markers=True, dashes=False, linewidth=3, alpha=0.7,
+             palette=['red' if cov == 'count' else 'grey' for cov in data['Coverage'].unique()])
+plt.xlabel('Coverage')
+plt.ylabel('Mean Partial Matches')
+plt.title('Lineplot of Partial Matches by Coverage and Gene')
+plt.legend(title='Gene', bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.xticks(rotation=90)
+plt.tight_layout()
 plt.show()
+
+
+#%% Concordance correlation coefficient: Measures agreement and precision (better than pearson)
+
+# Function to calculate CCC
+def concordance_correlation_coefficient(y_true, y_pred):
+    """Computes Concordance Correlation Coefficient (CCC)."""
+    mean_x = np.mean(y_true)
+    mean_y = np.mean(y_pred)
+    var_x = np.var(y_true)
+    var_y = np.var(y_pred)
+    covariance = np.cov(y_true, y_pred)[0, 1]
+
+    ccc = (2 * covariance) / (var_x + var_y + (mean_x - mean_y) ** 2)
+    return ccc
+
+#%%
+# Compute correlation matrix
+# Iterate over each column in simulation_data_partial
+# Create a grid of subplots for each column
+num_columns = len(simulation_data_partial.columns)
+fig, axes = plt.subplots(nrows=int(np.ceil(num_columns / 3)), ncols=3, figsize=(15, 5 * int(np.ceil(num_columns / 3))))
+axes = axes.flatten()
+
+for i, column in enumerate(simulation_data_partial.columns):
+    x = simulation_data_partial[column].values  # Current column for x
+    y = sequencing_data_partial["count"].values  # y remains the same
+
+    # Compute CCC for the current column
+    ccc_value = concordance_correlation_coefficient(x, y)
+    print(f"Concordance Correlation Coefficient (CCC) for {column}: {round(ccc_value, 4)}")
+
+    # Plot scatter and regression line in the corresponding subplot
+    sns.regplot(ax=axes[i], x=x, y=y, scatter_kws={'alpha': 0.4}, line_kws={"color": "red"})
+    axes[i].set_title(f"{column} (CCC={round(ccc_value, 3)})")
+    axes[i].set_xlabel("Simulation Counts")
+    axes[i].set_ylabel("Sequencing Counts")
+
+    # Add the true line (1:1 line) in black
+    min_val = min(min(x), min(y))
+    max_val = max(max(x), max(y))
+    axes[i].plot([min_val, max_val], [min_val, max_val], '--', color='black', label="1:1 Line")
+
+# Remove any unused subplots
+for j in range(i + 1, len(axes)):
+    fig.delaxes(axes[j])
+
+# Adjust layout
+plt.tight_layout()
+plt.show()
+
+# Compute correlation matrix full data
+num_columns = len(simulation_data.columns)
+fig, axes = plt.subplots(nrows=int(np.ceil(num_columns / 3)), ncols=3, figsize=(15, 5 * int(np.ceil(num_columns / 3))))
+axes = axes.flatten()
+
+for i, column in enumerate(simulation_data.columns):
+    x = simulation_data[column].values  # Current column for x
+    y = sequencing_data["count"].values  # y remains the same
+
+    # Compute CCC for the current column
+    ccc_value = concordance_correlation_coefficient(x, y)
+    print(f"Concordance Correlation Coefficient (CCC) for {column}: {round(ccc_value, 4)}")
+
+    # Plot scatter and regression line in the corresponding subplot
+    sns.regplot(ax=axes[i], x=x, y=y, scatter_kws={'alpha': 0.4}, line_kws={"color": "red"})
+    axes[i].set_title(f"{column} (CCC={round(ccc_value, 3)})")
+    axes[i].set_xlabel("Simulation Counts")
+    axes[i].set_ylabel("Sequencing Counts")
+
+    # Add the true line (1:1 line) in black
+    min_val = min(min(x), min(y))
+    max_val = max(max(x), max(y))
+    axes[i].plot([min_val, max_val], [min_val, max_val], '--', color='black', label="1:1 Line")
+
+# Remove any unused subplots
+for j in range(i + 1, len(axes)):
+    fig.delaxes(axes[j])
+
+# Adjust layout
+plt.tight_layout()
+plt.show()
+
+
 # %%

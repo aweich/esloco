@@ -39,12 +39,12 @@ def main():
 
     #specific plots
     print("Starting plot generation...")
-    barplot_absolute= barplot_absolute_matches(matches_data, output_path=output_path_plots)
-    barplot_barcodes = barplot_absolute_matches_barcodes(matches_data, output_path=output_path_plots)
-    total_reads, reads_per_barcode = plot_barcode_distribution(basic_data, output_path=output_path_plots)
-    lineplot_full, lineplot_partial = plot_lineplot(matches_data, output_path=output_path_plots)
-    lineplot_panel_full, lineplot_panel_partial = plot_isolated_lineplot(matches_data, output_path=output_path_plots, filter=12) #make command line args possible?
-    ressources = plot_log_data(log, output_path=output_path_plots)
+    barplot_absolute= barplot_absolute_matches(experiment_name, matches_data, output_path=output_path_plots)
+    barplot_barcodes = barplot_absolute_matches_barcodes(experiment_name, matches_data, output_path=output_path_plots)
+    total_reads, reads_per_barcode = plot_barcode_distribution(experiment_name, basic_data, output_path=output_path_plots)
+    lineplot_full, lineplot_partial = plot_lineplot(experiment_name, matches_data, output_path=output_path_plots)
+    lineplot_panel_full, lineplot_panel_partial = plot_isolated_lineplot(experiment_name, matches_data, output_path=output_path_plots, filter=12) #make command line args possible?
+    ressources = plot_log_data(experiment_name, log, output_path=output_path_plots)
     
     all_plots = [barplot_absolute, barplot_barcodes,
                  total_reads, reads_per_barcode, 

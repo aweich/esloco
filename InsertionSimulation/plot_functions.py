@@ -32,11 +32,11 @@ def read_data(filepath):
 
 #%%
 
-def barplot_absolute_matches(data, output_path):
+def barplot_absolute_matches(experiment_name, data, output_path):
 
     # Output paths
-    output_svg = os.path.join(output_path, "Barplot_absolute_numbers.svg")
-    output_html = os.path.join(output_path, "Barplot_absolute_numbers.html")
+    output_svg = os.path.join(output_path, f"{experiment_name}_Barplot_absolute_numbers.svg")
+    output_html = os.path.join(output_path, f"{experiment_name}_Barplot_absolute_numbers.html")
 
     # Extract iteration number from the 'Insertion' column
     data['Iteration'] = data['Insertion'].str.extract(r'_(\d+)$').astype(int)
@@ -104,11 +104,11 @@ def barplot_absolute_matches(data, output_path):
 #data = pd.read_csv("/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/roi_tcr_test/roi_tcr_test_matches_table.csv", sep="\t")  # Assuming tab-separated values
 #barplot_absolute_matches(data, output_path="/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/roi_tcr_test/")
 #%%
-def barplot_absolute_matches_barcodes(data, output_path):
+def barplot_absolute_matches_barcodes(experiment_name, data, output_path):
 
      # Output paths
-    output_svg = os.path.join(output_path, "Barplot_Barcode_absolute_numbers.svg")
-    output_html = os.path.join(output_path, "Barplot_Barcode_absolute_numbers.html")
+    output_svg = os.path.join(output_path, f"{experiment_name}_Barplot_Barcode_absolute_numbers.svg")
+    output_html = os.path.join(output_path, f"{experiment_name}_Barplot_Barcode_absolute_numbers.html")
         
     data['Barcode'] = data['Insertion'].str.extract(r'_(\d+)_').astype(int)
     barcode_color_map = get_barcode_color_mapping(data['Barcode'].unique())
@@ -164,14 +164,14 @@ def barplot_absolute_matches_barcodes(data, output_path):
 #barplot_absolute_matches_barcodes(data, output_path="/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/roi_tcr_test/")
 
 #%%
-def plot_barcode_distribution(data, output_path):
+def plot_barcode_distribution(experiment_name, data, output_path):
 
     #output
-    output_path_total = os.path.join(output_path, "barplot_total_reads.svg")
-    output_path_perc = os.path.join(output_path, "barplot_percentage_reads.svg")
+    output_path_total = os.path.join(output_path, f"{experiment_name}_barplot_total_reads.svg")
+    output_path_perc = os.path.join(output_path, f"{experiment_name}_barplot_percentage_reads.svg")
     
-    output_html_total = os.path.join(output_path, "barplot_total_reads.html")
-    output_html_perc = os.path.join(output_path, "barplot_percentage_reads.html")
+    output_html_total = os.path.join(output_path, f"{experiment_name}_barplot_total_reads.html")
+    output_html_perc = os.path.join(output_path, f"{experiment_name}_barplot_percentage_reads.html")
     
     os.makedirs(os.path.dirname(output_path), exist_ok=True)  # Ensure the folder exists
     
@@ -219,14 +219,14 @@ def plot_barcode_distribution(data, output_path):
 #plot_barcode_distribution(basic_data, output_path="./output/tcr_20/")  
 
 # %%
-def plot_lineplot(data, output_path):
+def plot_lineplot(experiment_name, data, output_path):
     
     #output
-    output_path_partial = os.path.join(output_path, "lineplot_partial_matches.svg")
-    output_path_full = os.path.join(output_path, "lineplot_full_matches.svg")
+    output_path_partial = os.path.join(output_path, f"{experiment_name}_lineplot_partial_matches.svg")
+    output_path_full = os.path.join(output_path, f"{experiment_name}_lineplot_full_matches.svg")
     
-    output_html_partial = os.path.join(output_path, "lineplot_partial_matches.html")
-    output_html_full = os.path.join(output_path, "lineplot_full_matches.html")
+    output_html_partial = os.path.join(output_path, f"{experiment_name}_lineplot_partial_matches.html")
+    output_html_full = os.path.join(output_path, f"{experiment_name}_lineplot_full_matches.html")
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)  # Ensure the folder exists
 
@@ -306,17 +306,17 @@ def plot_lineplot(data, output_path):
 #plot_lineplot(data, output_path="../out/insertion_test/plots/")
 
 #%%
-def plot_isolated_lineplot(data, output_path, filter=20, id_list=[]):
+def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_list=[]):
 
     if filter > 20 or len(id_list) > 20:
         print("Individual plots are limited to 20 IDs. Please reduce the filter value or select up to 20 specific IDs.")
         sys.exit()
     
     # Output paths
-    output_path_partial = os.path.join(output_path, "panel_lineplot_partial_matches.svg")
-    output_path_full = os.path.join(output_path, "panel_lineplot_full_matches.svg")
-    output_html_partial = os.path.join(output_path, "panel_lineplot_partial_matches.html")
-    output_html_full = os.path.join(output_path, "panel_lineplot_full_matches.html")
+    output_path_partial = os.path.join(output_path, f"{experiment_name}_panel_lineplot_partial_matches.svg")
+    output_path_full = os.path.join(output_path, f"{experiment_name}_panel_lineplot_full_matches.svg")
+    output_html_partial = os.path.join(output_path, f"{experiment_name}_panel_lineplot_partial_matches.html")
+    output_html_full = os.path.join(output_path, f"{experiment_name}_panel_lineplot_full_matches.html")
 
     # Use loaded data
     if data["Insertion"].str.contains("insertion").any():
@@ -487,7 +487,7 @@ def parse_log(log_file):
 
 #%%
 # Extract data for plotting
-def plot_log_data(logfile, output_path):
+def plot_log_data(experiment_name, logfile, output_path):
 
     process_data=parse_log(logfile)
     
@@ -517,10 +517,10 @@ def plot_log_data(logfile, output_path):
     fig.update_yaxes(title_text='CPU Usage (%)', range=[0, 100], secondary_y=True)
     fig.update_layout(title_text='Memory and CPU Usage Over Time', legend=dict(orientation="h", yanchor="bottom", y=1.05, xanchor="right", x=1))
 
-    html_output_path = os.path.join(output_path, "log_plot.html")
+    html_output_path = os.path.join(output_path, f"{experiment_name}_log_plot.html")
     fig.write_html(html_output_path)
     
-    svg_output_path = os.path.join(output_path, "log_plot.svg")
+    svg_output_path = os.path.join(output_path, f"{experiment_name}_log_plot.svg")
     fig.write_image(svg_output_path, format='svg')
 
     print(f"Ressource plot saved as {html_output_path}")

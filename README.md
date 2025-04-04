@@ -68,6 +68,7 @@ Below are the configuration options for the simulation, divided into three secti
 | `coverages`                    | List of coverages used for the simulation.                                                         | `[1]`                                                                      |
 | `mean_read_lengths`            | List of mean read lengths used for the simulation; each combination of coverages and lengths is performed per iteration. | `[1000]`                                                              |
 | `blocked_regions_bedpath`      | BED file with regions that will be blocked from read generation.                                    | `None`                                                               |
+ `no_cov_plots`      | Prevents the simulation from drawing coverage plots during the first iteration. `True` significantly speeds up the simulation for small iteration numbers or high (`>25`) coverages.                                    | `False`                                                               |
 
 #### `[ROI]`
 
