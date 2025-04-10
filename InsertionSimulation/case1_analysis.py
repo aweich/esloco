@@ -10,7 +10,7 @@ custom_params = {"axes.spines.right": False, "axes.spines.top": False}
 sns.set_theme(style="ticks", rc=custom_params)
 
 #%% preprocessing the simulation output
-raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/Case1_refined/Case1_overlap_matches_only.csv", sep="\t", header=0)
+raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/Case1_bias/Case1_bias2_matches_only.csv", sep="\t", header=0)
 print(raw["Insertion"].unique())
 
 # Split using the last two underscores to handle problematic entries like 'GBA_x_0_999'
@@ -27,7 +27,7 @@ raw["full_matches"] = raw["full_matches"].astype(int)
 raw["partial_matches"] = raw["partial_matches"].astype(int)
 
 # Group by gene, mean_read_length, and coverage, then average full_matches and partial_matches across all iterations
-averaged_data = raw.groupby(["gene", "mean_read_length", "coverage"], as_index=False)[["full_matches", "partial_matches"]].mean()
+averaged_data = raw.groupby(["gene", "mean_read_length", "coverage"], as_index=False)[["full_matches", "partial_matches"]].median()
 
 print(averaged_data.head())
 #%%
@@ -66,7 +66,7 @@ simulation_data = simulation_data.sort_index()
 sequencing_data_partial = sequencing_data_partial.sort_index()
 simulation_data_partial = simulation_data_partial.sort_index()
 
-#%%
+
 # combination of full and partial matches
 #%% All vs all: i.e. also correlation between sim partial vs seq full 
 # -> if more than one cov column is present, it shows the best correlation
@@ -154,26 +154,14 @@ plt.show()
 
 full_combined = pd.concat([sequencing_data, simulation_data], axis=1).fillna(0)
 
-mean_counts = (full_combined["count"].values + full_combined.loc[:,25].values) / 2 #18 is coverage
-diff_counts = full_combined["count"].values - full_combined.loc[:,25].values
+mean_counts = (full_combined["count"].values + full_combined.loc[:,15].values) / 2 #18 is coverage
+diff_counts = full_combined["count"].values - full_combined.loc[:,15].values
 
 diff_counts = np.cbrt(diff_counts)
 mean_counts = np.cbrt(mean_counts)
 
 mean_diff = np.mean(diff_counts)
 std_diff = np.std(diff_counts)
-
-
-plt.figure(figsize=(5, 5))
-plt.scatter(mean_counts, diff_counts, alpha=0.5, edgecolors='k', linewidth=0.5, label='Data Points')
-plt.axhline(mean_diff, color='red', linestyle='--', label='Mean Difference')
-plt.axhline(mean_diff + 1.96 * std_diff, color='blue', linestyle='--', label='+1.96 SD')
-plt.axhline(mean_diff - 1.96 * std_diff, color='blue', linestyle='--', label='-1.96 SD')
-plt.xlabel("Mean of Counts")
-plt.ylabel("Difference (Seq - Sim)")
-plt.title("Bland-Altman Plot (Full) (CBRT)")
-plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-plt.show()
 
 upper_limit = mean_diff + 1.96 * std_diff
 lower_limit = mean_diff - 1.96 * std_diff
@@ -189,11 +177,32 @@ percentage_within_limits = (within_limits / total_points) * 100
 
 print(f"Percentage of points within ±1.96 SD: {percentage_within_limits:.2f}%")
 
+# Identify points outside the limits
+outside_points = np.where((diff_counts < lower_limit) | (diff_counts > upper_limit))[0]
+
+# Plot Bland-Altman plot with labels for points outside the limits
+plt.figure(figsize=(5, 5))
+plt.scatter(mean_counts, diff_counts, alpha=0.5, edgecolors='k', linewidth=0.5, label='Data Points')
+plt.axhline(mean_diff, color='red', linestyle='--', label='Mean Difference')
+plt.axhline(mean_diff + 1.96 * std_diff, color='blue', linestyle='--', label='+1.96 SD')
+plt.axhline(mean_diff - 1.96 * std_diff, color='blue', linestyle='--', label='-1.96 SD')
+
+# Add labels for points outside the limits
+for idx in outside_points:
+    plt.text(mean_counts[idx], diff_counts[idx], full_combined.index[idx], fontsize=8, color='red')
+
+plt.xlabel("Mean of Counts")
+plt.ylabel("Difference (Seq - Sim)")
+plt.title("Bland-Altman Plot (Full) (CBRT)")
+plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+plt.show()
+sys.exit()
 #%%
 partial_combined = pd.concat([sequencing_data_partial, simulation_data_partial], axis=1).fillna(0)
+
 print(partial_combined.tail())
-partial_mean_counts = (partial_combined["count"].values + partial_combined.loc[:,25].values) / 2
-partial_diff_counts = partial_combined["count"].values - partial_combined.loc[:,25].values
+partial_mean_counts = (partial_combined["count"].values + partial_combined.loc[:,15].values) / 2
+partial_diff_counts = partial_combined["count"].values - partial_combined.loc[:,15].values
 
 print(len(partial_diff_counts))
 partial_diff_counts = np.cbrt(partial_diff_counts)
@@ -204,17 +213,6 @@ partial_mean_diff = np.mean(partial_diff_counts)
 partial_std_diff = np.std(partial_diff_counts)
 
 print(partial_mean_diff)
-
-plt.figure(figsize=(5, 5))
-plt.scatter(partial_mean_counts, partial_diff_counts, alpha=0.5, edgecolors='k', linewidth=0.5, label='Data Points')
-plt.axhline(partial_mean_diff, color='red', linestyle='--', label='Mean Difference')
-plt.axhline(partial_mean_diff + 1.96 * partial_std_diff, color='blue', linestyle='--', label='+1.96 SD')
-plt.axhline(partial_mean_diff - 1.96 * partial_std_diff, color='blue', linestyle='--', label='-1.96 SD')
-plt.xlabel("Mean of Counts")
-plt.ylabel("Difference (Seq - Sim)")
-plt.title("Bland-Altman Plot (Partial) (CBRT)")
-plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-plt.show()
 
 # Define upper and lower limits of agreement
 upper_limit = partial_mean_diff + 1.96 * partial_std_diff
@@ -228,9 +226,30 @@ print(total_points)
 
 # Calculate the percentage of points within limits
 percentage_within_limits = (within_limits / total_points) * 100
-
 print(f"Percentage of points within ±1.96 SD: {percentage_within_limits:.2f}%")
 
+# Identify points outside the limits
+outside_points = np.where((partial_diff_counts < lower_limit) | (partial_diff_counts > upper_limit))[0]
+
+# Plot Bland-Altman plot with labels for points outside the limits
+plt.figure(figsize=(5, 5))
+plt.scatter(partial_mean_counts, partial_diff_counts, alpha=0.5, edgecolors='k', linewidth=0.5, label='Data Points')
+plt.axhline(partial_mean_diff, color='red', linestyle='--', label='Mean Difference')
+plt.axhline(partial_mean_diff + 1.96 * partial_std_diff, color='blue', linestyle='--', label='+1.96 SD')
+plt.axhline(partial_mean_diff - 1.96 * partial_std_diff, color='blue', linestyle='--', label='-1.96 SD')
+
+# Add labels for points outside the limits
+for idx in outside_points:
+    plt.text(partial_mean_counts[idx], partial_diff_counts[idx], partial_combined.index[idx], fontsize=8, color='red')
+
+plt.xlabel("Mean of Counts")
+plt.ylabel("Difference (Seq - Sim)")
+plt.title("Bland-Altman Plot (Partial) (CBRT)")
+plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+plt.show()
+
+# Print the indices of points outside the limits
+print("Indices of points outside the limits:", outside_points)
 ###
 ###
 ###
@@ -346,6 +365,8 @@ def concordance_correlation_coefficient(y_true, y_pred):
 # Compute correlation matrix
 # Iterate over each column in simulation_data_partial
 # Create a grid of subplots for each column
+
+print(simulation_data_partial)
 num_columns = len(simulation_data_partial.columns)
 fig, axes = plt.subplots(nrows=int(np.ceil(num_columns / 3)), ncols=3, figsize=(15, 5 * int(np.ceil(num_columns / 3))))
 axes = axes.flatten()
@@ -410,4 +431,101 @@ plt.tight_layout()
 plt.show()
 
 
+# %% bias
+import ast
+
+raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/Case1_bias/Case1_bias_matches_table.csv", sep="\t", header=0)
+# Split using the last two underscores to handle problematic entries like 'GBA_x_0_999'
+raw[["gene", "Barcode", "Iteration"]] = raw["Insertion"].str.rsplit("_", n=2, expand=True)
+bias_list = []
+bias_list.extend(raw["bias"].explode())
+print(bias_list)
+float_list = [val for sublist in bias_list for val in ast.literal_eval(sublist)]
+#%%
+print(len(float_list))
+print(type(float_list))  # Should be <class 'list'>
+print(type(float_list[0]))  # Should be <class 'float'>
+
+# Create a seaborn histogram for all the elements in the bias list
+plt.figure(figsize=(10, 6))
+sns.histplot([x for x in float_list if -1 <= x <= 1], color="blue", alpha=0.7)
+plt.title("Density Plot of Bias")
+plt.xlabel("Bias")
+plt.ylabel("Density")
+plt.show()
+
+# %%
+roi = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/roi_info.csv", sep="\t", header=0)
+
+print(roi.head())
+plt.figure(figsize=(10, 6))
+sns.histplot(roi, x=roi["Lenght"], color="blue", alpha=0.4)
+plt.show()
+# %%
+# Ensure both have the same order of genes
+sequencing_data = sequencing_data.sort_index()
+simulation_data = simulation_data.sort_index()
+sequencing_data_partial = sequencing_data_partial.sort_index()
+simulation_data_partial = simulation_data_partial.sort_index()
+
+print(sequencing_data.head())
+print(simulation_data.head())
+#merged = pd.merge(sequencing_data, simulation_data, left_index=True, right_index=True)
+merged = pd.merge(sequencing_data_partial, simulation_data_partial, left_index=True, right_index=True)
+#%%
+# Create individual panels for each gene
+num_genes = len(merged.index)
+fig, axes = plt.subplots(nrows=int(np.ceil(num_genes / 5)), ncols=5, figsize=(15, 20))
+axes = axes.flatten()
+
+# Determine the global y-axis limits
+y_min = merged.min().min()
+y_max = merged.max().max()
+
+for i, gene in enumerate(merged.index):
+    ax = axes[i]
+    gene_data = merged.loc[gene]
+    # Plot the first value ("count") as a red dot
+    ax.scatter(0, gene_data["count"], color="red", zorder=2, s=40)
+    # Plot the other column values as black dots with alpha 0.5
+    ax.scatter(range(1, len(gene_data)), gene_data.iloc[1:], color="black", alpha=0.5, s=40, zorder=1)
+    # Connect the dots with a line
+    ax.plot(range(len(gene_data)), gene_data, color="black", alpha=0.2, zorder=0)
+    ax.set_title(gene)
+    ax.set_xticks(range(len(gene_data)))
+    ax.set_xticklabels(["count"] + list(gene_data.index[1:]), rotation=45, ha="right")
+    ax.set_ylabel("Values")
+    ax.set_ylim(y_min, y_max)  # Set the same y-axis limits for all subplots
+
+# Remove any unused subplots
+for j in range(i + 1, len(axes)):
+    fig.delaxes(axes[j])
+
+plt.tight_layout()
+plt.show()
+
+#%%
+# Function to plot data for a specific gene
+def plot_gene_data(gene_name):
+    if gene_name not in merged.index:
+        print(f"Gene '{gene_name}' not found in the data.")
+        return
+    
+    gene_data = merged.loc[gene_name]
+    plt.figure(figsize=(4, 4))
+    # Plot the first value ("count") as a red dot
+    plt.scatter(0, gene_data["count"], color="red", zorder=2, s=40, label="Sequencing Count")
+    # Plot the other column values as black dots with alpha 0.5
+    plt.scatter(range(1, len(gene_data)), gene_data.iloc[1:], color="black", alpha=0.5, s=40, label="Simulation Counts")
+    # Connect the dots with a line
+    plt.plot(range(len(gene_data)), gene_data, color="black", alpha=0.2, zorder=0)
+    plt.title(f"Data for Gene: {gene_name}")
+    plt.xticks(range(len(gene_data)), ["count"] + list(gene_data.index[1:]), rotation=45, ha="right")
+    plt.ylabel("Values")
+    plt.ylim(y_min, y_max)  # Use the same y-axis limits as the global plot
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+plot_gene_data("MAPT")  # Example gene name
 # %%
