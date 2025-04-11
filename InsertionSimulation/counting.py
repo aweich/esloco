@@ -38,7 +38,7 @@ def count_matches(insertion_dict, read_dir, scaling, min_overlap):
         else:
             start = values["start"]
             end = values["end"]
-        countdata = {'Insertion': key}
+        countdata = {'target_region': key}
         overlaps=[]
         bias_list=[]
         for read, read_positions in read_dir.items():
@@ -82,6 +82,7 @@ def count_matches(insertion_dict, read_dir, scaling, min_overlap):
         countdata['full_matches'] = full_length_count
         countdata['partial_matches'] = partial_count
         countdata['overlap'] = overlaps
+        countdata["on_target_bases"] = sum(eval(x) if isinstance(x, str) else x for x in countdata["overlap"])
         countdata['bias'] = bias_list
         data.append(countdata)
 
@@ -97,48 +98,3 @@ def count_barcode_occurrences(dictionary):
         suffix = key.split("_")[-1]  # Get the last part of the key after "_"
         suffix_count[suffix] = suffix_count.get(suffix, 0) + 1  # Increment count for the suffix
     return suffix_count
-
-def normalize_ROI_by_length(roi_input_bed, roi_counted_insertions, scaling_factor=1):
-    '''
-    Normalizes found ROI matches by their length and normalizes by number of reads
-    '''
-    results_full = []
-    results_partial = []
-    results_combined=[]
-    lengths=[]
-    for _, row_counted in roi_counted_insertions.iterrows():
-        # Initialize length to None
-        length = None
-        
-        # Iterate through each row in df1 to find partial match
-        for _, row_initial in roi_input_bed.iterrows():
-            if row_initial.id in row_counted.Insertion:
-                # Calculate the length
-                length = row_initial.end - row_initial.start
-                lengths.append(length)
-                break
-        
-        if length is not None:
-            # Calculate the metric
-            metric_full = ((row_counted['full_matches'] / length) * scaling_factor) / row_counted.Total_Reads #Reads per base (sf=1, kb sf=1000, or mb)
-            results_full.append(metric_full)
-
-            metric_partial = ((row_counted['partial_matches'] / length) * scaling_factor) / row_counted.Total_Reads #Reads per base (sf=1, kb sf=1000, or mb)
-            results_partial.append(metric_partial)
-
-            #combined ratio
-            metric_combined = (((row_counted['partial_matches'] + row_counted['full_matches']) / length) * scaling_factor) / row_counted.Total_Reads #Reads per base (sf=1, kb sf=1000, or mb)
-            results_combined.append(metric_combined)
-
-        else:
-            # If no partial match found, append None
-            results_full.append(0)
-            results_partial.append(0)
-    
-    # Add the results as a new column to DF2
-    roi_counted_insertions['Length'] = lengths
-    roi_counted_insertions['Full_Ratio'] = results_full
-    roi_counted_insertions['Partial_Ratio'] = results_partial
-    roi_counted_insertions['Combined_Ratio'] = results_combined
-    
-    return roi_counted_insertions

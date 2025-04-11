@@ -21,7 +21,6 @@ from config_handler import parse_config
 #from create_insertion_genome import add_insertions_to_genome_sequence_with_bed
 from utils import track_usage, setup_logging #, check_barcoding, roi_barcoding, barcode_genome
 from bed_operations import global_to_chromosome_coordinates
-from counting import normalize_ROI_by_length
 from genome_generation import create_barcoded_insertion_genome, create_barcoded_roi_genome
 from combined_calculations import run_simulation_iteration
 
@@ -110,12 +109,16 @@ def main():
     results_df = pd.DataFrame([item for sublist in results_list for item in sublist])
     barcode_distributions_df = pd.DataFrame(itertools.chain(*barcode_distributions_list))
 
-    # ROI-specific normalization
-    if mode == "ROI":
-        results_df['iteration'] = results_df['Insertion'].str.split('_').str[-1].astype(int)
-        barcode_distributions_df['Total_Reads'] = barcode_distributions_df.iloc[:, :param_dictionary['n_barcodes']].sum(axis=1)
-        results_df = results_df.merge(barcode_distributions_df, on=['coverage', 'mean_read_length', 'iteration'], how='inner')
-        results_df = normalize_ROI_by_length(bed, results_df, scaling_factor=1000)
+    # output formatting
+    results_df[["target", "barcode", "iteration"]] = results_df["target_region"].str.rsplit("_", n=2, expand=True)
+    barcode_distributions_df['total_Reads'] = barcode_distributions_df.iloc[:, :param_dictionary['n_barcodes']].sum(axis=1)
+
+    # simple results
+    simple_results = results_df.groupby(["target", "mean_read_length", "coverage"], as_index=False).agg(
+        full_matches=('full_matches', 'median'),
+        partial_matches=('partial_matches', 'median'),
+        bases_on_target=('on_target_bases', 'median')
+    )
 
     # Save results
     try:
@@ -127,6 +130,8 @@ def main():
         barcode_distributions_df.to_csv(f"{output_path}{experiment_name}_barcode_distribution_table.csv",
                                         sep='\t', header=True, index=False)
         results_df.to_csv(f"{output_path}{experiment_name}_matches_table.csv",
+                          sep='\t', header=True, index=False)
+        simple_results.to_csv(f"{output_path}{experiment_name}_summary.csv",
                           sep='\t', header=True, index=False)
 
     except Exception as e:

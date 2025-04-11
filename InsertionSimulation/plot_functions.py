@@ -39,7 +39,7 @@ def barplot_absolute_matches(experiment_name, data, output_path):
     output_html = os.path.join(output_path, f"{experiment_name}_Barplot_absolute_numbers.html")
 
     # Extract iteration number from the 'Insertion' column
-    data['Iteration'] = data['Insertion'].str.extract(r'_(\d+)$').astype(int)
+    data['Iteration'] = data['target_region'].str.extract(r'_(\d+)$').astype(int)
 
     # Group by mean_read_length, coverage, and iteration
     summary = data.groupby(['mean_read_length', 'coverage', 'Iteration']).agg(
@@ -110,7 +110,7 @@ def barplot_absolute_matches_barcodes(experiment_name, data, output_path):
     output_svg = os.path.join(output_path, f"{experiment_name}_Barplot_Barcode_absolute_numbers.svg")
     output_html = os.path.join(output_path, f"{experiment_name}_Barplot_Barcode_absolute_numbers.html")
         
-    data['Barcode'] = data['Insertion'].str.extract(r'_(\d+)_').astype(int)
+    data['Barcode'] = data['target_region'].str.extract(r'_(\d+)_').astype(int)
     barcode_color_map = get_barcode_color_mapping(data['Barcode'].unique())
     # Stacked bar plot colored by barcodes
     # Group by mean_read_length, coverage, and barcode
@@ -232,12 +232,12 @@ def plot_lineplot(experiment_name, data, output_path):
 
     #Barcode_0_insertion_0_0
     #TRA1_0_0
-    print(data["Insertion"].str.split("_", expand=True))
-    if data["Insertion"].str.contains("insertion").any():
-        data[["temp1","barcode","ID1","ID2","Iteration"]] = data["Insertion"].str.split("_", expand=True)
+    print(data["target_region"].str.split("_", expand=True))
+    if data["target_region"].str.contains("insertion").any():
+        data[["temp1","barcode","ID1","ID2","Iteration"]] = data["target_region"].str.split("_", expand=True)
         data["id"] = data["ID1"] + "_" + data["ID2"]
     else:
-        split_data = data["Insertion"].str.rsplit("_", n=2)
+        split_data = data["target_region"].str.rsplit("_", n=2)
         data["id"] = split_data.str[0]
         data["barcode"] = split_data.str[1]
         data["Iteration"] = split_data.str[2]
@@ -319,11 +319,11 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_lis
     output_html_full = os.path.join(output_path, f"{experiment_name}_panel_lineplot_full_matches.html")
 
     # Use loaded data
-    if data["Insertion"].str.contains("insertion").any():
-        data[["temp1","barcode","ID1","ID2","Iteration"]] = data["Insertion"].str.split("_", expand=True)
+    if data["target_region"].str.contains("insertion").any():
+        data[["temp1","barcode","ID1","ID2","Iteration"]] = data["target_region"].str.split("_", expand=True)
         data["id"] = data["ID1"] + "_" + data["ID2"]
     else:
-        split_data = data["Insertion"].str.rsplit("_", n=2)
+        split_data = data["target_region"].str.rsplit("_", n=2)
         data["id"] = split_data.str[0]
         data["barcode"] = split_data.str[1]
         data["Iteration"] = split_data.str[2]

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 custom_params = {"axes.spines.right": False, "axes.spines.top": False}
 sns.set_theme(style="ticks", rc=custom_params)
 
-raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/Case1_bias/Case1_bias3_matches_table.csv", sep="\t", header=0)
+raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/Case1_bias/Case1_bias4_matches_table.csv", sep="\t", header=0)
 print(raw["Insertion"].unique())
 
 # Split using the last two underscores to handle problematic entries like 'GBA_x_0_999'
@@ -152,18 +152,18 @@ print(len(true_positive.index))
 # Align indices before concatenation
 true_positive_aligned = true_positive.set_index(ccc_data.index)
 ccc_data = pd.concat([ccc_data, true_positive_aligned["bases_on_target"]], axis=1)
-ccc_data["count"] = ccc_data["bases_on_target"]
+ccc_data["seq. count"] = ccc_data["bases_on_target"]
 ccc_data = ccc_data.drop(columns=["bases_on_target"])
 print(ccc_data.head())
 
 ### ccc
 num_columns = len(ccc_data.columns)
-fig, axes = plt.subplots(nrows=int(np.ceil(num_columns / 3)), ncols=3, figsize=(15, 5 * int(np.ceil(num_columns / 3))))
+fig, axes = plt.subplots(nrows=int(np.ceil(num_columns / 2)), ncols=6, figsize=(20, 5 * int(np.ceil(num_columns / 3))))
 axes = axes.flatten()
 
 for i, column in enumerate(ccc_data.columns):
     x = ccc_data[column].values  # Current column for x
-    y = ccc_data["count"].values  # y remains the same
+    y = ccc_data["seq. count"].values  # y remains the same
 
     # Compute CCC for the current column
     ccc_value = concordance_correlation_coefficient(x, y)
@@ -185,6 +185,7 @@ for j in range(i + 1, len(axes)):
     fig.delaxes(axes[j])
 
 # Adjust layout
+plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 plt.tight_layout()
 plt.show()
 
@@ -196,8 +197,8 @@ print("CCC self test:", concordance_correlation_coefficient(x, x))
 
 full_combined = ccc_data 
 
-mean_counts = (full_combined["count"].values + full_combined.loc[:,26].values) / 2 
-diff_counts = full_combined["count"].values - full_combined.loc[:,26].values
+mean_counts = (full_combined["seq. count"].values + full_combined.loc[:,26].values) / 2 
+diff_counts = full_combined["seq. count"].values - full_combined.loc[:,26].values
 
 diff_counts = np.cbrt(diff_counts)
 mean_counts = np.cbrt(mean_counts)
@@ -237,5 +238,25 @@ plt.xlabel("Mean of Counts")
 plt.ylabel("Difference (Seq - Sim)")
 plt.title("Bland-Altman Plot (CBRT)")
 plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+plt.show()
+# %%
+roi = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/roi_info.csv", sep="\t", header=0)
+
+print(roi.head())
+plt.figure(figsize=(10, 6))
+sns.histplot(roi, x=roi["Lenght"], color="blue", alpha=0.4, bins=45)
+plt.show()
+
+# %%
+seqreads = 6763580 #manually from file
+reads = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/Case1_bias/Case1_bias4_barcode_distribution_table.csv", sep="\t", header=0)
+print(reads.head())
+# Plot the barplot with error bars based on the standard deviation
+plt.figure(figsize=(5, 5))
+sns.catplot(data=reads, x="coverage", y=reads["Total_Reads"], kind="bar", errorbar="sd", palette="grey")
+plt.axhline(seqreads, color='red', linewidth=3, alpha=0.6, linestyle='--', label='Number of Sequencing Reads')
+plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+plt.xlabel("Coverage")
+plt.ylabel("Mean Simulated Reads")
 plt.show()
 # %%

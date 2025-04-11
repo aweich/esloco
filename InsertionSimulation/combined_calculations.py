@@ -42,7 +42,7 @@ def process_combination(mean_read_length, coverage, genome_size, target_regions,
     for insertion_data in detected:
         insertion_data["mean_read_length"] = mean_read_length
         insertion_data["coverage"] = coverage
-        insertion_data["Insertion"] += suffix
+        insertion_data["target_region"] += suffix
 
     #save memory from overload
     del custom_read_length_distribution
