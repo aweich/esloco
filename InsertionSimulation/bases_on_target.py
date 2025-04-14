@@ -5,23 +5,24 @@ import pandas as pd
 from scipy.stats import pearsonr
 import sys
 import seaborn as sns
+import os
 import numpy as np
 from statsmodels.stats.multitest import multipletests
 import matplotlib.pyplot as plt
 
 custom_params = {"axes.spines.right": False, "axes.spines.top": False}
 sns.set_theme(style="ticks", rc=custom_params)
-
-raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/Case1_bias/Case1_bias4_matches_table.csv", sep="\t", header=0)
-print(raw["Insertion"].unique())
+out="/home/weichan/temporary/Data/Simulation/ROI_test/Case1/analysis/"
+raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/Case1/Case1_matches_table.csv", sep="\t", header=0)
+print(raw["target_region"].unique())
 
 # Split using the last two underscores to handle problematic entries like 'GBA_x_0_999'
-raw[["gene", "Barcode", "Iteration"]] = raw["Insertion"].str.rsplit("_", n=2, expand=True)
+raw[["gene", "Barcode", "Iteration"]] = raw["target_region"].str.rsplit("_", n=2, expand=True)
 
 print(raw["gene"].unique())
 #%%
 print(raw.head())
-raw = raw.drop(columns=["Insertion", "Barcode"])
+raw = raw.drop(columns=["target_region", "Barcode"])
 print(raw.head())
 
 raw["Iteration"] = raw["Iteration"].astype(int)
@@ -55,7 +56,7 @@ true_positive = seq.groupby([3, "Length"])[10].sum().reset_index()
 print(len(true_positive.index))
 true_positive.columns = [3, "Length", "bases_on_target"]
 true_positive["bases_on_target_x"] = true_positive["bases_on_target"] / true_positive["Length"]
-print(true_positive.head())
+print(true_positive)
 
 # %%
 
@@ -108,10 +109,12 @@ for coverage in coverage_levels:
             label = "n.s."
         elif 0.01 < p_value <= 0.05:
             label = "*"
-        else:
+        elif 0.001 < p_value <= 0.01:
             label = "**"
+        else:
+            label = "***"
 
-        plt.text(x_position, y_position, f"{label}, {p_value}", ha="center", va="bottom", fontsize=6, rotation=90)
+        plt.text(x_position, y_position, f"{label}, {p_value}", ha="center", va="bottom", fontsize=9, rotation=90)
 
     print(f"Coverage {coverage}: {significant_count} significant values")
 
@@ -126,6 +129,8 @@ for coverage in coverage_levels:
     '''
 
     plt.tight_layout()
+    #outname = os.path.join(out, f"{coverage}_plot.svg")
+    #plt.savefig(outname, format='svg')
     plt.show()
 
 
@@ -249,11 +254,11 @@ plt.show()
 
 # %%
 seqreads = 6763580 #manually from file
-reads = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/Case1_bias/Case1_bias4_barcode_distribution_table.csv", sep="\t", header=0)
+reads = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/Case1/Case1_barcode_distribution_table.csv", sep="\t", header=0)
 print(reads.head())
 # Plot the barplot with error bars based on the standard deviation
 plt.figure(figsize=(5, 5))
-sns.catplot(data=reads, x="coverage", y=reads["Total_Reads"], kind="bar", errorbar="sd", palette="grey")
+sns.catplot(data=reads, x="coverage", y=reads["total_Reads"], kind="bar", errorbar="sd", palette="grey")
 plt.axhline(seqreads, color='red', linewidth=3, alpha=0.6, linestyle='--', label='Number of Sequencing Reads')
 plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 plt.xlabel("Coverage")

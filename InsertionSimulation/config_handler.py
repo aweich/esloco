@@ -14,15 +14,32 @@ import gzip
 
 def mean_read_length(fasta_file):
     """
-    Efficient mean read length calculation based on path to FASTA file.
-    Supports both plain and gzipped FASTA files.
+    Efficient mean read length calculation based on path to FASTA or FASTQ file.
+    Supports both plain and gzipped files.
     """
     # Open the file, handling gzipped files if necessary
     open_func = gzip.open if fasta_file.endswith(".gz") else open
     with open_func(fasta_file, "rt") as handle:
+        # Determine file format based on extension
+        if fasta_file.endswith(".fastq") or fasta_file.endswith(".fastq.gz"):
+            file_format = "fastq"
+        elif fasta_file.endswith(".fasta") or fasta_file.endswith(".fasta.gz"):
+            file_format = "fasta"
+        else:
+            raise ValueError(f"Unsupported file format for {fasta_file}. Only FASTA and FASTQ are allowed.")
         # Extract lengths and convert them to a numpy array
-        lengths = np.array([len(record.seq) for record in SeqIO.parse(handle, "fasta")])
-    return np.mean(lengths) if lengths.size > 0 else 0
+        lengths = []
+        for record in SeqIO.parse(handle, file_format):
+            if file_format == "fastq":
+                # Ensure quality scores are present for FASTQ
+                if not record.letter_annotations.get("phred_quality"):
+                    raise ValueError(f"This is not a correct FASTQ file {fasta_file}. Provide FASTA or FASTQ.")
+            lengths.append(len(record.seq))
+        lengths = np.array(lengths)
+    if lengths.size == 0 or np.mean(lengths) <= 0:
+        raise ValueError(f"No reads or zero-length reads found in {fasta_file}")
+    
+    return np.mean(lengths)
 
 def parse_config(config_file):
     """
@@ -72,6 +89,7 @@ def parse_config(config_file):
             coverages = [coverages]
 
         mean_read_lengths = json.loads(config.get("COMMON", "mean_read_lengths", fallback="[1000]"))
+        
         if not isinstance(mean_read_lengths, list):
             mean_read_lengths = [mean_read_lengths]
 
