@@ -1,13 +1,15 @@
 import random
 import gc
 import logging
+import numpy as np
 
+from config_handler import seq_read_data
 from plotting import plot_reads_coverage
 from counting import count_matches, count_barcode_occurrences
-from read_operations import get_read_length_distribution_from_real_data, generate_read_length_distribution, generate_reads_based_on_coverage 
+from read_operations import generate_read_length_distribution, generate_reads_based_on_coverage 
 from utils import profile_iteration, setup_logging, track_usage
 
-def process_combination(mean_read_length, coverage, genome_size, target_regions, iteration, sequenced_data_path, n_barcodes, barcode_weights, masked_regions,  output_path, scaling, min_overlap_for_detection, no_cov_plots):
+def process_combination(mean_read_length, coverage, genome_size, target_regions, iteration, sequenced_data_path, min_read_length, n_barcodes, barcode_weights, masked_regions,  output_path, scaling, min_overlap_for_detection, no_cov_plots):
     '''
     Creates a read length distribution based on mean read length and draws artificial reads from it until desired coverage is reached. 
     Then it compares the coordinates of the target regions (ROI or I) with the coordinates of artifical reads of each barcode and checks whether they are partially or fully contained.
@@ -15,12 +17,15 @@ def process_combination(mean_read_length, coverage, genome_size, target_regions,
     '''
 
     try:
-        custom_read_length_distribution = get_read_length_distribution_from_real_data(sequenced_data_path) #for experimental data
-        logging.info("Custom FASTA data provided.")
+        custom_read_length_distribution = seq_read_data(sequenced_data_path, distribution=True, min_read_length=min_read_length) #for sequencing data
+        logging.info("Custom FASTA/FASTQ data provided.")
     except:
         logging.info("No custom read length distribution provided... Generating artificial one...")
-        custom_read_length_distribution = generate_read_length_distribution(num_reads=1000000, mean_read_length=mean_read_length, distribution='lognormal')
+        custom_read_length_distribution = generate_read_length_distribution(num_reads=1000000, mean_read_length=mean_read_length, min_read_length = min_read_length, distribution='lognormal')
         logging.info('Calculating for:' + str(mean_read_length))
+        if iteration < 1:
+            logging.info("Saving generated read length distribution to numpy file...")
+            np.save(f"{output_path}/{coverage}_{mean_read_length}_dsitribution.npy", custom_read_length_distribution)
     
     precomputed_lengths = [random.choice(custom_read_length_distribution) for _ in range(100000000)]
     custom_cov_coordinates, covered_length = generate_reads_based_on_coverage(genome_size, coverage, precomputed_lengths, n_barcodes, barcode_weights, masked_regions)
@@ -63,7 +68,7 @@ def run_simulation_iteration(iteration_id, param_dictionary, genome_size, target
     for mean_read_length, coverage in param_dictionary['combinations']:
         out, barcode_distribution = process_combination(
             mean_read_length, coverage, genome_size, target_regions, iteration_id,
-            param_dictionary['sequenced_data_path'], param_dictionary['n_barcodes'],
+            param_dictionary['sequenced_data_path'], param_dictionary['min_read_length'], param_dictionary['n_barcodes'],
             param_dictionary['barcode_weights'], masked_regions,
             param_dictionary['output_path_plots'], param_dictionary['scaling'],
             param_dictionary['min_overlap_for_detection'], param_dictionary['no_cov_plots']

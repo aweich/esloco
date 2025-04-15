@@ -12,7 +12,7 @@ import numpy as np
 from Bio import SeqIO
 import gzip
 
-def mean_read_length(fasta_file):
+def seq_read_data(fasta_file, distribution=False, min_read_length=0):
     """
     Efficient mean read length calculation based on path to FASTA or FASTQ file.
     Supports both plain and gzipped files.
@@ -20,6 +20,7 @@ def mean_read_length(fasta_file):
     # Open the file, handling gzipped files if necessary
     open_func = gzip.open if fasta_file.endswith(".gz") else open
     with open_func(fasta_file, "rt") as handle:
+        
         # Determine file format based on extension
         if fasta_file.endswith(".fastq") or fasta_file.endswith(".fastq.gz"):
             file_format = "fastq"
@@ -27,6 +28,7 @@ def mean_read_length(fasta_file):
             file_format = "fasta"
         else:
             raise ValueError(f"Unsupported file format for {fasta_file}. Only FASTA and FASTQ are allowed.")
+        
         # Extract lengths and convert them to a numpy array
         lengths = []
         for record in SeqIO.parse(handle, file_format):
@@ -34,12 +36,17 @@ def mean_read_length(fasta_file):
                 # Ensure quality scores are present for FASTQ
                 if not record.letter_annotations.get("phred_quality"):
                     raise ValueError(f"This is not a correct FASTQ file {fasta_file}. Provide FASTA or FASTQ.")
-            lengths.append(len(record.seq))
+            # Filter sequences based on minimum read length
+            if len(record.seq) > min_read_length:
+                lengths.append(len(record.seq))
         lengths = np.array(lengths)
-    if lengths.size == 0 or np.mean(lengths) <= 0:
-        raise ValueError(f"No reads or zero-length reads found in {fasta_file}")
-    
-    return np.mean(lengths)
+    print(f"Number of reads: {len(lengths)}")
+    if lengths.size == 0:
+        raise ValueError(f"No reads found in {fasta_file}")
+    if distribution:
+        return lengths
+    else:
+        return np.mean(lengths)
 
 def parse_config(config_file):
     """
@@ -80,6 +87,7 @@ def parse_config(config_file):
         n_barcodes = config.getint("COMMON", "n_barcodes", fallback=1)
         iterations = config.getint("COMMON", "iterations", fallback=1)
         scaling = config.getfloat("COMMON", "scaling", fallback=1.0)
+        min_read_length = config.getint("COMMON", "min_read_length", fallback=0)
         no_cov_plots = config.getboolean("COMMON", "no_cov_plots", fallback=False)
         parallel_jobs = config.getint("COMMON", "parallel_jobs", fallback=1)
 
@@ -95,7 +103,7 @@ def parse_config(config_file):
 
         if sequenced_data_path:
             logging.info("Sequencing data provided, calculating mean read length...")
-            mrl = int(mean_read_length(sequenced_data_path))
+            mrl = int(seq_read_data(sequenced_data_path, min_read_length=min_read_length))
             logging.info(f"Mean read length set to: {mrl}")
             mean_read_lengths = [mrl]
 

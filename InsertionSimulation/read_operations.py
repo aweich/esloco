@@ -6,19 +6,19 @@ import sys
 
 from utils import track_usage
 import gzip
-
+'''
 def get_read_length_distribution_from_real_data(path_to_sequenced_fasta):
-    '''
+    
     Uses an input fasta (supports gzipped fasta) and generates a custom read length distribution.
-    '''
+    
     lengths = []
     open_func = gzip.open if path_to_sequenced_fasta.endswith('.gz') else open
     with open_func(path_to_sequenced_fasta, 'rt') as handle:
         for record in SeqIO.parse(handle, 'fasta'):
             lengths.append(len(record.seq))
     return lengths
-
-def generate_read_length_distribution(num_reads, mean_read_length, distribution='lognormal', **kwargs):
+'''
+def generate_read_length_distribution(num_reads, mean_read_length, min_read_length, distribution='lognormal', **kwargs):
     '''
     Generate a list of read lengths with a customizable mean read length and distribution.
     '''
@@ -33,11 +33,11 @@ def generate_read_length_distribution(num_reads, mean_read_length, distribution=
         logging.error("Unsupported distribution. Supported options: 'normal', 'lognormal'.")
         sys.exit(1)
     
-    # Filter out zero-length reads
+    # Filter out reads by threshhold
     read_lengths = np.round(read_lengths).astype(int)
-    read_lengths = read_lengths[read_lengths > 0]
+    read_lengths = read_lengths[read_lengths > min_read_length]
     
-    return read_lengths #not returning list
+    return read_lengths
 
 def generate_reads(fasta, read_length_distribution, num_reads):
     '''
