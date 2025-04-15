@@ -110,16 +110,34 @@ def main():
     barcode_distributions_df = pd.DataFrame(itertools.chain(*barcode_distributions_list))
 
     # output formatting
-    results_df[["target", "barcode", "iteration"]] = results_df["target_region"].str.rsplit("_", n=2, expand=True)
-    barcode_distributions_df['total_Reads'] = barcode_distributions_df.iloc[:, :param_dictionary['n_barcodes']].sum(axis=1)
+    if mode == "ROI":
+        # works with {ROI}_{barcode-number}_{iteration-number}
+        results_df[["target", "barcode", "iteration"]] = results_df["target_region"].str.rsplit("_", n=2, expand=True)
+        barcode_distributions_df['total_Reads'] = barcode_distributions_df.iloc[:, :param_dictionary['n_barcodes']].sum(axis=1)
+
+    else:
+        # works with Barcode_{barcode-number}_insertion_{insertion-number}_{iteration-number}
+        # Split the target_region column into its components
+        target_split = results_df["target_region"].str.rsplit("_", n=4, expand=True)
+        results_df["target"] = target_split.iloc[:, 0:3].agg("_".join, axis=1)
+        results_df["barcode"] = target_split.iloc[:, 1]
+        results_df["insertion"] = target_split.iloc[:, 2] + "_" + target_split.iloc[:, 3]
+        results_df["iteration"] = target_split.iloc[:, 4]
+
+        # Calculate total reads for barcode distributions
+        barcode_distributions_df['total_Reads'] = barcode_distributions_df.iloc[:, :param_dictionary['n_barcodes']].sum(axis=1)
+    
 
     # simple results
     simple_results = results_df.groupby(["target", "mean_read_length", "coverage"], as_index=False).agg(
-        full_matches=('full_matches', 'median'),
-        partial_matches=('partial_matches', 'median'),
-        bases_on_target=('on_target_bases', 'median')
+        mean_full_matches=('full_matches', 'mean'),
+        sd_full_matches=('full_matches', 'std'),
+        mean_partial_matches=('partial_matches', 'mean'),
+        sd_partial_matches=('partial_matches', 'std'),
+        mean_bases_on_target=('on_target_bases', 'mean'),
+        sd_bases_on_target=('on_target_bases', 'std')
     )
-
+ 
     # Save results
     try:
         if mode == "I":

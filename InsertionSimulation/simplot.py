@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import sys
 import os
 
@@ -41,15 +42,15 @@ def main():
     print("Starting plot generation...")
     barplot_absolute= barplot_absolute_matches(experiment_name, matches_data, output_path=output_path_plots)
     barplot_barcodes = barplot_absolute_matches_barcodes(experiment_name, matches_data, output_path=output_path_plots)
-    total_reads, reads_per_barcode = plot_barcode_distribution(experiment_name, basic_data, output_path=output_path_plots)
-    lineplot_full, lineplot_partial = plot_lineplot(experiment_name, matches_data, output_path=output_path_plots)
-    lineplot_panel_full, lineplot_panel_partial = plot_isolated_lineplot(experiment_name, matches_data, output_path=output_path_plots, filter=12) #make command line args possible?
+    total_reads = plot_barcode_distribution(experiment_name, basic_data, output_path=output_path_plots)
+    lineplot_full, lineplot_partial, lineplot_otb = plot_lineplot(experiment_name, matches_data, output_path=output_path_plots)
+    lineplot_panel_full, lineplot_panel_partial, lineplot_panel_otb = plot_isolated_lineplot(experiment_name, matches_data, output_path=output_path_plots, filter=12) #make command line args possible?
     ressources = plot_log_data(experiment_name, log, output_path=output_path_plots)
     
-    all_plots = [barplot_absolute, barplot_barcodes,
-                 total_reads, reads_per_barcode, 
-                 lineplot_full, lineplot_partial, 
-                 lineplot_panel_full, lineplot_panel_partial, 
+    all_plots = [barplot_barcodes,
+                 total_reads, 
+                 lineplot_full, lineplot_partial, lineplot_otb,  
+                 lineplot_panel_full, lineplot_panel_partial, lineplot_panel_otb,
                  ressources] + coverage_plots
     
     # HTML report

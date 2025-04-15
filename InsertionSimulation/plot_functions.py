@@ -22,12 +22,13 @@ pio.templates.default = "plotly_white"
 
 from plotting import get_barcode_color_mapping
 
+
 def read_data(filepath):
     data = pd.read_csv(filepath, sep='\t')
     return data
 
-#data = read_data('../out/insertion_test/insertion_test_matches_table.csv')
-#basic_data = read_data('../out/tcr_20/tcr_20_barcode_distribution_table.csv')
+#data = read_data('/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_1/test1_barcode_distribution_table.csv')
+#basic_data = read_data('/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_1/test1_matches_table.csv')
 #%%
 
 #%%
@@ -41,21 +42,25 @@ def barplot_absolute_matches(experiment_name, data, output_path):
     # Extract iteration number from the 'Insertion' column
     data['Iteration'] = data['target_region'].str.extract(r'_(\d+)$').astype(int)
 
-    # Group by mean_read_length, coverage, and iteration
+    # Group by mean_read_length, coverage, and iteration # sum up all barcodes
     summary = data.groupby(['mean_read_length', 'coverage', 'Iteration']).agg(
         full_matches_total=('full_matches', 'sum'),
-        partial_matches_total=('partial_matches', 'sum')
+        partial_matches_total=('partial_matches', 'sum'),
+        bases_on_target_total=('on_target_bases', 'sum')
     ).reset_index()
 
+    print(summary.head())
     # Aggregate across iterations to compute mean and standard error
     final_summary = summary.groupby(['mean_read_length', 'coverage']).agg(
         full_matches_mean=('full_matches_total', 'mean'),
         full_matches_se=('full_matches_total', lambda x: x.std() / np.sqrt(len(x))),
         partial_matches_mean=('partial_matches_total', 'mean'),
-        partial_matches_se=('partial_matches_total', lambda x: x.std() / np.sqrt(len(x)))
+        partial_matches_se=('partial_matches_total', lambda x: x.std() / np.sqrt(len(x))),
+        on_target_bases_mean=('bases_on_target_total', 'mean'),
+        on_target_bases_se=('bases_on_target_total', lambda x: x.std() / np.sqrt(len(x)))
     ).reset_index()
 
-    print(final_summary)
+    #print(final_summary)
 
     x_labels = [f"{row['mean_read_length']}, {row['coverage']}" for _, row in final_summary.iterrows()]
     x = np.arange(len(x_labels))
@@ -78,6 +83,13 @@ def barplot_absolute_matches(experiment_name, data, output_path):
         marker_color='grey'
     ))
 
+    fig.add_trace(go.Bar(
+        x=x,
+        y=final_summary['on_target_bases_mean'],
+        error_y=dict(type='data', array=final_summary['on_target_bases_se']),
+        name='OTBs',
+        marker_color='lightgrey'
+    ))
     fig.update_layout(
         title='Full and Partial Matches Across Conditions',
         xaxis=dict(
@@ -102,7 +114,7 @@ def barplot_absolute_matches(experiment_name, data, output_path):
 
 #data = pd.read_csv("/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/insertion_test3/insertion_test3_matches_table.csv", sep="\t")  # Assuming tab-separated values
 #data = pd.read_csv("/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/roi_tcr_test/roi_tcr_test_matches_table.csv", sep="\t")  # Assuming tab-separated values
-#barplot_absolute_matches(data, output_path="/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/roi_tcr_test/")
+#barplot_absolute_matches("test1", basic_data, output_path="/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_1/")
 #%%
 def barplot_absolute_matches_barcodes(experiment_name, data, output_path):
 
@@ -111,31 +123,41 @@ def barplot_absolute_matches_barcodes(experiment_name, data, output_path):
     output_html = os.path.join(output_path, f"{experiment_name}_Barplot_Barcode_absolute_numbers.html")
         
     data['Barcode'] = data['target_region'].str.extract(r'_(\d+)_').astype(int)
+    data['Iteration'] = data['target_region'].str.extract(r'_(\d+)$').astype(int)
+
     barcode_color_map = get_barcode_color_mapping(data['Barcode'].unique())
     # Stacked bar plot colored by barcodes
-    # Group by mean_read_length, coverage, and barcode
+    # Group by mean_read_length, coverage, and barcode #sum across iterations
     barcode_summary = data.groupby(['mean_read_length', 'coverage', "Barcode"]).agg(
         full_matches_total=('full_matches', 'sum'),
-        partial_matches_total=('partial_matches', 'sum')
+        partial_matches_total=('partial_matches', 'sum'),
+        on_target_bases_total=('on_target_bases', 'sum')
     ).reset_index()
+
+    # Divide the values by the number of iterations
+    iterations_count = data['Iteration'].nunique()
+    
+    print(iterations_count)
+    barcode_summary['full_matches_total'] /= iterations_count
+    barcode_summary['partial_matches_total'] /= iterations_count
+    barcode_summary['on_target_bases_total'] /= iterations_count
 
     print(barcode_summary)
 
     # Melt the dataframe for easier plotting with Plotly
     barcode_summary_melted = barcode_summary.melt(id_vars=['mean_read_length', 'coverage', 'Barcode'], 
-                                                value_vars=['full_matches_total', 'partial_matches_total'], 
+                                                value_vars=['full_matches_total', 'partial_matches_total', 'on_target_bases_total'], 
                                                 var_name='match_type', value_name='count')
 
     print(barcode_summary_melted)
-
     # Create combined bar plot
-
-    fig = make_subplots(rows=1, cols=2, subplot_titles=['Full Matches', 'Partial Matches'], shared_yaxes=True)
+    fig = make_subplots(rows=1, cols=3, subplot_titles=['Full Matches', 'Partial Matches', 'Bases on Target'],
+                        shared_yaxes=False, shared_xaxes=True, x_title="Covreage and Mean Read Length", y_title="Mean Count across Iterations")
 
     for match_type in barcode_summary_melted['match_type'].unique():
         subset = barcode_summary_melted[barcode_summary_melted['match_type'] == match_type]
         subset['color'] = subset['Barcode'].map(barcode_color_map)
-        col = 1 if match_type == 'full_matches_total' else 2
+        col = 1 if match_type == 'full_matches_total' else (2 if match_type == 'partial_matches_total' else 3)
         for barcode in subset['Barcode'].unique():
             barcode_data = subset[subset['Barcode'] == barcode]
             fig.add_trace(go.Bar(
@@ -146,32 +168,25 @@ def barplot_absolute_matches_barcodes(experiment_name, data, output_path):
                 showlegend=(col == 1)
             ), row=1, col=col)
 
-    fig.update_xaxes(title_text='Mean Read Length, Coverage', row=1, col=1)
-    fig.update_xaxes(title_text='Mean Read Length, Coverage', row=1, col=2)
-    fig.update_yaxes(title_text='Mean Count across iterations', row=1, col=1)
-    fig.update_yaxes(title_text='Mean Count across iterations', row=1, col=2)
-    fig.update_layout(title_text='Full and Partial Matches Across Conditions (stacked by barcodes)', barmode='stack')
+    fig.update_layout(title_text='Mean Total Matches', barmode='stack')
 
     #fig.show()
     
     fig.write_html(output_html)
-    fig.write_image(output_svg, width=800, height=400)
+    fig.write_image(output_svg, width=1200, height=400)
     
     print(f"Barplot absolute numbers with barcodes saved as {output_html}")
     return str(output_html)
 
 #data = pd.read_csv("/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/roi_tcr_test/roi_tcr_test_matches_table.csv", sep="\t")
-#barplot_absolute_matches_barcodes(data, output_path="/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/roi_tcr_test/")
+#barplot_absolute_matches_barcodes("test1", basic_data, output_path="/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_1/")
 
 #%%
 def plot_barcode_distribution(experiment_name, data, output_path):
 
-    #output
+    # Output paths
     output_path_total = os.path.join(output_path, f"{experiment_name}_barplot_total_reads.svg")
-    output_path_perc = os.path.join(output_path, f"{experiment_name}_barplot_percentage_reads.svg")
-    
     output_html_total = os.path.join(output_path, f"{experiment_name}_barplot_total_reads.html")
-    output_html_perc = os.path.join(output_path, f"{experiment_name}_barplot_percentage_reads.html")
     
     os.makedirs(os.path.dirname(output_path), exist_ok=True)  # Ensure the folder exists
     
@@ -182,41 +197,39 @@ def plot_barcode_distribution(experiment_name, data, output_path):
     # Group by coverage and mean_read_length and calculate mean across iterations
     grouped = data.groupby(['coverage', 'mean_read_length'])[barcode_columns].mean().reset_index()
     grouped['coverage_mean_read_length'] = grouped['coverage'].astype(str) + '_' + grouped['mean_read_length'].astype(str)
-    grouped["mean"] = grouped[barcode_columns].mean(axis=1)
     grouped["sum"] = grouped[barcode_columns].sum(axis=1)
     
-    # Interactive plot with Plotly
-    fig = px.bar(grouped, x='coverage_mean_read_length', y='mean', title='Mean Total Reads by Coverage and Mean Read Length', color_discrete_sequence=['black'])
-    fig.update_xaxes(title_text='Coverage and Mean Read Length', title_font=dict(size=12))
-    fig.update_yaxes(title_text='Mean Total Reads', title_font=dict(size=12))
-    fig.write_html(output_html_total)
-    fig.write_image(output_path_total, scale=10)
-
-    #percentage plot
-    barcode_color_map = get_barcode_color_mapping(barcode_columns)
-
-    for barcode in barcode_columns:
-        grouped[barcode] = grouped[barcode] / grouped["sum"] * 100
-
-    grouped_melted = grouped.melt(id_vars=['coverage_mean_read_length'], value_vars=barcode_columns, var_name='barcode', value_name='Percentage')
+    # Melt the dataframe for easier plotting
+    grouped_melted = grouped.melt(id_vars=['coverage_mean_read_length', 'sum'], 
+                                  value_vars=barcode_columns, 
+                                  var_name='barcode', 
+                                  value_name='count')
     grouped_melted = grouped_melted.sort_values('barcode', key=pd.to_numeric)
 
-    # Interactive plot
-    fig = px.bar(grouped_melted, x='coverage_mean_read_length', y='Percentage', color='barcode', title='Percentage Share of Barcodes by Coverage and Mean Read Length', color_discrete_map=barcode_color_map)
+    # Color mapping for barcodes
+    barcode_color_map = get_barcode_color_mapping(barcode_columns)
+
+    # Interactive stacked bar plot with Plotly
+    fig = px.bar(grouped_melted, 
+                 x='coverage_mean_read_length', 
+                 y='count', 
+                 color='barcode', 
+                 title='Mean Total Reads by Coverage and Mean Read Length (Stacked by Barcode)', 
+                 color_discrete_map=barcode_color_map)
     fig.update_xaxes(title_text='Coverage and Mean Read Length', title_font=dict(size=12))
-    fig.update_yaxes(title_text='Percentage Share of Barcodes', title_font=dict(size=12))
-    fig.write_html(output_html_perc)
+    fig.update_yaxes(title_text='Mean Total Reads', title_font=dict(size=12))
     
-    #Static plot
+    fig.show()
+    fig.write_html(output_html_total)
+    
+    # Static plot
     fig.update_layout(legend=dict(font=dict(size=8), orientation="h", yanchor="bottom", y=-0.75, x=0.5, xanchor="center"))
-    fig.write_image(output_path_perc, scale=10)
+    fig.write_image(output_path_total, scale=10)
 
-    
-    print(f"Mean Total Reads Barplot saved as {output_html_total}")
-    print(f"Barcode distribution Barplot saved as {output_html_perc}")
-    return str(output_html_total), str(output_html_perc)
+    print(f"Mean Total Reads Stacked Barplot saved as {output_html_total}")
+    return str(output_html_total)
 
-#plot_barcode_distribution(basic_data, output_path="./output/tcr_20/")  
+#plot_barcode_distribution("test1", data, output_path="./output/tcr_20/")  
 
 # %%
 def plot_lineplot(experiment_name, data, output_path):
@@ -224,9 +237,11 @@ def plot_lineplot(experiment_name, data, output_path):
     #output
     output_path_partial = os.path.join(output_path, f"{experiment_name}_lineplot_partial_matches.svg")
     output_path_full = os.path.join(output_path, f"{experiment_name}_lineplot_full_matches.svg")
+    output_path_otb = os.path.join(output_path, f"{experiment_name}_lineplot_otb_matches.svg")
     
     output_html_partial = os.path.join(output_path, f"{experiment_name}_lineplot_partial_matches.html")
     output_html_full = os.path.join(output_path, f"{experiment_name}_lineplot_full_matches.html")
+    output_html_otb = os.path.join(output_path, f"{experiment_name}_lineplot_otb_matches.html")
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)  # Ensure the folder exists
 
@@ -243,7 +258,8 @@ def plot_lineplot(experiment_name, data, output_path):
         data["Iteration"] = split_data.str[2]
 
     numeric_cols = ["full_matches",
-                    "partial_matches", 
+                    "partial_matches",
+                    "on_target_bases", 
                     "mean_read_length", 
                     "coverage",
                     "barcode", 
@@ -252,6 +268,7 @@ def plot_lineplot(experiment_name, data, output_path):
     data = data[["id"] + numeric_cols]
 
     data.loc[:, numeric_cols] = data[numeric_cols].apply(pd.to_numeric, errors="coerce")
+
     # Partial matches plot
     grouped = data.groupby(['coverage', 'mean_read_length', 'id'])['partial_matches'].mean().reset_index()
     
@@ -262,7 +279,7 @@ def plot_lineplot(experiment_name, data, output_path):
                  markers=True, dashes=False)
     plt.xlabel('ID')
     plt.ylabel('Mean Partial Matches')
-    plt.title('Lineplot of Partial Matches by Coverage and Mean Read Length')
+    plt.title('Partial Matches by Coverage and Mean Read Length')
     plt.legend(title='Coverage and Mean Read Length')
     plt.xticks(rotation=90)
     plt.savefig(output_path_partial, dpi=300, bbox_inches="tight")
@@ -285,7 +302,7 @@ def plot_lineplot(experiment_name, data, output_path):
                  markers=True, dashes=False)  
     plt.xlabel('ID')
     plt.ylabel('Mean Full Matches')
-    plt.title('Lineplot of Full Matches by Coverage and Mean Read Length')
+    plt.title('Full Matches by Coverage and Mean Read Length')
     plt.legend(title='Coverage and Mean Read Length')
     plt.xticks(rotation=90)
     plt.savefig(output_path_full, dpi=300, bbox_inches="tight")
@@ -297,11 +314,32 @@ def plot_lineplot(experiment_name, data, output_path):
     fig.update_yaxes(title_text='Mean Full Matches', title_font=dict(size=12))
     fig.write_html(output_html_full)
 
+    # OTB plot
+    grouped = data.groupby(['coverage', 'mean_read_length', 'id'])['on_target_bases'].mean().reset_index()
     
+    # Static plot with seaborn
+    plt.figure(figsize=(40, 10))
+    sns.lineplot(data=grouped, x='id', y='on_target_bases', 
+                 hue='coverage', style='mean_read_length', 
+                 markers=True, dashes=False)  
+    plt.xlabel('ID')
+    plt.ylabel('Mean OTBs')
+    plt.title('OTBs by Coverage and Mean Read Length')
+    plt.legend(title='Coverage and Mean Read Length')
+    plt.xticks(rotation=90)
+    plt.savefig(output_path_otb, dpi=300, bbox_inches="tight")
+    plt.close()
     
-    print(f"Partial Overalps Combined Lineplot saved as {output_html_partial}")
-    print(f"Full Overlaps Combined Lineplot saved as {output_html_full}")
-    return str(output_html_full), str(output_html_partial)
+    # Interactive plot with Plotly
+    fig = px.line(grouped, x='id', y='on_target_bases', color='coverage', line_dash='mean_read_length', markers=True, title='Lineplot of OTBs by Coverage and Mean Read Length')
+    fig.update_xaxes(title_text='ID', title_font=dict(size=12))
+    fig.update_yaxes(title_text='Mean Full Matches', title_font=dict(size=12))
+    fig.write_html(output_html_otb)
+    
+    print(f"Partial Lineplot saved as {output_html_partial}")
+    print(f"Full Lineplot saved as {output_html_full}")
+    print(f"OTBs Lineplot saved as {output_html_otb}")
+    return str(output_html_full), str(output_html_partial), str(output_html_otb)
     
 #plot_lineplot(data, output_path="../out/insertion_test/plots/")
 
@@ -315,9 +353,11 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_lis
     # Output paths
     output_path_partial = os.path.join(output_path, f"{experiment_name}_panel_lineplot_partial_matches.svg")
     output_path_full = os.path.join(output_path, f"{experiment_name}_panel_lineplot_full_matches.svg")
+    output_path_otb = os.path.join(output_path, f"{experiment_name}_panel_lineplot_otb_matches.svg")
     output_html_partial = os.path.join(output_path, f"{experiment_name}_panel_lineplot_partial_matches.html")
     output_html_full = os.path.join(output_path, f"{experiment_name}_panel_lineplot_full_matches.html")
-
+    output_html_otb = os.path.join(output_path, f"{experiment_name}_panel_lineplot_otb_matches.html")
+    
     # Use loaded data
     if data["target_region"].str.contains("insertion").any():
         data[["temp1","barcode","ID1","ID2","Iteration"]] = data["target_region"].str.split("_", expand=True)
@@ -329,7 +369,8 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_lis
         data["Iteration"] = split_data.str[2]
 
     numeric_cols = ["full_matches",
-                    "partial_matches", 
+                    "partial_matches",
+                    "on_target_bases", 
                     "mean_read_length", 
                     "coverage",
                     "barcode", 
@@ -341,21 +382,25 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_lis
     
     grouped_partial = data.groupby(['coverage', 'mean_read_length', 'barcode', 'Iteration', 'id'])['partial_matches'].mean().reset_index()
     grouped_full = data.groupby(['coverage', 'mean_read_length', 'barcode', 'Iteration', 'id'])['full_matches'].mean().reset_index()
+    grouped_otb = data.groupby(['coverage', 'mean_read_length', 'barcode', 'Iteration', 'id'])['on_target_bases'].mean().reset_index()
     
     # Create a new column for the combination of coverage and mean_read_length
     grouped_partial['coverage_mean_read_length'] = grouped_partial['coverage'].astype(str) + '_' + grouped_partial['mean_read_length'].astype(str)
     grouped_full['coverage_mean_read_length'] = grouped_full['coverage'].astype(str) + '_' + grouped_full['mean_read_length'].astype(str)
-    
+    grouped_otb['coverage_mean_read_length'] = grouped_otb['coverage'].astype(str) + '_' + grouped_otb['mean_read_length'].astype(str)
+
     # Filter IDs
     if id_list:
         ids = grouped_partial['id'].unique()
         filtered_ids = [id for id in ids if id in id_list]
         filtered_partial = grouped_partial[grouped_partial['id'].isin(filtered_ids)]
         filtered_full = grouped_full[grouped_full['id'].isin(filtered_ids)]
+        filtered_otb = grouped_otb[grouped_otb['id'].isin(filtered_ids)]
     else:
         first_ids = grouped_partial['id'].unique()[:filter]
         filtered_partial = grouped_partial[grouped_partial['id'].isin(first_ids)]
         filtered_full = grouped_full[grouped_full['id'].isin(first_ids)]
+        filtered_otb = grouped_otb[grouped_otb['id'].isin(first_ids)]
 
     # Calculate mean and standard deviation for partial matches
     partial_stats = filtered_partial.groupby(['coverage_mean_read_length', 'id', 'barcode']).agg(
@@ -369,6 +414,13 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_lis
         std_full_matches=('full_matches', 'std')
     ).reset_index()
 
+    # Calculate mean and standard deviation for full matches
+    otb_stats = filtered_otb.groupby(['coverage_mean_read_length', 'id', 'barcode']).agg(
+        mean_otb_matches=('on_target_bases', 'mean'),
+        std_otb_matches=('on_target_bases', 'std')
+    ).reset_index()
+
+
     #dimensions
     num_plots = len(filtered_partial['id'].unique())
     
@@ -378,37 +430,8 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_lis
     else:
         rows = math.ceil(math.sqrt(num_plots))  # At least a square root in rows
         cols = math.ceil(num_plots / rows)  # Distribute plots evenly
-
-    """# Static plot for partial matches
-    # Color
-    barcode_color_map = get_barcode_color_mapping(grouped_full["Barcode"].unique())
-    g = sns.FacetGrid(partial_stats, col='ID', col_wrap=cols, height=4, aspect=1.5)
-    g.map(sns.lineplot, 'coverage_mean_read_length', 'mean_partial_matches', 'Barcode', markers=True, dashes=False, palette=barcode_color_map)
-    g.add_legend()
-    g.set_axis_labels('Coverage and Mean Read Length', 'Mean Partial Matches')
-    for ax in g.axes.flat:
-        for label in ax.get_xticklabels():
-            label.set_rotation(90)
-    g.fig.suptitle('Lineplot of Mean Partial Matches by Coverage and Mean Read Length', y=1.02)
-    #os.makedirs(os.path.dirname(output_path_partial), exist_ok=True)  # Ensure the folder exists
-    #plt.savefig(output_path_partial, dpi=300, bbox_inches="tight")
-    #plt.close()
     
-    # Static plot for full matches
-    g = sns.FacetGrid(full_stats, col='ID', col_wrap=cols, height=4, aspect=1.5)
-    g.map(sns.lineplot, 'coverage_mean_read_length', 'mean_full_matches', 'Barcode', markers=True, dashes=False, palette=barcode_color_map)
-    g.add_legend()
-    g.set_axis_labels('Coverage and Mean Read Length', 'Mean Full Matches')
-    for ax in g.axes.flat:
-        for label in ax.get_xticklabels():
-            label.set_rotation(90)
-    g.fig.suptitle('Lineplot of Mean Full Matches by Coverage and Mean Read Length', y=1.05)
-    os.makedirs(os.path.dirname(output_path_full), exist_ok=True)  # Ensure the folder exists
-    plt.savefig(output_path_full, dpi=300, bbox_inches="tight")
-    plt.close()"""
-
     # Interactive plot for partial matches
-    
     #color
     barcode_color_map = get_barcode_color_mapping(filtered_partial["barcode"].unique())
     fig = make_subplots(rows=rows, cols=cols, shared_yaxes=True, subplot_titles=filtered_partial['id'].unique())
@@ -421,7 +444,7 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_lis
             fig.add_trace(go.Scatter(x=barcode_data['coverage_mean_read_length'], y=barcode_data['mean_partial_matches'], mode='lines+markers', name=str(barcode), legendgroup=str(barcode), showlegend=(i == 1), line=dict(color=barcode_color_map[barcode])), row=row, col=col)
     fig.update_xaxes(title_text='Coverage and Mean Read Length', title_font=dict(size=8), title_standoff=5)
     fig.update_yaxes(title_text='Mean Partial Matches', title_font=dict(size=8), title_standoff=5)
-    fig.update_layout(title_text='Lineplot of Mean Partial Matches by Coverage and Mean Read Length', showlegend=True)
+    fig.update_layout(title_text='Target-specific Partial Matches', showlegend=True)
     fig.write_html(output_html_partial)
     fig.write_image(output_path_partial, scale=3, width=1200, height=1200)
 
@@ -436,18 +459,37 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_lis
             fig.add_trace(go.Scatter(x=barcode_data['coverage_mean_read_length'], y=barcode_data['mean_full_matches'], mode='lines+markers', name=str(barcode), legendgroup=str(barcode), showlegend=(i == 1), line=dict(color=barcode_color_map[barcode])), row=row, col=col)
     fig.update_xaxes(title_text='Coverage and Mean Read Length', title_font=dict(size=8), title_standoff=5)
     fig.update_yaxes(title_text='Mean Partial Matches', title_font=dict(size=8), title_standoff=5)
-    fig.update_layout(title_text='Lineplot of Mean Full Matches by Coverage and Mean Read Length', showlegend=True)
+    fig.update_layout(title_text='Target-specific Full Matches', showlegend=True)
     fig.write_html(output_html_full)
     fig.write_image(output_path_full, scale=3, width=1200, height=1200)
 
     
+    # Interactive plot for otb matches
+    fig = make_subplots(rows=rows, cols=cols, shared_yaxes=True, subplot_titles=filtered_full['id'].unique())
+    for i, unique_id in enumerate(filtered_otb['id'].unique(), start=1):
+        subset = otb_stats[otb_stats['id'] == unique_id]
+        row = (i - 1) // cols + 1
+        col = (i - 1) % cols + 1
+        for barcode in subset['barcode'].unique():
+            barcode_data = subset[subset['barcode'] == barcode]
+            fig.add_trace(go.Scatter(x=barcode_data['coverage_mean_read_length'], y=barcode_data['mean_otb_matches'], mode='lines+markers', name=str(barcode), legendgroup=str(barcode), showlegend=(i == 1), line=dict(color=barcode_color_map[barcode])), row=row, col=col)
+    fig.update_xaxes(title_text='Coverage and Mean Read Length', title_font=dict(size=8), title_standoff=5)
+    fig.update_yaxes(title_text='Mean OTB Matches', title_font=dict(size=8), title_standoff=5)
+    fig.update_layout(title_text='Target-specific OTB', showlegend=True)
+    fig.write_html(output_html_otb)
+    fig.write_image(output_path_otb, scale=3, width=1200, height=1200)
+
+
+
+
     print(f"Partial Overalps Lineplot panel saved as {output_html_partial}")
     print(f"Full Overlaps Lineplot panel saved as {output_html_full}")
-    return str(output_html_full), str(output_html_partial)
+    print(f"OTB Overlaps Lineplot panel saved as {output_html_otb}")
+    return str(output_html_full), str(output_html_partial), str(output_html_otb)
 
 
 #plot_isolated_lineplot(data, output_path="./output/tcr_20/", filter=2, id_list=["TRAC", "TRBC1", "TRBV1", "TRAV3"])
-#plot_isolated_lineplot(data, output_path="./output/tcr_20/", filter=20)
+#plot_isolated_lineplot(basic_data, output_path="/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_1/", filter=5)
 
 
 #%%
@@ -564,7 +606,7 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
             }}
             .grid-container iframe {{
                 width: 100%;
-                height: 600px;
+                height: 400px;
                 border: none;
                 border-radius: 25px;
                 background: white;
@@ -587,25 +629,26 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
     <body>
         <h1>Analysis Report</h1>
         <p>Results in "{output_html}"...</p>
-        <h3>Match Overview</h3>
+        <h3>General Overview</h3>
         <div class="grid-container">
             <iframe src="{image_paths[0]}" title="Total Reads"></iframe>
             <iframe src="{image_paths[1]}" title="Percentage Reads"></iframe>
+            
         </div>
-        <h3>Read Overview</h3>
+        <h3>Match Overview</h3>
         <div class="grid-container">
-             <iframe src="{image_paths[2]}" title="Partial Matches"></iframe>
+            <iframe src="{image_paths[2]}" title="..."></iframe>
             <iframe src="{image_paths[3]}" title="Full Matches"></iframe>
-        </div>
-        <h3>Match Statistics</h3>
-        <div class="grid-container">
             <iframe src="{image_paths[4]}" title="Partial Matches"></iframe>
-            <iframe src="{image_paths[5]}" title="Full Matches"></iframe>
+        </div>
+        <div class="grid-container">
+
         </div>
         <h3>Region-Specific Read Overlaps</h3>
         <div class="grid-container">
-            <iframe src="{image_paths[6]}" title="Full Match Panel" style="height: 1200px; border: none;"></iframe>
-            <iframe src="{image_paths[7]}" title="Partial Match Panel" style="height: 1200px; border: none;"></iframe>
+            <iframe src="{image_paths[5]}" title="Full Match Panel" style="height: 1200px; border: none;"></iframe>
+            <iframe src="{image_paths[6]}" title="Partial Match Panel" style="height: 1200px; border: none;"></iframe>
+            <iframe src="{image_paths[7]}" title="OTB Match Panel" style="height: 1200px; border: none;"></iframe>
         </div>
     """
     html_content += f"""
