@@ -23,9 +23,9 @@ def seq_read_data(fasta_file, distribution=False, min_read_length=0):
     with open_func(fasta_file, "rt") as handle:
         
         # Determine file format based on extension
-        if fasta_file.endswith(".fastq") or fasta_file.endswith(".fastq.gz"):
+        if fasta_file.endswith(".fastq") or fasta_file.endswith(".fastq.gz") or fasta_file.endswith(".fq") or fasta_file.endswith(".fq.gz"):
             file_format = "fastq"
-        elif fasta_file.endswith(".fasta") or fasta_file.endswith(".fasta.gz"):
+        elif fasta_file.endswith(".fasta") or fasta_file.endswith(".fasta.gz") or fasta_file.endswith(".fa") or fasta_file.endswith(".fa.gz"):
             file_format = "fasta"
         else:
             raise ValueError(f"Unsupported file format for {fasta_file}. Only FASTA and FASTQ are allowed.")

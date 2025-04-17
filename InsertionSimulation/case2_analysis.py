@@ -15,7 +15,7 @@ sns.set_theme(style="ticks", rc=custom_params)
 from config_handler import seq_read_data
 
 #%%
-seq_read_lengths = seq_read_data("/home/weichan/permanent/Projects/VIS/Data/VIS_Magdeburg/20240205_1448_MN35428_FAX66700_46d2ede9/MK025_GFPpos_sup_dorado_ref_simulation_1kb.fasta.gz", distribution=True, min_read_length=1000)
+seq_read_lengths = seq_read_data("/home/weichan/permanent/Projects/VIS/dev/Simulation/InsertionSimulation/insertion_simulation.fa", distribution=True, min_read_length=0)
 print(len(seq_read_lengths))
 #%%
 
@@ -134,7 +134,7 @@ def barplot_absolute_matches(data, tp_dict):
         bases_on_target_total=('on_target_bases', 'sum')
     ).reset_index()
 
-    print(summary.head())
+    #print(summary.head())
     # Aggregate across iterations to compute mean and standard error
     final_summary = summary.groupby(['mean_read_length', 'coverage']).agg(
         full_matches_mean=('full_matches_total', 'mean'),
@@ -145,7 +145,7 @@ def barplot_absolute_matches(data, tp_dict):
         on_target_bases_se=('bases_on_target_total', lambda x: x.std() / np.sqrt(len(x)))
     ).reset_index()
 
-    #print(final_summary)
+    print(final_summary)
 
     x_labels = [f"{row['mean_read_length']}, {row['coverage']}" for _, row in final_summary.iterrows()]
     x = np.arange(len(x_labels))  # Numerical indices for the bars
@@ -239,11 +239,11 @@ def read_data(filepath, header=0):
     return data
 
 #%%
-data = read_data('/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_bigtest/bigtest2_matches_table.csv')
+data = read_data('/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_bigtest/10genomes_matches_table.csv')
 print(data.head())
 #%% seq data + VIS
 
-vis = read_data('/home/weichan/temporary/Projects/VIS_out/Simulation/final/localization/ExactInsertions_Simulation.bed', header=None)
+vis = read_data('/home/weichan/temporary/Projects/VIS_out/Simulation/final/localization/ExactInsertions_MK028_28z.bed', header=None)
 vis["length"] = vis[2] - vis[1]
 vis["length"] = vis["length"].astype(int)
 print(vis.head())
