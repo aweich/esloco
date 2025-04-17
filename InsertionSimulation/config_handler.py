@@ -6,6 +6,7 @@ import ast
 import json
 import itertools
 import sys
+import os
 
 #mean read length calculation
 import numpy as np
@@ -40,7 +41,6 @@ def seq_read_data(fasta_file, distribution=False, min_read_length=0):
             if len(record.seq) > min_read_length:
                 lengths.append(len(record.seq))
         lengths = np.array(lengths)
-    print(f"Number of reads: {len(lengths)}")
     if lengths.size == 0:
         raise ValueError(f"No reads found in {fasta_file}")
     if distribution:
@@ -91,6 +91,13 @@ def parse_config(config_file):
         no_cov_plots = config.getboolean("COMMON", "no_cov_plots", fallback=False)
         parallel_jobs = config.getint("COMMON", "parallel_jobs", fallback=1)
 
+        #make sure output paths exist
+        if not os.path.exists(output_path):
+            os.makedirs(output_path)
+        
+        if not os.path.exists(output_path_plots):
+            os.makedirs(output_path_plots)
+
         # Handle coverages and mean_read_lengths safely
         coverages = json.loads(config.get("COMMON", "coverages", fallback="[1]"))
         if not isinstance(coverages, list):
@@ -116,7 +123,7 @@ def parse_config(config_file):
             insertion_length = config.getint("I", "insertion_length", fallback=1000)
             insertion_number_distribution = config.get("I", "insertion_number_distribution", fallback="poisson")
             bedpath = config.get("I", "bedpath", fallback=None)
-            insertion_numbers = config.getint("I", "insertion_numbers", fallback=5)
+            insertion_numbers = config.getfloat("I", "insertion_numbers", fallback=5.0)
         else:
             logging.error("Invalid mode selected. Exiting.")
             raise ValueError("Invalid mode selected. Allowed values: 'ROI' or 'I'.")

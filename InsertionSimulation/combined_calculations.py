@@ -2,6 +2,7 @@ import random
 import gc
 import logging
 import numpy as np
+import os
 
 from config_handler import seq_read_data
 from plotting import plot_reads_coverage

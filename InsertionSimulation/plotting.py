@@ -44,22 +44,14 @@ def plot_reads_coverage(ref_length, bin_size, reads_dict, mean_read_length, curr
     Plots a coverage-like plot using the reference genome and reads information.
     """
 
-    if not outputpath or outputpath.lower() == "none":
-        logging.info("Skipping plot due to missing output path.")
-        return  # Stop execution
-    
     output_file_svg = f"{outputpath}/{mean_read_length}_{current_coverage}_coverage.svg"
     output_file_html = f"{outputpath}/{mean_read_length}_{current_coverage}_coverage.html"
     
     if os.path.exists(output_file_svg) and os.path.exists(output_file_html):
         logging.info(f"Skipping plot generation: Output files '{output_file_svg}' and '{output_file_html}' already exist.")
         return  # Stop execution
-    else:
-        os.makedirs(outputpath, exist_ok=True)
-        logging.info(f"Generating plots: {output_file_svg} and {output_file_html}")
 
     # Start plotting
-
     smooth_sigma = 3
     # Initialize coverage array
     coverage = np.zeros(ref_length)

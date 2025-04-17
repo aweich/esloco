@@ -25,7 +25,7 @@ from genome_generation import create_barcoded_insertion_genome, create_barcoded_
 from combined_calculations import run_simulation_iteration
 
 def main():
-    """ Main function to execute the entire simulation. """
+    """ Main body to execute the entire simulation. """
 
     # Load configuration
     if len(sys.argv) != 2:
@@ -46,22 +46,23 @@ def main():
     experiment_name = param_dictionary.get("experiment_name")
     num_iterations = param_dictionary.get("iterations")
     parallel_jobs = param_dictionary.get("parallel_jobs")
-
-	# Create output dir
-    if not os.path.exists(output_path):
-         os.makedirs(output_path)
     
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
 
-    #setup logfile
-    log_file=os.path.join(output_path, f"{ experiment_name}_log.log")
+    # Setup logfile
+    log_file = os.path.join(output_path, f"{experiment_name}_log.log")
+    
+    # Check if log file already exists
+    if os.path.exists(log_file):
+        logging.warning(f"Log file already exists. Continuing simulation. New info will be appended to '{log_file}'.")
+
     setup_logging(log_file)
 
     logging.info(f"Starting simulation: {experiment_name}")
     logging.info(f"Running in mode: {mode}")
 
-    #setup monitoring
+    # Setup monitoring
     start_time = time.time()
     track_usage("Before")
 
