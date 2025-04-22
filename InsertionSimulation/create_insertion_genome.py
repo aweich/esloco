@@ -16,13 +16,14 @@ def add_insertions_to_genome_sequence_with_bed(reference_sequence, insertion_len
 		'''
 		position = {}
 
-		logging.info(f"insertion_number_distribution: {insertion_number_distribution}")
-
 		if insertion_number_distribution == 'poisson': 
 			num_insertions = np.random.poisson(num_insertions)
 			logging.info(f"Number of insertions drawn from Poisson distribution: {num_insertions}")
 		else:
 			logging.info(f"Using exactly {num_insertions}.")
+
+		num_insertions = int(num_insertions)
+
 
 		if bed_df is not None:
 			logging.info("BED guided insertion pattern...")

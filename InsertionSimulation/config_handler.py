@@ -87,7 +87,7 @@ def parse_config(config_file):
         n_barcodes = config.getint("COMMON", "n_barcodes", fallback=1)
         iterations = config.getint("COMMON", "iterations", fallback=1)
         scaling = config.getfloat("COMMON", "scaling", fallback=1.0)
-        min_read_length = config.getint("COMMON", "min_read_length", fallback=0)
+        min_read_length = config.getint("COMMON", "min_read_length", fallback=1)
         no_cov_plots = config.getboolean("COMMON", "no_cov_plots", fallback=False)
         parallel_jobs = config.getint("COMMON", "parallel_jobs", fallback=1)
 
@@ -121,7 +121,7 @@ def parse_config(config_file):
             roi_bedpath = config.get("ROI", "roi_bedpath", fallback=None)
         elif mode == "I":
             insertion_length = config.getint("I", "insertion_length", fallback=1000)
-            insertion_number_distribution = config.get("I", "insertion_number_distribution", fallback="poisson")
+            insertion_number_distribution = config.get("I", "insertion_number_distribution", fallback=None)
             bedpath = config.get("I", "bedpath", fallback=None)
             insertion_numbers = config.getfloat("I", "insertion_numbers", fallback=5.0)
         else:

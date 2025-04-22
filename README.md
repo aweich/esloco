@@ -1,6 +1,6 @@
 # SIMCOV - Simulation of coverage expectancy from DNA sequencing experiments
 
-> simcov can be used to simulate DNA sequencing experiments to ensure sufficient coverage of critical regions of interests (ROI) or insertions (I).
+> simcov is a simulation-based tool for long-read DNA sequencing experiments to ensure sufficient coverage of regions of interests (ROI) or insertions (I).
 
 ### Summary
 
@@ -14,7 +14,7 @@ The illustration above demonstrates the workflow of `simcov`, which uses Monte C
 
 2. **Read Simulation**: Reads are drawn from a specified length distribution until the desired coverage is achieved. Reads overlapping target regions are counted, while masked regions are excluded. This process is repeated in parallel for multiple iterations to ensure robust coverage estimates.
 
-The simulation assumes that random sampling can approximate deterministic outcomes, with target coverage primarily influenced by read length distribution and mean whole-genome coverage.
+The simulation assumes that random sampling can approximate deterministic outcomes, with target coverage primarily influenced by read length distribution and whole-genome coverage.
 
 ---
 
@@ -59,6 +59,7 @@ Below are the configuration options for the simulation, divided into three secti
 | `experiment_name`              | Name of the experiment.                                                                             | `default_experiment`                                                                      |
 | `output_path_plots`            | Output path for plots.                                                                              | output_path                                                                    |
 | `min_overlap_for_detection`    | Minimum overlap required between target region and read to be counted.                             | `1`                                                                                |
+| `min_read_lengths`    | Minimum length of reads drawn from the generated or provided read length dsitribution.                             | `1`     |
 | `chr_restriction`              | Chromosome restriction; `unrestricted` uses all chromosomes, otherwise excludes "M" or "_" chromosomes. | `None`                                                                             |
 | `barcode_weights`              | Changes barcode ratios.                                                                             | `None`                                                                |
 | `n_barcodes`                   | Number of barcodes (i.e., genomes).                                                                | `1`                                                                                |
