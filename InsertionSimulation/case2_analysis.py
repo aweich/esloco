@@ -12,6 +12,16 @@ import matplotlib.pyplot as plt
 custom_params = {"axes.spines.right": False, "axes.spines.top": False}
 sns.set_theme(style="ticks", rc=custom_params)
 
+import plotly.express as px
+import plotly.graph_objects as go
+import plotly.io as pio
+from plotly.subplots import make_subplots
+
+import re
+from datetime import datetime
+pio.kaleido.scope.mathjax = None
+pio.templates.default = "simple_white"
+
 from config_handler import seq_read_data
 
 #%%
@@ -118,7 +128,7 @@ from plotly.subplots import make_subplots
 pio.kaleido.scope.mathjax = None
 pio.templates.default = "plotly_white"
 
-def barplot_absolute_matches(data, tp_dict):
+def barplot_absolute_matches(data, tp_dict, noplot=False):
 
     # Output paths
     #output_svg = os.path.join(output_path, f"{experiment_name}_Barplot_absolute_numbers.svg")
@@ -147,6 +157,9 @@ def barplot_absolute_matches(data, tp_dict):
 
     print(final_summary)
 
+    if noplot:
+        return final_summary
+    
     x_labels = [f"{row['mean_read_length']}, {row['coverage']}" for _, row in final_summary.iterrows()]
     x = np.arange(len(x_labels))  # Numerical indices for the bars
 
@@ -232,7 +245,7 @@ def barplot_absolute_matches(data, tp_dict):
     #fig.write_html(output_html)
     #fig.write_image(output_svg, width=600, height=400)
     #print(f"Barplot absolute numbers saved as {output_html}")
-    return final_summary
+    #return final_summary
 #%%
 def read_data(filepath, header=0):
     data = pd.read_csv(filepath, sep='\t', header=header)
@@ -270,14 +283,16 @@ paths = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VC
          (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/100_10_genome_matches_table.csv'),
          (1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/1_7_genome_matches_table.csv'),
          (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10_7_genome_matches_table.csv'),
-         (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/100_7_genome_matches_table.csv')]#,
-         #(10000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10000_7_genome_matches_table.csv')]
+         (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/100_7_genome_matches_table.csv'),
+         (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/1000_7_genome_matches_table.csv')]
+#%%
 summaries = []
-for n, vcn, i in paths:
+for n, vcn, i in paths5:
     data = read_data(i)
-    summary = barplot_absolute_matches(data, vis_dict)
+    summary = barplot_absolute_matches(data, vis_dict, noplot=True)
     summary["VCN"] = vcn
     summary["n"] = n
+    summary["log_n"] = np.log10(n)
     summaries.append(summary)
 
 #%%
@@ -286,15 +301,80 @@ combined_summary = pd.concat(summaries, ignore_index=True)
 
 # Plot using seaborn
 plt.figure(figsize=(8, 6))
-sns.scatterplot(data=combined_summary, x="n", y="on_target_bases_mean", hue="VCN", palette="viridis", s=100)
-plt.errorbar(combined_summary["n"], combined_summary["on_target_bases_mean"], 
+sns.scatterplot(data=combined_summary, x="log_n", y="on_target_bases_mean", hue="VCN", palette="viridis", s=100)
+plt.errorbar(combined_summary["log_n"], combined_summary["on_target_bases_mean"], 
              yerr=combined_summary["on_target_bases_se"], fmt='none', c='black', capsize=3, label="SE")
 plt.axhline(y=vis_dict["otb"], color='red', linestyle='-', label="True OTB")
 plt.title("On Target Bases Mean vs n")
-plt.xlabel("n")
+plt.xlabel("log10(n)")
 plt.ylabel("On Target Bases Median")
 plt.legend(title="VCN")
 plt.tight_layout()
 plt.show()
+
+# %%
+paths7 =  [(1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1_7_matches_table.csv'),
+         (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/10_7_matches_table.csv'),
+         (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/100_7_matches_table.csv')]
+
+paths5 = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1_5_matches_table.csv'),
+         (10,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/10_5_matches_table.csv'),
+         (100,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/100_5_matches_table.csv'),
+         (1000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1000_5_matches_table.csv')]
+#%%
+clonality = []
+for n, vcn, i in paths5:
+    data = read_data(i)
+    summary = data.groupby(['barcode','mean_read_length', 'coverage']).agg(
+        bases_on_target_total=('on_target_bases', 'mean')
+    ).reset_index()
+    summary["VCN"] = vcn
+    summary["n"] = n
+    summary["log_n"] = np.log10(n)
+    print(summary.head())
+    clonality.append(summary)
+
+combined_clonality = pd.concat(clonality, ignore_index=True)
+#%%
+
+fig = px.pie(combined_clonality, values='bases_on_target_total', names='n',
+              color_discrete_sequence=["#F40154", "#A00B70", "#224B87"])
+fig.update_layout(width=500, height=500, margin=dict(l=50, r=50, t=50, b=50))
+fig.update_traces(textfont_size=20, marker=dict(line=dict(color='white', width=5)))
+fig.show()
+
+#%%
+print(combined_clonality)
+for n in combined_clonality["n"].unique():
+    print(f"n: {n}")
+    filtered = combined_clonality[combined_clonality["n"] == n]
+    fig = px.pie(filtered, values='bases_on_target_total', names='barcode', labels=None)
+    fig.update_layout(width=500, height=500)
+    fig.update_traces(textfont_size=20)
+    fig.show()
+
+#%%    
+combined_clonality['percentage'] = combined_clonality.groupby('n')['bases_on_target_total'].transform(lambda x: x / x.sum() * 100)
+combined_clonality['barcode'] = combined_clonality['barcode'].astype(str)  # Convert barcode to string for better labeling
+
+# Define a custom color mapping
+def custom_color_mapping(barcode):
+    if barcode == '0':
+        return 'orange'
+    else:
+        return f'rgba(128, 128, 128, {0.5 + 0.9 * (int(barcode) % 10) / 10})'  # Grayscale with varying transparency
+
+# Apply the custom color mapping
+combined_clonality['color'] = combined_clonality['barcode'].apply(custom_color_mapping)
+
+# Create a stacked bar chart with custom colors
+fig_bar = px.bar(combined_clonality, x='n', y='percentage', color='barcode',
+                 title="",
+                 labels={'percentage': 'Percentage (%)', 'barcode': 'Barcode'},
+                 color_discrete_map={row['barcode']: row['color'] for _, row in combined_clonality.iterrows()})
+fig_bar.update_layout(barmode='stack', width=600, height=600, xaxis=dict(type='category'), font=dict(size=20))
+fig_bar.update_xaxes(showline=True, linewidth=2, linecolor='black')
+fig_bar.update_yaxes(showline=True, linewidth=2, linecolor='black')
+fig_bar.show()
 
 # %%

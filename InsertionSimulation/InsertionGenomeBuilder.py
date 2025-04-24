@@ -124,7 +124,7 @@ def main():
         # works with Barcode_{barcode-number}_insertion_{insertion-number}_{iteration-number}
         # Split the target_region column into its components
         target_split = results_df["target_region"].str.rsplit("_", n=4, expand=True)
-        results_df["target"] = target_split.iloc[:, 0:3].agg("_".join, axis=1)
+        results_df["target"] = target_split.iloc[:, :4].agg("_".join, axis=1)
         results_df["barcode"] = target_split.iloc[:, 1]
         results_df["insertion"] = target_split.iloc[:, 2] + "_" + target_split.iloc[:, 3]
         results_df["iteration"] = target_split.iloc[:, 4]
