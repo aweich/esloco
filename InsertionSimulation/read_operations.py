@@ -1,4 +1,3 @@
-import random
 from Bio import SeqIO
 import numpy as np
 import logging
@@ -45,7 +44,7 @@ def generate_reads(fasta, read_length_distribution, num_reads):
     '''
     reads = []
     for read_length in read_length_distribution:
-        start_position = random.randint(0, len(fasta) - read_length)
+        start_position = np.random.randint(0, len(fasta) - read_length)
         read = fasta[start_position:start_position + read_length]
         reads.append(read)
     return reads
@@ -67,7 +66,7 @@ def check_if_blocked_region(random_barcode_number, start_position, read_length, 
             
             if (start < start_position < stop) or (start < start_position + read_length < stop): #checks if start lays in the blocked region or if the end lays in a blocked region
                 # The start position falls within a blocked region
-                if random.random() < weight:
+                if np.random.rand() < weight:
                     return True  # position is blocked 
 
 def get_weighted_probabilities(insertion_name,n_barcodes, weights_dict):
@@ -87,7 +86,7 @@ def get_weighted_probabilities(insertion_name,n_barcodes, weights_dict):
 		else:
 			return 1 / n_barcodes
 
-def generate_reads_based_on_coverage(genome_size, coverage, precomputed_lengths, n_barcodes, barcode_weights, masked_regions=None):
+def generate_reads_based_on_coverage(genome_size, coverage, read_length_distribution, n_barcodes, barcode_weights, masked_regions=None):
     '''
     Randomly pulls a read of size X derived from the read length distribution from the fasta until the fasta is N times covered (coverage).
     '''
@@ -97,11 +96,17 @@ def generate_reads_based_on_coverage(genome_size, coverage, precomputed_lengths,
     read_coordinates = {}
     barcode_names = ["Barcode_" + str(i) for i in range(n_barcodes)]
 
+    # barcode weights
+    probabilities = [get_weighted_probabilities(i, n_barcodes, barcode_weights) for i in barcode_names]
+    probabilities = probabilities / np.sum(probabilities)  # Normalize probabilities to sum to 1
+    
     #Reads pulled until desired coverage is reached
     while covered_length < coverage * genome_size:
-        random_barcode = random.choices(barcode_names, [get_weighted_probabilities(i, n_barcodes, barcode_weights) for i in barcode_names])[0] #chooses one of the barcodes based on weighted probability
-        read_length = precomputed_lengths.pop()
-        start_position = random.randint(0, genome_size - read_length)
+        
+        random_barcode = np.random.choice(barcode_names, p=probabilities)  # chooses one of the barcodes based on weighted probability
+        read_length = np.random.choice(read_length_distribution) # chooses one of the read lengths based on the distribution
+        start_position = np.random.randint(0, genome_size - read_length) # chooses a random start position for the read
+        
         # Check if the random barcode is in the list of barcodes that require checking for blocked regions
         random_barcode_number = random_barcode.split('_')[-1] #otherwise user input needs to be weird
 

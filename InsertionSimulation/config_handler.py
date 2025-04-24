@@ -48,6 +48,12 @@ def seq_read_data(fasta_file, distribution=False, min_read_length=0):
     else:
         return np.mean(lengths)
 
+def random_seed():
+    """
+    Generates a random seed if not provided.
+    """
+    return np.random.randint(0, 2**32 - 1)
+
 def parse_config(config_file):
     """
     Parses the given configuration file and returns a dictionary of parameters.
@@ -90,6 +96,7 @@ def parse_config(config_file):
         min_read_length = config.getint("COMMON", "min_read_length", fallback=1)
         no_cov_plots = config.getboolean("COMMON", "no_cov_plots", fallback=False)
         parallel_jobs = config.getint("COMMON", "parallel_jobs", fallback=1)
+        seed = config.getint("COMMON", "seed", fallback=random_seed())
 
         #make sure output paths exist
         if not os.path.exists(output_path):

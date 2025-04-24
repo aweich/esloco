@@ -66,12 +66,16 @@ def main():
     start_time = time.time()
     track_usage("Before")
 
+    # Assign Seed
+    np.random.seed(param_dictionary['seed'])
+    logging.info(f"Seed for reproducibility: {param_dictionary['seed']}")
     genome_size, target_regions, masked_regions, chromosome_dir = None, None, None, None
 
     # Process based on mode
     if mode == "I":
         logging.info("Processing Insertion Mode...")
         genome_size, insertion_dict, masked_regions, chromosome_dir = create_barcoded_insertion_genome(
+            parallel_jobs,
             param_dictionary['reference_genome_path'], param_dictionary['bedpath'],
             param_dictionary['blocked_regions_bedpath'], param_dictionary['chr_restriction'],
             param_dictionary['insertion_length'], param_dictionary['insertion_numbers'],

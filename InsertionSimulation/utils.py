@@ -42,7 +42,7 @@ def profile_iteration(func):
 
 def get_chromosome(insert_position, chromosome_dir):
 	'''
-	Checks within which chromosome the random insertion landed.
+	Checks within which chromosome the insertion landed.
 	'''
 	for chromosome, coordinates in chromosome_dir.items():
 		start, end = coordinates

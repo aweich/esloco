@@ -1,5 +1,5 @@
 import logging
-import random
+import numpy as np
 import sys
 from utils import track_usage
 
@@ -28,16 +28,20 @@ def count_matches(insertion_dict, read_dir, scaling, min_overlap):
         scaling = 1 
 
     for key, values in insertion_dict.items():
-        
         full_length_count = 0
         partial_count = 0
+        
         #necessary since Insertions and ROIs have a different structure
         if type(values) == list: 
-            start = values[0]
-            end = values[1]
+            start = int(values[0])
+            end = int(values[1])
         else:
-            start = values["start"]
-            end = values["end"]
+            try:
+                start = int(values["start"])
+                end = int(values["end"])
+            except ValueError as e:
+                logging.error(f"Invalid start or end value in key {key}: {values}. Error: {e}")
+                continue
         countdata = {'target_region': key}
         overlaps=[]
         bias_list=[]
@@ -58,7 +62,7 @@ def count_matches(insertion_dict, read_dir, scaling, min_overlap):
                         bias = calc_bias(read_length, target_length, min_overlap)
                         # Full-length insertion: check if the read fully covers the insertion
                         if read_start <= start and end <= read_end:
-                                if random.random() <= scaling:
+                                if np.random.rand() <= scaling:
                                     bias_list.append(bias)
                                     full_length_count += 1
                                     overlaps.append(overlap)
@@ -73,7 +77,7 @@ def count_matches(insertion_dict, read_dir, scaling, min_overlap):
                         #        (start < read_start and end <= read_end):
                         else:
                             # Ensure the overlap is at least 'x'
-                            if random.random() <= scaling:
+                            if np.random.rand() <= scaling:
                                 bias_list.append(bias)
                                 partial_count += 1
                                 overlaps.append(overlap)

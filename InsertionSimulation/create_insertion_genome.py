@@ -1,5 +1,4 @@
 # create_insertion_genome.py
-import random
 import logging
 import numpy as np
 
@@ -46,7 +45,7 @@ def add_insertions_to_genome_sequence_with_bed(reference_sequence, insertion_len
 				chromosome = selected_region['chrom']
 				chromosome_range = chromosome_dir[chromosome]
 
-				insert_position = random.randint(selected_region['start'], selected_region['end'])
+				insert_position = np.random.randint(selected_region['start'], selected_region['end'])
 				
 				# Adjust insertion position to the global genomic coordinates
 				global_insert_position = chromosome_range[0] + insert_position
@@ -67,7 +66,7 @@ def add_insertions_to_genome_sequence_with_bed(reference_sequence, insertion_len
 		else:
 			for i in range(num_insertions):
 				# Choose a random position to insert the smaller sequence
-				insert_position = random.randint(0, reference_sequence)
+				insert_position = np.random.randint(0, reference_sequence)
 				#check in which chr it landed
 				chromosome = get_chromosome(insert_position, chromosome_dir)
 				# Update position table
@@ -84,5 +83,6 @@ def add_insertions_to_genome_sequence_with_bed(reference_sequence, insertion_len
 
 
 		#new genome length is original length + length of all insertions combined
-		length_updated_reference_sequence = reference_sequence + num_insertions * insertion_length
-		return length_updated_reference_sequence, position
+		#length_updated_reference_sequence = reference_sequence + num_insertions * insertion_length
+		#length_updated_reference_sequence,
+		return position

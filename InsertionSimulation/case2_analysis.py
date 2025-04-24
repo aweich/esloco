@@ -15,7 +15,7 @@ sns.set_theme(style="ticks", rc=custom_params)
 from config_handler import seq_read_data
 
 #%%
-seq_read_lengths = seq_read_data("/home/weichan/permanent/Projects/VIS/dev/Simulation/InsertionSimulation/insertion_simulation.fa", distribution=True, min_read_length=0)
+seq_read_lengths = seq_read_data("/home/weichan/permanent/Projects/VIS/Data/VIS_Magdeburg/20240205_1448_MN35428_FAX66700_46d2ede9/MK025_GFPpos_sup_dorado_ref_simulation_1kb.fasta.gz", distribution=True, min_read_length=0)
 print(len(seq_read_lengths))
 #%%
 
@@ -125,23 +125,23 @@ def barplot_absolute_matches(data, tp_dict):
     #output_html = os.path.join(output_path, f"{experiment_name}_Barplot_absolute_numbers.html")
 
     # Extract iteration number from the 'Insertion' column
-    data['Iteration'] = data['target_region'].str.extract(r'_(\d+)$').astype(int)
+    #data['Iteration'] = data['target_region'].str.extract(r'_(\d+)$').astype(int)
 
     # Group by mean_read_length, coverage, and iteration # sum up all barcodes
-    summary = data.groupby(['mean_read_length', 'coverage', 'Iteration']).agg(
+    summary = data.groupby(['mean_read_length', 'coverage', 'iteration']).agg(
         full_matches_total=('full_matches', 'sum'),
         partial_matches_total=('partial_matches', 'sum'),
         bases_on_target_total=('on_target_bases', 'sum')
     ).reset_index()
 
-    #print(summary.head())
+    print(summary.head())
     # Aggregate across iterations to compute mean and standard error
     final_summary = summary.groupby(['mean_read_length', 'coverage']).agg(
         full_matches_mean=('full_matches_total', 'mean'),
         full_matches_se=('full_matches_total', lambda x: x.std() / np.sqrt(len(x))),
         partial_matches_mean=('partial_matches_total', 'mean'),
         partial_matches_se=('partial_matches_total', lambda x: x.std() / np.sqrt(len(x))),
-        on_target_bases_mean=('bases_on_target_total', 'mean'),
+        on_target_bases_mean=('bases_on_target_total', 'median'),
         on_target_bases_se=('bases_on_target_total', lambda x: x.std() / np.sqrt(len(x)))
     ).reset_index()
 
@@ -232,18 +232,18 @@ def barplot_absolute_matches(data, tp_dict):
     #fig.write_html(output_html)
     #fig.write_image(output_svg, width=600, height=400)
     #print(f"Barplot absolute numbers saved as {output_html}")
-    #return str(output_html)
-
+    return final_summary
+#%%
 def read_data(filepath, header=0):
     data = pd.read_csv(filepath, sep='\t', header=header)
     return data
 
 #%%
-data = read_data('/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_bigtest/10genomes_matches_table.csv')
+data = read_data('/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_5_VCN/1_5_10k_matches_table.csv')
 print(data.head())
 #%% seq data + VIS
 
-vis = read_data('/home/weichan/temporary/Projects/VIS_out/Simulation/final/localization/ExactInsertions_MK028_28z.bed', header=None)
+vis = read_data('/home/weichan/temporary/Projects/VIS_out/Simulation/final/localization/ExactInsertions_one_run_28z.bed', header=None)
 vis["length"] = vis[2] - vis[1]
 vis["length"] = vis["length"].astype(int)
 print(vis.head())
@@ -260,5 +260,41 @@ print(vis_dict["full"])
 #%%
 
 barplot_absolute_matches(data, vis_dict)
+
+# %%
+paths = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/1_genome_matches_table.csv'),
+         (10,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10_genome_matches_table.csv'),
+         (100,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10_genome_matches_table.csv'),
+         (1,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/1_10_genome_matches_table.csv'),
+         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10_10_genome_matches_table.csv'),
+         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/100_10_genome_matches_table.csv'),
+         (1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/1_7_genome_matches_table.csv'),
+         (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10_7_genome_matches_table.csv'),
+         (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/100_7_genome_matches_table.csv')]#,
+         #(10000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10000_7_genome_matches_table.csv')]
+summaries = []
+for n, vcn, i in paths:
+    data = read_data(i)
+    summary = barplot_absolute_matches(data, vis_dict)
+    summary["VCN"] = vcn
+    summary["n"] = n
+    summaries.append(summary)
+
+#%%
+# Combine all summaries into a single DataFrame
+combined_summary = pd.concat(summaries, ignore_index=True)
+
+# Plot using seaborn
+plt.figure(figsize=(8, 6))
+sns.scatterplot(data=combined_summary, x="n", y="on_target_bases_mean", hue="VCN", palette="viridis", s=100)
+plt.errorbar(combined_summary["n"], combined_summary["on_target_bases_mean"], 
+             yerr=combined_summary["on_target_bases_se"], fmt='none', c='black', capsize=3, label="SE")
+plt.axhline(y=vis_dict["otb"], color='red', linestyle='-', label="True OTB")
+plt.title("On Target Bases Mean vs n")
+plt.xlabel("n")
+plt.ylabel("On Target Bases Median")
+plt.legend(title="VCN")
+plt.tight_layout()
+plt.show()
 
 # %%
