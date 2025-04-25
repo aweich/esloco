@@ -5,7 +5,7 @@
 ### Summary
 
 <div style="text-align: center;">
-    <img src="Simulation-3.png" alt="Illustration" style="width: 50%; height: auto;">
+    <img src="VIS_Simulation_Illustration.png" alt="Illustration" style="width: 50%; height: auto;">
 </div>
 
 The illustration above demonstrates the workflow of `esloco`, which iteratively uses repeated simulations to estimate DNA sequencing coverage over target regions. The process involves two main steps:
