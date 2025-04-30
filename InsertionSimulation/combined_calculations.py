@@ -26,9 +26,9 @@ def process_combination(mean_read_length, coverage, genome_size, target_regions,
             logging.info("Saving generated read length distribution to numpy file...")
             np.save(f"{output_path}/{coverage}_{mean_read_length}_dsitribution.npy", custom_read_length_distribution)
     
-    #reads_to_simulate = int(coverage * genome_size / mean_read_length) 
-    #precomputed_lengths = np.random.choice(custom_read_length_distribution, size=reads_to_simulate*10) #x10 to avoid running out of reads
-    custom_cov_coordinates, covered_length = generate_reads_based_on_coverage(genome_size, coverage, custom_read_length_distribution, n_barcodes, barcode_weights, masked_regions)
+    reads_to_simulate = int(coverage * genome_size / mean_read_length) 
+    precomputed_lengths = np.random.choice(custom_read_length_distribution, size=reads_to_simulate*10) #x10 to avoid running out of reads #check if this is faster?
+    custom_cov_coordinates, covered_length = generate_reads_based_on_coverage(genome_size, coverage, precomputed_lengths, n_barcodes, barcode_weights, masked_regions)
     
     #plot coverage only for first iteration of each parameter combination
     if iteration < 1 and not no_cov_plots:

@@ -275,36 +275,77 @@ print(vis_dict["full"])
 barplot_absolute_matches(data, vis_dict)
 
 # %%
-paths = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/1_genome_matches_table.csv'),
-         (10,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10_genome_matches_table.csv'),
-         (100,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10_genome_matches_table.csv'),
-         (1,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/1_10_genome_matches_table.csv'),
-         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10_10_genome_matches_table.csv'),
-         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/100_10_genome_matches_table.csv'),
-         (1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/1_7_genome_matches_table.csv'),
-         (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10_7_genome_matches_table.csv'),
-         (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/100_7_genome_matches_table.csv'),
-         (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/1000_7_genome_matches_table.csv')]
+paths7 =  [(1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1_7_matches_table.csv'),
+         (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/10_7_matches_table.csv'),
+         (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/100_7_matches_table.csv'),
+         (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1000_7_matches_table.csv')]
+
+paths5 = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1_5_matches_table.csv'),
+         (10,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/10_5_matches_table.csv'),
+         (100,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/100_5_matches_table.csv'),
+         (1000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1000_5_matches_table.csv')]
+
+paths10 =  [(1,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/1_10_matches_table.csv'),
+         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/10_10_matches_table.csv'),
+         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/100_10_matches_table.csv'),
+           (1000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/1000_10_matches_table.csv')]
+
+paths12 = [(1000,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/12/1000_12_matches_table.csv')]
+
+paths15 =  [(1,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/1_15_matches_table.csv'),
+         (10,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/10_15_matches_table.csv'),
+         (100,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/100_15_matches_table.csv'),
+         (1000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/1000_15_matches_table.csv')]
+
+paths = [list(paths7), list(paths5), list(paths10),list(paths12), list(paths15)]
+print(paths)
 #%%
 summaries = []
-for n, vcn, i in paths5:
-    data = read_data(i)
-    summary = barplot_absolute_matches(data, vis_dict, noplot=True)
-    summary["VCN"] = vcn
-    summary["n"] = n
-    summary["log_n"] = np.log10(n)
-    summaries.append(summary)
+for path_group in paths:
+    for n, vcn, i in path_group:
+        data = read_data(i)
+        summary = barplot_absolute_matches(data, vis_dict, noplot=True)
+        summary["VCN"] = vcn
+        summary["n"] = n
+        summary["log_n"] = np.log10(n)
+        summaries.append(summary)
 
 #%%
 # Combine all summaries into a single DataFrame
+# Assign colors to the respective VCNs
+vcn_colors = {
+    5: "#0000FF",  # Blue
+    7: "#008000",  # Green
+    10: "#FFA500",  # Orange
+    12: "#A9A500",  
+    15: "#800080"  # Purple
+}
+
 combined_summary = pd.concat(summaries, ignore_index=True)
 
 # Plot using seaborn
-plt.figure(figsize=(8, 6))
-sns.scatterplot(data=combined_summary, x="log_n", y="on_target_bases_mean", hue="VCN", palette="viridis", s=100)
+plt.figure(figsize=(15, 5))
+sns.lineplot(data=combined_summary, x="log_n", y="on_target_bases_mean", hue="VCN", 
+             palette=vcn_colors, marker="o", linewidth=2)
+
+# Add error bars
 plt.errorbar(combined_summary["log_n"], combined_summary["on_target_bases_mean"], 
              yerr=combined_summary["on_target_bases_se"], fmt='none', c='black', capsize=3, label="SE")
-plt.axhline(y=vis_dict["otb"], color='red', linestyle='-', label="True OTB")
+
+# Find the intersection point
+intersection_x = np.log10(15000)
+intersection_y = vis_dict["otb"]
+
+# Plot horizontal and vertical lines ending at the intersection point
+plt.plot([combined_summary["log_n"].min(), intersection_x], [intersection_y, intersection_y],
+          label="True OTB", linewidth=4, alpha=0.5, color='red')
+plt.plot([intersection_x, intersection_x], [combined_summary["on_target_bases_mean"].min(), intersection_y],
+          label="Max. n", linewidth=4, alpha=0.5, color='red')
+
+# Add a label at the intersection point
+plt.text(intersection_x, intersection_y, f"({intersection_x:.2f}, {intersection_y:.2f})", 
+         color='red', fontsize=10, ha='left', va='bottom')
+
 plt.title("On Target Bases Mean vs n")
 plt.xlabel("log10(n)")
 plt.ylabel("On Target Bases Median")
@@ -312,18 +353,10 @@ plt.legend(title="VCN")
 plt.tight_layout()
 plt.show()
 
-# %%
-paths7 =  [(1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1_7_matches_table.csv'),
-         (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/10_7_matches_table.csv'),
-         (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/100_7_matches_table.csv')]
-
-paths5 = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1_5_matches_table.csv'),
-         (10,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/10_5_matches_table.csv'),
-         (100,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/100_5_matches_table.csv'),
-         (1000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1000_5_matches_table.csv')]
 #%%
+selection = 10
 clonality = []
-for n, vcn, i in paths5:
+for n, vcn, i in paths10:
     data = read_data(i)
     summary = data.groupby(['barcode','mean_read_length', 'coverage']).agg(
         bases_on_target_total=('on_target_bases', 'mean')
@@ -335,12 +368,26 @@ for n, vcn, i in paths5:
     clonality.append(summary)
 
 combined_clonality = pd.concat(clonality, ignore_index=True)
-#%%
 
-fig = px.pie(combined_clonality, values='bases_on_target_total', names='n',
-              color_discrete_sequence=["#F40154", "#A00B70", "#224B87"])
-fig.update_layout(width=500, height=500, margin=dict(l=50, r=50, t=50, b=50))
-fig.update_traces(textfont_size=20, marker=dict(line=dict(color='white', width=5)))
+#rgba colors corresponding to the hexcodes above, might need to be changed later
+vcn_colors = {
+    5: "rgba(0, 0, 255",  # Blue with 80% opacity
+    7: "rgba(0, 128, 0",  # Green with 80% opacity
+    10: "rgba(255, 165, 0",  # Orange with 80% opacity
+    12: "rgba(155, 105, 0",  # Orange with 80% opacity
+    15: "rgba(128, 0, 128"  # Purple with 80% opacity
+}
+
+print(combined_clonality['n'].unique())
+# Assign a single color based on the VCN
+vcn_color = vcn_colors[selection]
+combined_clonality_sorted = combined_clonality.sort_values(by='n')
+fig = px.pie(combined_clonality_sorted, values='bases_on_target_total', names='n',
+             color_discrete_sequence=[vcn_color + "," + str((i+0.2)*0.3)+ ")" for i in range(len(combined_clonality['n'].unique()))])
+# Update layout to remove legend and add labels directly on the sectors
+fig.update_layout(title="OTBs n / Total OTBs in %", width=500, height=500, margin=dict(l=50, r=50, t=50, b=50), showlegend=False)
+fig.update_traces(textinfo='label+percent', textfont_size=30, marker=dict(line=dict(color='black', width=5)))
+fig.update_traces(sort=False, selector=dict(type='pie'))
 fig.show()
 
 #%%
@@ -377,4 +424,69 @@ fig_bar.update_xaxes(showline=True, linewidth=2, linecolor='black')
 fig_bar.update_yaxes(showline=True, linewidth=2, linecolor='black')
 fig_bar.show()
 
+# %%
+# plot the barcode distribution table for each configuration (-> supposed to show that reads are equally distirbuted across barcodes)
+
+bpaths7 =  [(1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1_7_barcode_distribution_table.csv'),
+         (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/10_7_barcode_distribution_table.csv'),
+         (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/100_7_barcode_distribution_table.csv'),
+          (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1000_7_barcode_distribution_table.csv')]
+
+bpaths5 = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1_5_barcode_distribution_table.csv'),
+         (10,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/10_5_barcode_distribution_table.csv'),
+         (100,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/100_5_barcode_distribution_table.csv'),
+         (1000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1000_5_barcode_distribution_table.csv'),
+         ]
+
+bpaths10 =  [(1,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/1_10_barcode_distribution_table.csv'),
+         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/10_10_barcode_distribution_table.csv'),
+         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/100_10_barcode_distribution_table.csv'),
+         (1000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/1000_10_barcode_distribution_table.csv')]
+
+bpaths15 =  [(1,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/1_15_barcode_distribution_table.csv'),
+         (10,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/10_15_barcode_distribution_table.csv'),
+         (100,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/100_15_barcode_distribution_table.csv'),
+         (1000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/1000_15_barcode_distribution_table.csv')]
+
+
+selection = 7
+barcode_distribution = []
+for n, vcn, i in bpaths10:
+    data = read_data(i)
+     # Identify barcode columns based on their position before the 'coverage' column
+    coverage_index = data.columns.get_loc('coverage')
+    barcode_columns = data.columns[:coverage_index]
+    summary = data[barcode_columns].mean().reset_index()
+    summary.columns = ['barcode', 'mean']
+    summary["VCN"] = vcn
+    summary["n"] = n
+    summary["log_n"] = np.log10(n)
+    barcode_distribution.append(summary)
+
+combined_barcode_distribution = pd.concat(barcode_distribution, ignore_index=True)
+
+#rgba colors corresponding to the hexcodes above, might need to be changed later
+vcn_colors = {
+    5: "rgba(0, 0, 255",  # Blue with 80% opacity
+    7: "rgba(0, 128, 0",  # Green with 80% opacity
+    10: "rgba(255, 165, 0",  # Orange with 80% opacity
+    15: "rgba(128, 0, 128"  # Purple with 80% opacity
+}
+
+print(combined_barcode_distribution['n'].unique())
+# Assign a single color based on the VCN
+vcn_color = vcn_colors[selection]
+# Sort the data by 'n' to ensure names are in ascending order
+combined_barcode_distribution_sorted = combined_barcode_distribution.sort_values(by='n')
+fig = px.pie(combined_barcode_distribution_sorted, values='mean', names='n', 
+             color_discrete_sequence=[vcn_color + "," + str((i+0.2)*0.3)+ ")" for i in range(len(combined_barcode_distribution['n'].unique()))])
+# Update layout to remove legend and add labels directly on the sectors
+fig.update_traces(sort=False, selector=dict(type='pie'))
+fig.update_layout(
+    title="Reads n / Total reads in %",
+    width=500, height=500, margin=dict(l=50, r=50, t=50, b=50), showlegend=False
+)
+fig.update_traces(textinfo='label+percent', textfont_size=30, marker=dict(line=dict(color='black', width=5)))
+
+fig.show()
 # %%
