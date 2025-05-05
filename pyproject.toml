@@ -3,21 +3,34 @@ requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "your_package_name"
-version = "0.1.0"
-description = "Your package description"
-[project]
-name = "your_package_name"
-version = "0.1.0"
-description = "Your package description"
-dependencies = [
-    "biopython",
-    "numpy",
-    "pandas",
-    "joblib",
-    "tqdm_joblib",
-    "psutil",
-    "matplotlib",
-    "scipy",
-    "plotly"
+name = "esloco"
+authors = [{name = "aweich"}]
+description = "Estimating Long-Read Coverage for Whole-Genome Sequencing"
+readme = "README.md"
+requires-python = ">=3.12.2"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
 ]
+dynamic = ["version"]
+license = "MIT"
+license-files = ["LICENSE*"]
+
+dependencies = [
+    "biopython>=1.83",
+    "numpy>=1.26.4",
+    "pandas>=2.2.1",
+    "joblib>=1.4.0",
+    "tqdm_joblib>=0.0.4",
+    "psutil>=5.9.8",
+    "matplotlib>=3.10.1",
+    "scipy>=1.13.0",
+    "plotly>=6.0.0"
+]
+
+
+[project.scripts]
+esloco = "esloco.main:main"
+
+[project.urls]
+Repository = "https://github.com/aweich/esloco.git"
