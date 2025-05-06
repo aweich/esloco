@@ -1,20 +1,13 @@
 import os
-import sys
 import logging
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-from matplotlib.lines import Line2D
 from scipy.ndimage import gaussian_filter1d
-
-from utils import track_usage
-
 import plotly.graph_objects as go
 import plotly.io as pio
 import plotly.express as px
 
-pio.kaleido.scope.mathjax = None
+from esloco.utils import track_usage
 
 def get_barcode_color_mapping(barcodes):
     if isinstance(barcodes, (list, pd.Series, np.ndarray)):

@@ -1,0 +1,11 @@
+biopython
+numpy
+pandas
+joblib
+tqdm_joblib
+psutil
+matplotlib
+seaborn
+scipy
+plotly
+kaleido

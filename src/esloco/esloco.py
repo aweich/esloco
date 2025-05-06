@@ -1,35 +1,31 @@
 #!/usr/bin/env python3
 #%%	
-from Bio import SeqIO
 import os
-import random
 import numpy as np
 import pandas as pd
 import sys
 import time
 import logging
 import itertools
-from functools import partial
-from joblib import Parallel, delayed
-from tqdm import tqdm
+from joblib import delayed
 from tqdm_joblib import ParallelPbar
 
 # custom config reader
-from config_handler import parse_config
+from esloco.config_handler import parse_config
 
 #custom functions
 #from create_insertion_genome import add_insertions_to_genome_sequence_with_bed
-from utils import track_usage, setup_logging #, check_barcoding, roi_barcoding, barcode_genome
-from bed_operations import global_to_chromosome_coordinates
-from genome_generation import create_barcoded_insertion_genome, create_barcoded_roi_genome
-from combined_calculations import run_simulation_iteration
+from esloco.utils import track_usage, setup_logging #, check_barcoding, roi_barcoding, barcode_genome
+from esloco.bed_operations import global_to_chromosome_coordinates
+from esloco.genome_generation import create_barcoded_insertion_genome, create_barcoded_roi_genome
+from esloco.combined_calculations import run_simulation_iteration
 
 def main():
     """ Main body to execute the entire simulation. """
 
     # Load configuration
     if len(sys.argv) != 2:
-        print("Usage: python InsertionGenomeBuilder.py <config_file>")
+        print("Usage: esloco <config_file>")
         sys.exit(1)
     
     config_file = sys.argv[1]

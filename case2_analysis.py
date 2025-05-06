@@ -80,6 +80,7 @@ all_ids.append("Sequence Read Lengths")
 
 #%%
 # Plot all histograms
+'''
 fig, axes = plt.subplots(int(np.ceil(len(all_histograms)/2)), 2, figsize=(9, 9))
 axes = axes.flatten()  # Flatten the axes array to iterate over it
 for i, (hist, bin_edges, mean, id, ax) in enumerate(zip(all_histograms, all_bin_edges, all_means, all_ids, axes[:len(all_histograms)])):
@@ -113,7 +114,7 @@ ax.set_xlabel("Log10(Read Length)")
 ax.set_ylabel("Density")
 ax.legend(title="Dataset")
 plt.tight_layout()
-
+'''
 #%%
 for key in histograms.keys():
     print(f"{key}: {np.mean(histograms[key])}")
@@ -278,7 +279,8 @@ barplot_absolute_matches(data, vis_dict)
 paths7 =  [(1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1_7_matches_table.csv'),
          (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/10_7_matches_table.csv'),
          (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/100_7_matches_table.csv'),
-         (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1000_7_matches_table.csv')]
+         (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1000_7_matches_table.csv'),
+         (10000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/10000_7_matches_table.csv')]
 
 paths5 = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1_5_matches_table.csv'),
          (10,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/10_5_matches_table.csv'),
@@ -288,14 +290,17 @@ paths5 = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_V
 paths10 =  [(1,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/1_10_matches_table.csv'),
          (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/10_10_matches_table.csv'),
          (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/100_10_matches_table.csv'),
-           (1000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/1000_10_matches_table.csv')]
+         (1000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/1000_10_matches_table.csv'),
+         (10000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/10000_10_matches_table.csv')]
 
-paths12 = [(1000,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/12/1000_12_matches_table.csv')]
+paths12 = [(1000,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/12/1000_12_matches_table.csv'),
+           (10000,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/12/10000_12_matches_table.csv')]
 
 paths15 =  [(1,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/1_15_matches_table.csv'),
          (10,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/10_15_matches_table.csv'),
          (100,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/100_15_matches_table.csv'),
-         (1000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/1000_15_matches_table.csv')]
+         (1000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/1000_15_matches_table.csv'),
+         (10000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/10000_15_matches_table.csv')]
 
 paths = [list(paths7), list(paths5), list(paths10),list(paths12), list(paths15)]
 print(paths)
@@ -324,9 +329,9 @@ vcn_colors = {
 combined_summary = pd.concat(summaries, ignore_index=True)
 
 # Plot using seaborn
-plt.figure(figsize=(15, 5))
+plt.figure(figsize=(6, 6))
 sns.lineplot(data=combined_summary, x="log_n", y="on_target_bases_mean", hue="VCN", 
-             palette=vcn_colors, marker="o", linewidth=2)
+             palette=vcn_colors, marker="o", linewidth=5)
 
 # Add error bars
 plt.errorbar(combined_summary["log_n"], combined_summary["on_target_bases_mean"], 
@@ -338,9 +343,9 @@ intersection_y = vis_dict["otb"]
 
 # Plot horizontal and vertical lines ending at the intersection point
 plt.plot([combined_summary["log_n"].min(), intersection_x], [intersection_y, intersection_y],
-          label="True OTB", linewidth=4, alpha=0.5, color='red')
+          label="True OTB", linewidth=2, alpha=0.5, color='red', linestyle="--")
 plt.plot([intersection_x, intersection_x], [combined_summary["on_target_bases_mean"].min(), intersection_y],
-          label="Max. n", linewidth=4, alpha=0.5, color='red')
+          label="Max. n", linewidth=2, alpha=0.5, color='red', linestyle="--")
 
 # Add a label at the intersection point
 plt.text(intersection_x, intersection_y, f"({intersection_x:.2f}, {intersection_y:.2f})", 
@@ -354,9 +359,9 @@ plt.tight_layout()
 plt.show()
 
 #%%
-selection = 10
+selection = 5
 clonality = []
-for n, vcn, i in paths10:
+for n, vcn, i in paths5:
     data = read_data(i)
     summary = data.groupby(['barcode','mean_read_length', 'coverage']).agg(
         bases_on_target_total=('on_target_bases', 'mean')
@@ -383,7 +388,7 @@ print(combined_clonality['n'].unique())
 vcn_color = vcn_colors[selection]
 combined_clonality_sorted = combined_clonality.sort_values(by='n')
 fig = px.pie(combined_clonality_sorted, values='bases_on_target_total', names='n',
-             color_discrete_sequence=[vcn_color + "," + str((i+0.2)*0.3)+ ")" for i in range(len(combined_clonality['n'].unique()))])
+             color_discrete_sequence=[vcn_color + "," + str((i+0.2)*0.2)+ ")" for i in range(len(combined_clonality['n'].unique()))])
 # Update layout to remove legend and add labels directly on the sectors
 fig.update_layout(title="OTBs n / Total OTBs in %", width=500, height=500, margin=dict(l=50, r=50, t=50, b=50), showlegend=False)
 fig.update_traces(textinfo='label+percent', textfont_size=30, marker=dict(line=dict(color='black', width=5)))
@@ -391,6 +396,7 @@ fig.update_traces(sort=False, selector=dict(type='pie'))
 fig.show()
 
 #%%
+'''
 print(combined_clonality)
 for n in combined_clonality["n"].unique():
     print(f"n: {n}")
@@ -399,7 +405,7 @@ for n in combined_clonality["n"].unique():
     fig.update_layout(width=500, height=500)
     fig.update_traces(textfont_size=20)
     fig.show()
-
+'''
 #%%    
 combined_clonality['percentage'] = combined_clonality.groupby('n')['bases_on_target_total'].transform(lambda x: x / x.sum() * 100)
 combined_clonality['barcode'] = combined_clonality['barcode'].astype(str)  # Convert barcode to string for better labeling
@@ -407,7 +413,7 @@ combined_clonality['barcode'] = combined_clonality['barcode'].astype(str)  # Con
 # Define a custom color mapping
 def custom_color_mapping(barcode):
     if barcode == '0':
-        return 'orange'
+        return 'red'
     else:
         return f'rgba(128, 128, 128, {0.5 + 0.9 * (int(barcode) % 10) / 10})'  # Grayscale with varying transparency
 
@@ -430,26 +436,30 @@ fig_bar.show()
 bpaths7 =  [(1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1_7_barcode_distribution_table.csv'),
          (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/10_7_barcode_distribution_table.csv'),
          (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/100_7_barcode_distribution_table.csv'),
-          (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1000_7_barcode_distribution_table.csv')]
+          (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1000_7_barcode_distribution_table.csv'),
+          (10000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/10000_7_barcode_distribution_table.csv')]
 
 bpaths5 = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1_5_barcode_distribution_table.csv'),
          (10,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/10_5_barcode_distribution_table.csv'),
          (100,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/100_5_barcode_distribution_table.csv'),
          (1000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1000_5_barcode_distribution_table.csv'),
+         (10000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/10000_5_barcode_distribution_table.csv')
          ]
 
 bpaths10 =  [(1,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/1_10_barcode_distribution_table.csv'),
          (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/10_10_barcode_distribution_table.csv'),
          (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/100_10_barcode_distribution_table.csv'),
-         (1000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/1000_10_barcode_distribution_table.csv')]
+         (1000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/1000_10_barcode_distribution_table.csv'),
+         (10000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/10000_10_barcode_distribution_table.csv')]
 
 bpaths15 =  [(1,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/1_15_barcode_distribution_table.csv'),
          (10,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/10_15_barcode_distribution_table.csv'),
          (100,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/100_15_barcode_distribution_table.csv'),
-         (1000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/1000_15_barcode_distribution_table.csv')]
+         (1000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/1000_15_barcode_distribution_table.csv'),
+         (10000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/10000_15_barcode_distribution_table.csv')]
 
 
-selection = 7
+selection = 10
 barcode_distribution = []
 for n, vcn, i in bpaths10:
     data = read_data(i)
@@ -479,7 +489,7 @@ vcn_color = vcn_colors[selection]
 # Sort the data by 'n' to ensure names are in ascending order
 combined_barcode_distribution_sorted = combined_barcode_distribution.sort_values(by='n')
 fig = px.pie(combined_barcode_distribution_sorted, values='mean', names='n', 
-             color_discrete_sequence=[vcn_color + "," + str((i+0.2)*0.3)+ ")" for i in range(len(combined_barcode_distribution['n'].unique()))])
+             color_discrete_sequence=[vcn_color + "," + str((i+0.2)*0.2)+ ")" for i in range(len(combined_barcode_distribution['n'].unique()))])
 # Update layout to remove legend and add labels directly on the sectors
 fig.update_traces(sort=False, selector=dict(type='pie'))
 fig.update_layout(
@@ -488,5 +498,113 @@ fig.update_layout(
 )
 fig.update_traces(textinfo='label+percent', textfont_size=30, marker=dict(line=dict(color='black', width=5)))
 
+fig.show()
+
+
+
+
+# %%
+
+#Dominance dilution experiment
+dd10path =  [#(5,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/1_5_dd10_matches_table.csv'),
+         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/10_10_dd10_matches_table.csv'),
+         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/100_10_dd10_matches_table.csv')]
+
+dd1path =  [#(10,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/10_10_dd1_matches_table.csv'),
+            (100,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/100_10_dd1_matches_table.csv'),
+            (1000,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/1000_10_dd1_matches_table.csv')]
+
+
+paths = [list(dd10path), list(dd1path)]
+print(paths)
+#%%
+summaries = []
+for path_group in paths:
+    for n, dominance, i in path_group:
+        data = read_data(i)
+        summary = barplot_absolute_matches(data, vis_dict, noplot=True)
+        summary = data.groupby(['barcode','mean_read_length', 'coverage']).agg(
+        bases_on_target_total=('on_target_bases', 'mean')
+    ).reset_index()
+        summary["Dominance"] = dominance
+        summary["n"] = n
+        summary["log_n"] = np.log10(n)
+        summaries.append(summary)
+
+#%%
+# Combine all summaries into a single DataFrame
+# Assign colors to the respective VCNs
+vcn_colors = {
+    5: "#0000FF",  # Blue
+    7: "#008000",  # Green
+    10: "#FFA500",  # Orange
+    12: "#A9A500",  
+    15: "#800080"  # Purple
+}
+
+combined_dominance = pd.concat(summaries, ignore_index=True)
+print(combined_dominance.head())
+# %%
+combined_dominance['percentage'] = combined_dominance.groupby(['n', 'Dominance'])['bases_on_target_total'].transform(lambda x: x / x.sum() * 100)
+combined_dominance['barcode'] = combined_dominance['barcode'].astype(str)  # Convert barcode to string for better labeling
+
+# Define a custom color mapping
+def custom_color_mapping(barcode):
+    if barcode == '0':
+        return 'orange'
+    else:
+        return f'rgba(128, 128, 128, {0.5 + 0.9 * (int(barcode) % 10) / 10})'  # Grayscale with varying transparency
+
+# Apply the custom color mapping
+combined_dominance['color'] = combined_dominance['barcode'].apply(custom_color_mapping)
+
+# Create a stacked bar chart with custom colors and facet on VCN
+fig_bar = px.bar(combined_dominance, x='n', y='percentage', color='barcode', facet_col='Dominance',
+                 title="",
+                 labels={'percentage': 'Percentage (%)', 'barcode': 'Barcode'},
+                 color_discrete_map={row['barcode']: row['color'] for _, row in combined_dominance.iterrows()})
+fig_bar.update_layout(barmode='stack', width=900, height=600, font=dict(size=20), showlegend=False)
+fig_bar.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black')
+fig_bar.update_yaxes(showline=True, linewidth=2, linecolor='black')
+fig_bar.update_xaxes(showline=True, linewidth=2, linecolor='black')
+fig_bar.update_yaxes(showline=True, linewidth=2, linecolor='black')
+fig_bar.show()
+
+
+# %%
+
+# separate boxplots for eahc dominance
+dd10 = combined_dominance[combined_dominance["Dominance"]==10]
+dd1 = combined_dominance[combined_dominance["Dominance"]==1]
+
+print(combined_dominance[combined_dominance["barcode"]=="0"]['n'])
+
+fig = px.box(dd10, x='n', y='percentage', color="n", color_discrete_sequence=px.colors.sequential.Greys_r[2:7],
+             labels={'percentage': 'Percentage (%)'})
+fig.add_trace(go.Scatter(
+    y=dd10[dd10["barcode"]=="0"]['percentage'],
+    x=dd10[dd10["barcode"]=="0"]['n'],
+    mode='markers',
+    marker=dict(color="orange", size=15, line=dict(color='black', width=2)),
+    showlegend=False
+))
+fig.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black')
+fig.update_yaxes(showline=True, linewidth=2, linecolor='black') 
+fig.update_layout(width=500, height=500, font=dict(size=20), showlegend=False)
+fig.show()
+
+
+fig = px.box(dd1, x='n', y='percentage', color="n", color_discrete_sequence=px.colors.sequential.Greys_r[2:7],
+             labels={'percentage': 'Percentage (%)'})
+fig.add_trace(go.Scatter(
+    y=dd1[dd1["barcode"]=="0"]['percentage'],
+    x=dd1[dd1["barcode"]=="0"]['n'],
+    mode='markers',
+    marker=dict(color="orange", size=15, line=dict(color='black', width=2)),
+    showlegend=False
+))
+fig.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black')
+fig.update_yaxes(showline=True, linewidth=2, linecolor='black') 
+fig.update_layout(width=500, height=500, font=dict(size=20), showlegend=False)
 fig.show()
 # %%

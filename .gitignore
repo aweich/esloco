@@ -9,3 +9,5 @@ InsertionSimulation/__pycache__/
 /output/*
 path-deleted.txt
 setup.py
+/dist
+/case2_VCN

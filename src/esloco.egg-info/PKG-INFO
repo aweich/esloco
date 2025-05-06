@@ -1,3 +1,27 @@
+Metadata-Version: 2.4
+Name: esloco
+Version: 0.2.8
+Summary: Estimating Long-Read Coverage for Whole-Genome Sequencing
+Author: aweich
+Project-URL: Repository, https://github.com/aweich/esloco.git
+Classifier: Programming Language :: Python :: 3
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.12.2
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: biopython
+Requires-Dist: numpy
+Requires-Dist: pandas
+Requires-Dist: joblib
+Requires-Dist: tqdm_joblib
+Requires-Dist: psutil
+Requires-Dist: matplotlib
+Requires-Dist: seaborn
+Requires-Dist: scipy
+Requires-Dist: plotly
+Requires-Dist: kaleido
+Dynamic: license-file
+
 # esloco - Estimating Long-Read Coverage for Whole-Genome Sequencing
 
 > `esloco` is a simulation-based tool designed to help you estimate and optimize long-read DNA sequencing experiments. Whether you're targeting specific regions of interest (ROI) or detecting insertions (I), `esloco` helps you generate realistic estimates of local coverage across regions during whole-genome sequencing.

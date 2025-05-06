@@ -3,7 +3,7 @@ import logging
 import numpy as np
 
 #custom
-from utils import get_chromosome, track_usage
+from esloco.utils import get_chromosome
 
 def add_insertions_to_genome_sequence_with_bed(reference_sequence, insertion_length, num_insertions, chromosome_dir, insertion_number_distribution=None, bed_df=None):
 		'''

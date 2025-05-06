@@ -2,11 +2,11 @@ import gc
 import logging
 import numpy as np
 
-from config_handler import seq_read_data
-from plotting import plot_reads_coverage
-from counting import count_matches, count_barcode_occurrences
-from read_operations import generate_read_length_distribution, generate_reads_based_on_coverage 
-from utils import profile_iteration, setup_logging, track_usage
+from esloco.config_handler import seq_read_data
+from esloco.coverage import plot_reads_coverage
+from esloco.counting import count_matches, count_barcode_occurrences
+from esloco.read_operations import generate_read_length_distribution, generate_reads_based_on_coverage 
+from esloco.utils import profile_iteration, setup_logging, track_usage
 
 def process_combination(mean_read_length, coverage, genome_size, target_regions, iteration, sequenced_data_path, min_read_length, n_barcodes, barcode_weights, masked_regions,  output_path, scaling, min_overlap_for_detection, no_cov_plots):
     '''

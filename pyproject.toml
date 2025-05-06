@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "esloco"
+version = "0.2.8"
 authors = [{name = "aweich"}]
 description = "Estimating Long-Read Coverage for Whole-Genome Sequencing"
 readme = "README.md"
@@ -12,25 +13,24 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
-dynamic = ["version"]
-license = "MIT"
-license-files = ["LICENSE*"]
 
 dependencies = [
-    "biopython>=1.83",
-    "numpy>=1.26.4",
-    "pandas>=2.2.1",
-    "joblib>=1.4.0",
-    "tqdm_joblib>=0.0.4",
-    "psutil>=5.9.8",
-    "matplotlib>=3.10.1",
-    "scipy>=1.13.0",
-    "plotly>=6.0.0"
+    "biopython",
+    "numpy",
+    "pandas",
+    "joblib",
+    "tqdm_joblib",
+    "psutil",
+    "matplotlib",
+    "seaborn",
+    "scipy",
+    "plotly",
+    "kaleido"
 ]
 
-
 [project.scripts]
-esloco = "esloco.main:main"
+esloco = "esloco.esloco:main"
+plot_esloco = "esloco.plot_esloco:main"
 
 [project.urls]
 Repository = "https://github.com/aweich/esloco.git"

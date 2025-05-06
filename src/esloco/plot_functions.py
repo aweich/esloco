@@ -16,20 +16,15 @@ from plotly.subplots import make_subplots
 import re
 from datetime import datetime
 
-
-pio.kaleido.scope.mathjax = None
 pio.templates.default = "plotly_white"
 
-from plotting import get_barcode_color_mapping
+from esloco.coverage import get_barcode_color_mapping
 
 
 def read_data(filepath):
     data = pd.read_csv(filepath, sep='\t')
     return data
 
-#data = read_data('/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_1/test1_barcode_distribution_table.csv')
-#basic_data = read_data('/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_1/test1_matches_table.csv')
-#%%
 
 #%%
 
@@ -111,10 +106,6 @@ def barplot_absolute_matches(experiment_name, data, output_path):
     
     print(f"Barplot absolute numbers saved as {output_html}")
     return str(output_html)
-
-#data = pd.read_csv("/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/insertion_test3/insertion_test3_matches_table.csv", sep="\t")  # Assuming tab-separated values
-#data = pd.read_csv("/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/roi_tcr_test/roi_tcr_test_matches_table.csv", sep="\t")  # Assuming tab-separated values
-#barplot_absolute_matches("test1", basic_data, output_path="/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_1/")
 #%%
 def barplot_absolute_matches_barcodes(experiment_name, data, output_path):
 
@@ -178,8 +169,6 @@ def barplot_absolute_matches_barcodes(experiment_name, data, output_path):
     print(f"Barplot absolute numbers with barcodes saved as {output_html}")
     return str(output_html)
 
-#data = pd.read_csv("/home/weichan/permanent/Projects/VIS/VIS_Simulation/out/roi_tcr_test/roi_tcr_test_matches_table.csv", sep="\t")
-#barplot_absolute_matches_barcodes("test1", basic_data, output_path="/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_1/")
 
 #%%
 def plot_barcode_distribution(experiment_name, data, output_path):
@@ -229,7 +218,6 @@ def plot_barcode_distribution(experiment_name, data, output_path):
     print(f"Mean Total Reads Stacked Barplot saved as {output_html_total}")
     return str(output_html_total)
 
-#plot_barcode_distribution("test1", data, output_path="./output/tcr_20/")  
 
 # %%
 def plot_lineplot(experiment_name, data, output_path):
@@ -341,7 +329,6 @@ def plot_lineplot(experiment_name, data, output_path):
     print(f"OTBs Lineplot saved as {output_html_otb}")
     return str(output_html_full), str(output_html_partial), str(output_html_otb)
     
-#plot_lineplot(data, output_path="../out/insertion_test/plots/")
 
 #%%
 def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_list=[]):
@@ -488,10 +475,6 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_lis
     return str(output_html_full), str(output_html_partial), str(output_html_otb)
 
 
-#plot_isolated_lineplot(data, output_path="./output/tcr_20/", filter=2, id_list=["TRAC", "TRBC1", "TRBV1", "TRAV3"])
-#plot_isolated_lineplot(basic_data, output_path="/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_1/", filter=5)
-
-
 #%%
 # log file plot
 def parse_log(log_file):
@@ -525,8 +508,6 @@ def parse_log(log_file):
     return log_data
 
 
-#process_data = parse_log("../out/insertion_test3/insertion_test3_log.log")
-
 #%%
 # Extract data for plotting
 def plot_log_data(experiment_name, logfile, output_path):
@@ -541,11 +522,7 @@ def plot_log_data(experiment_name, logfile, output_path):
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(go.Scatter(x=timestamps, y=memory_usage, mode='lines+markers', name='Memory Usage (%)', line=dict(color='black', width=4), marker=dict(size=8)), secondary_y=False)
     fig.add_trace(go.Scatter(x=timestamps, y=cpu_usage, mode='lines+markers', name='CPU Usage (%)', line=dict(color='red', width=4), marker=dict(size=8)), secondary_y=True)
-    #for timestamp in timestamps:
-    #    label = process_data[timestamp]['label']
-    #    if label:
-    #        fig.add_annotation(x=timestamp, y=50, showarrow=False, ax=5, text=label, textangle=270, font=dict(size=12))
-
+    
     # Add semi-transparent red box between 80 and 100
     fig.add_shape(type="rect", x0=timestamps[0], x1=timestamps[-1], y0=80, y1=100,
                   fillcolor="red", opacity=0.1, line_width=0, secondary_y=True)
@@ -567,8 +544,6 @@ def plot_log_data(experiment_name, logfile, output_path):
 
     print(f"Ressource plot saved as {html_output_path}")
     return html_output_path
-
-#plot_log_data(, output_dir="../out/insertion_test3/plots/")
 #%%
 
 #%%

@@ -1,10 +1,10 @@
-from Bio import SeqIO
+
 import numpy as np
 import logging
 import sys
 
-from utils import track_usage
-import gzip
+from esloco.utils import track_usage
+
 '''
 def get_read_length_distribution_from_real_data(path_to_sequenced_fasta):
     

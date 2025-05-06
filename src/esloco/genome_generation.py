@@ -1,11 +1,12 @@
 import logging
-from create_insertion_genome import add_insertions_to_genome_sequence_with_bed
-from utils import check_barcoding, roi_barcoding, barcode_genome, track_usage
-from fasta_operations import pseudo_fasta_coordinates
-from bed_operations import readbed, chromosome_to_global_coordinates
 from tqdm_joblib import ParallelPbar
 from joblib import delayed
 from tqdm import tqdm
+
+from esloco.create_insertion_genome import add_insertions_to_genome_sequence_with_bed
+from esloco.utils import check_barcoding, barcode_genome, track_usage
+from esloco.fasta_operations import pseudo_fasta_coordinates
+from esloco.bed_operations import readbed, chromosome_to_global_coordinates
 
 def parallel_barcoded_insertion_genome(i,chromosome_dir, bedpath, n_barcodes, ref_genome_size, insertion_length, insertion_numbers, insertion_number_distribution):
         barcoded_chromosome_dir = barcode_genome(chromosome_dir, i)

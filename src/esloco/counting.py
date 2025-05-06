@@ -1,7 +1,8 @@
 import logging
 import numpy as np
-import sys
-from utils import track_usage
+
+
+from esloco.utils import track_usage
 
 def calc_bias(read_length, target_length, min_overlap):    
     '''

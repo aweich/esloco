@@ -2,8 +2,8 @@
 import sys
 import os
 
-from config_handler import parse_config
-from plot_functions import read_data, barplot_absolute_matches, barplot_absolute_matches_barcodes, plot_barcode_distribution, plot_lineplot, plot_isolated_lineplot, plot_log_data, generate_html_report
+from esloco.config_handler import parse_config
+from esloco.plot_functions import read_data, barplot_absolute_matches, barplot_absolute_matches_barcodes, plot_barcode_distribution, plot_lineplot, plot_isolated_lineplot, plot_log_data, generate_html_report
 
 
 def main():
@@ -11,7 +11,7 @@ def main():
 
     # Load configuration
     if len(sys.argv) != 2:
-        print("Usage: python simplot.py <config_file>")
+        print("Usage: esloco.py <config_file>")
         sys.exit(1)
     
     config_file = sys.argv[1]
