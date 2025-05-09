@@ -24,7 +24,7 @@ Dynamic: license-file
 
 # esloco - Estimating Long-Read Coverage for Whole-Genome Sequencing
 
-> `esloco` is a simulation-based tool designed to help you estimate and optimize long-read DNA sequencing experiments. Whether you're targeting specific regions of interest (ROI) or detecting insertions (I), `esloco` helps you generate realistic estimates of local coverage across regions during whole-genome sequencing.
+> `esloco` is a simulation-based tool designed to help you estimate and optimize long-read DNA sequencing experiments. Whether you're targeting specific regions of interest (ROI) or detecting insertions (I), `esloco` helps you generate realistic estimates of local coverage across regions during whole-genome sequencing, also allowing for complex polyclonal scenarios.
 
 ### Summary
 
@@ -45,25 +45,27 @@ The illustration above demonstrates the workflow of `esloco`, which iteratively 
 
 ### Installation
 
-The simulation and all its dependencies can be installed using `pip` via
+The simulation and all its dependencies can be installed from `PyPI` using `pip` via
 
 ```bash
 pip install esloco
 ```
 ---
 
+or by cloning this repository and manually installing the dependencies mentioned in the `.toml` file. 
+
 ### Usage
 
 Run the simulation on the command line using
 
 ```bash
-python esloco configfile.ini
+esloco <configfile>
 ```
 
-After the simulation, some basic plots and an interactive overview can be created from the simulation output tables using
+After the simulation, some basic plots and an interactive overview can be created automatically from the simulation output tables using
 
 ```bash
-python esloco_plot.py configfile.ini
+plot_esloco <configfile>
 ```
 
 ---
@@ -219,22 +221,16 @@ Sometimes, multiple back-to-back simulations are required. To handle this, `eslo
 
 for config in path/to/configs/*; do
     echo "Processing: $config"
-    python esloco "$config"
-    python esloco_plot "$config"
+    esloco "$config"
+    plot_esloco_plot "$config"
 done
 ```
 
-## Citation & Contribution
-
-
-> [!TIP]
-> Helpful advice for doing things better or more easily.
-
-> [!IMPORTANT]
-> Key information users need to know to achieve their goal.
-
-> [!WARNING]
-> Urgent info that needs immediate user attention to avoid problems.
+## Limitations
 
 > [!CAUTION]
 > In some instances, the simulation will try to run indefinetly after printing "A worker stopped while some jobs were given to the executor. This can be caused by a too short worker timeout or by a memory leak." to the CLI. The simulation should be terminated manually then to free ressources. 
+
+## Citation & Contribution
+
+If you like this tool, please consider giving it a star. If you are using this tool for your research, please cite our corresponding publication: 

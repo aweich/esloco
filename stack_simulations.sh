@@ -2,8 +2,8 @@
 
 for config in case2_VCN/leftover/*; do
 	echo "Processing: $config"
-	src/esloco/esloco.py "$config"
-	src/esloco/esloco.py "$config"
+	esloco "$config"
+	plot_esloco "$config"
 done
 
 #case2_VCN/dominance_dilution/01dd_configs/*

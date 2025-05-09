@@ -1,13 +1,8 @@
-InsertionSimulation/out/
-InsertionSimulation/output/
-InsertionSimulation/.output/
-InsertionSimulation/other/
-InsertionSimulation/__pycache__/
 *.svg
 /test/*
 /out/*
 /output/*
 path-deleted.txt
-setup.py
 /dist
 /case2_VCN
+/build

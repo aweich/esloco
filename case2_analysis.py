@@ -2,7 +2,7 @@
 
 #%%
 import pandas as pd
-from scipy.stats import pearsonr
+from scipy.stats import pearsonr, sem, ttest_1samp
 import sys
 import seaborn as sns
 import os
@@ -22,13 +22,13 @@ from datetime import datetime
 pio.kaleido.scope.mathjax = None
 pio.templates.default = "simple_white"
 
-from config_handler import seq_read_data
+from src.esloco.config_handler import seq_read_data
 
 #%%
 seq_read_lengths = seq_read_data("/home/weichan/permanent/Projects/VIS/Data/VIS_Magdeburg/20240205_1448_MN35428_FAX66700_46d2ede9/MK025_GFPpos_sup_dorado_ref_simulation_1kb.fasta.gz", distribution=True, min_read_length=0)
 print(len(seq_read_lengths))
 #%%
-
+'''
 if len(seq_read_lengths) > 1000000:
     sampled_seq_read_lengths = np.random.choice(seq_read_lengths, size=1000000, replace=False)
 else:
@@ -77,7 +77,7 @@ all_histograms.append(hist)
 all_bin_edges.append(bin_edges)
 all_means.append(np.log10(np.mean(sampled_seq_read_lengths)))
 all_ids.append("Sequence Read Lengths")
-
+'''
 #%%
 # Plot all histograms
 '''
@@ -116,10 +116,11 @@ ax.legend(title="Dataset")
 plt.tight_layout()
 '''
 #%%
+'''
 for key in histograms.keys():
     print(f"{key}: {np.mean(histograms[key])}")
     sns.histplot(histograms[key], bins=100, kde=True, label=key)
-
+'''
 
 # %% plot with true positive lines
 import plotly.express as px
@@ -359,9 +360,9 @@ plt.tight_layout()
 plt.show()
 
 #%%
-selection = 5
+selection = 10
 clonality = []
-for n, vcn, i in paths5:
+for n, vcn, i in paths10:
     data = read_data(i)
     summary = data.groupby(['barcode','mean_read_length', 'coverage']).agg(
         bases_on_target_total=('on_target_bases', 'mean')
@@ -500,10 +501,94 @@ fig.update_traces(textinfo='label+percent', textfont_size=30, marker=dict(line=d
 
 fig.show()
 
+#%%
+#variability of individual combined_barcode_distribution
+
+print(combined_barcode_distribution)
+print(combined_clonality)
+combined_clonality['variance_per_barcode']=combined_clonality.groupby('n')['bases_on_target_total'].transform(lambda x: np.var(x)) #population scale sd
+#combined_clonality['mean_per_barcode']=combined_clonality.groupby('n')['bases_on_target_total'].transform(lambda x: np.mean(x)) #population scale sd
+combined_clonality['sd_per_barcode']=combined_clonality.groupby('n')['bases_on_target_total'].transform(lambda x: (np.std(x) * len(x))/ np.mean(x)) #population scale sd
+combined_clonality['sem_per_barcode']=combined_clonality.groupby('n')['bases_on_target_total'].transform(lambda x: sem(x/len(x))) #population scale sd
+print(combined_clonality)
 
 
+#%%
+
+# Calculate summary statistics
+summary = combined_clonality.groupby("n")['bases_on_target_total'].agg(
+    mean="mean", 
+    std=(lambda x: np.std(x, ddof=1)),  # Population scale standard deviation
+    count="count"
+).reset_index()
+summary["CV"] = summary["std"] / summary["mean"]
+
+# Plot the data using Plotly
+fig = px.bar(summary, x="n", y="CV", text="CV",
+             color_discrete_sequence=px.colors.sequential.Greys_r[2:7], 
+             title="Coefficient of Variation per n")
+fig.update_traces(texttemplate='%{text:.2f}', textposition='auto')
+fig.update_layout(
+    title=dict(text="Coefficient of Variation per Clonality", font=dict(size=20)),
+    width=500, height=500, font=dict(size=20)
+)
+fig.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black', title="n", showticklabels=True, ticks="")
+fig.update_yaxes(showline=True, linewidth=2, linecolor='black', title="CV", showticklabels=True, ticks="")
+fig.update_yaxes(tickvals=[0, 1, 2, 3, 4])
+
+fig.show()
+
+#%%
+print(combined_clonality.head())
+fig = px.box(combined_clonality, x='n', y='bases_on_target_total', points="all", facet_col="n",
+              color="n", color_discrete_sequence=px.colors.sequential.Greys_r[0:5])
+fig.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black', tickmode='array', tickvals=combined_clonality['n'].unique())
+fig.update_yaxes(showline=True, linewidth=2, linecolor='black', showticklabels=True, matches=None)  # Set dtick=1 to keep only full number y-axis values
+fig.update_layout(width=1200, height=300, font=dict(size=16), showlegend=False, 
+                  title=dict(text="Individual barcode contribution to total OTBs", font=dict(size=20)))
+fig.show()
+
+#%%
+# contirbutors
+combined_clonality['percentage'] = combined_clonality.groupby(['n'])['bases_on_target_total'].transform(lambda x: x / x.sum() * 100)
+combined_clonality['zero_contributor'] = combined_clonality['bases_on_target_total'] == 0
+
+# Aggregate data to count zero contributors and total barcodes per 'n'
+zero_contributor_summary = combined_clonality.groupby(['n']).agg(
+    zero_contributor_count=('zero_contributor', 'sum'),
+    total_barcodes=('barcode', 'count')
+).reset_index()
+
+# Calculate the percentage of zero contributors
+zero_contributor_summary['zero_contributor_percentage'] = (zero_contributor_summary['zero_contributor_count'] / zero_contributor_summary['total_barcodes']) * 100
+zero_contributor_summary['non_zero_contributor_percentage'] = 100 - zero_contributor_summary['zero_contributor_percentage']
+
+print(zero_contributor_summary)
+
+# Create a pie chart for each combination of n and Dominance
+
+for _, row in zero_contributor_summary.iterrows():
+    n = row['n']
+    zero_percentage = row['zero_contributor_percentage']
+    non_zero_percentage = row['non_zero_contributor_percentage']
+    
+    fig = px.pie(
+        values=[zero_percentage, non_zero_percentage],
+        names=["No Contributor", "Contributor"],
+        title=f"n={n}",
+        color_discrete_sequence=['red', 'green']
+    )
+    fig.update_traces(sort=False, selector=dict(type='pie'))
+    fig.update_traces(textinfo='percent', textfont_size=16, marker=dict(line=dict(color='black', width=4)))
+    fig.update_layout(width=400, height=400, showlegend=True)
+    fig.show()
 
 # %%
+##############
+############
+##########
+########
+#######
 
 #Dominance dilution experiment
 dd10path =  [#(5,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/1_5_dd10_matches_table.csv'),
@@ -514,8 +599,12 @@ dd1path =  [#(10,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_ca
             (100,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/100_10_dd1_matches_table.csv'),
             (1000,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/1000_10_dd1_matches_table.csv')]
 
+dd01path =  [#(10,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/10_10_dd1_matches_table.csv'),
+            (1000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/1000_10_dd01_matches_table.csv'),
+            (10000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/10000_10_dd01_matches_table.csv')]
 
-paths = [list(dd10path), list(dd1path)]
+
+paths = [list(dd10path), list(dd1path), list(dd01path)]
 print(paths)
 #%%
 summaries = []
@@ -563,19 +652,39 @@ fig_bar = px.bar(combined_dominance, x='n', y='percentage', color='barcode', fac
                  title="",
                  labels={'percentage': 'Percentage (%)', 'barcode': 'Barcode'},
                  color_discrete_map={row['barcode']: row['color'] for _, row in combined_dominance.iterrows()})
-fig_bar.update_layout(barmode='stack', width=900, height=600, font=dict(size=20), showlegend=False)
+fig_bar.update_layout(barmode='stack', width=1200, height=500, font=dict(size=20), showlegend=False)
 fig_bar.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black')
 fig_bar.update_yaxes(showline=True, linewidth=2, linecolor='black')
 fig_bar.update_xaxes(showline=True, linewidth=2, linecolor='black')
 fig_bar.update_yaxes(showline=True, linewidth=2, linecolor='black')
 fig_bar.show()
 
+#%% CV of dominance 
+summary = combined_dominance.groupby(["n", "Dominance"])['bases_on_target_total'].agg(
+    mean="mean", 
+    std=(lambda x: np.std(x, ddof=1)),  # Population scale standard deviation
+    count="count"
+).reset_index()
+summary["CV"] = summary["std"] / summary["mean"]
+print(summary)
+# Plot the data using Plotly
+fig = px.bar(summary, x="n", y="CV", text="CV", facet_col="Dominance",
+             color_discrete_sequence=px.colors.sequential.Greys_r[2:7])
+fig.update_traces(texttemplate='%{text:.2f}', textposition='auto')
+fig.update_layout(
+    title=dict(text="Coefficient of Variation per Clonality", font=dict(size=20)),
+    width=1200, height=500, font=dict(size=20)
+)
 
-# %%
-
+fig.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black', title="n", showticklabels=True, ticks="")
+fig.update_yaxes(showline=True, linewidth=2, linecolor='black', showticklabels=True, ticks="", matches='y')
+fig.update_yaxes(tickvals=[0, 1, 2, 3, 4])
+fig.show()
+#%%
 # separate boxplots for eahc dominance
 dd10 = combined_dominance[combined_dominance["Dominance"]==10]
 dd1 = combined_dominance[combined_dominance["Dominance"]==1]
+dd01 = combined_dominance[combined_dominance["Dominance"]==0.1]
 
 print(combined_dominance[combined_dominance["barcode"]=="0"]['n'])
 
@@ -607,4 +716,135 @@ fig.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black')
 fig.update_yaxes(showline=True, linewidth=2, linecolor='black') 
 fig.update_layout(width=500, height=500, font=dict(size=20), showlegend=False)
 fig.show()
+
+fig = px.box(dd01, x='n', y='percentage', color="n", color_discrete_sequence=px.colors.sequential.Greys_r[2:7],
+             labels={'percentage': 'Percentage (%)'})
+fig.add_trace(go.Scatter(
+    y=dd01[dd01["barcode"]=="0"]['percentage'],
+    x=dd01[dd01["barcode"]=="0"]['n'],
+    mode='markers',
+    marker=dict(color="orange", size=15, line=dict(color='black', width=2)),
+    showlegend=False
+))
+fig.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black')
+fig.update_yaxes(showline=True, linewidth=2, linecolor='black') 
+fig.update_layout(width=500, height=500, font=dict(size=20), showlegend=False)
+fig.show()
+# %% # facet box plots
+
+fig = px.box(combined_dominance, x='n', y='percentage', color="n", color_discrete_sequence=px.colors.sequential.Greys_r[2:7],
+             labels={'percentage': 'Percentage (%)'}, facet_col="Dominance")
+
+# Add orange dots for each facet
+for dominance_value in combined_dominance["Dominance"].unique():
+    filtered_data = combined_dominance[(combined_dominance["barcode"] == "0") & (combined_dominance["Dominance"] == dominance_value)]
+    fig.add_trace(go.Scatter(
+        y=filtered_data['percentage'],
+        x=filtered_data['n'],
+        mode='markers',
+        marker=dict(color="orange", size=10, line=dict(color='black', width=2)),
+        showlegend=False
+    ), row=1, col=list(combined_dominance["Dominance"].unique()).index(dominance_value) + 1)
+
+fig.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black')
+fig.update_yaxes(showline=True, linewidth=2, linecolor='black') 
+fig.update_layout(width=1200, height=500, font=dict(size=20), showlegend=False,
+                  title=dict(text="OTBs per n", font=dict(size=20)))
+fig.show()
+
+# %%
+#pie chart with number of n contributing 0
+combined_dominance['percentage'] = combined_dominance.groupby(['n', 'Dominance'])['bases_on_target_total'].transform(lambda x: x / x.sum() * 100)
+combined_dominance['zero_contributor'] = combined_dominance['bases_on_target_total'] == 0
+
+# Aggregate data to count zero contributors and total barcodes per 'n' and 'Dominance'
+zero_contributor_summary = combined_dominance.groupby(['n', 'Dominance']).agg(
+    zero_contributor_count=('zero_contributor', 'sum'),
+    total_barcodes=('barcode', 'count')
+).reset_index()
+
+# Calculate the percentage of zero contributors
+zero_contributor_summary['zero_contributor_percentage'] = (zero_contributor_summary['zero_contributor_count'] / zero_contributor_summary['total_barcodes']) * 100
+zero_contributor_summary['non_zero_contributor_percentage'] = 100 - zero_contributor_summary['zero_contributor_percentage']
+
+print(zero_contributor_summary)
+#%%
+# Create a pie chart for each combination of n and Dominance
+for _, row in zero_contributor_summary.iterrows():
+    n = row['n']
+    dominance = row['Dominance']
+    zero_percentage = row['zero_contributor_percentage']
+    non_zero_percentage = row['non_zero_contributor_percentage']
+    
+    fig = px.pie(
+        values=[zero_percentage, non_zero_percentage],
+        names=["No Contributor", "Contributor"],
+        title=f"n={n}, Dominance={dominance}",
+        color_discrete_sequence=['red', 'green']
+    )
+    fig.update_traces(sort=False, selector=dict(type='pie'))
+    fig.update_traces(textinfo='percent', textfont_size=16, marker=dict(line=dict(color='black', width=4)))
+    fig.update_layout(width=400, height=400, showlegend=True)
+    fig.show()
+#%%
+# %%
+
+
+#####
+#####
+#####
+sample=dd10
+#Dominance significance test
+# dominant clone higher than background
+sample_test = {}
+for n in sample["n"].unique():
+    print(f"n: {n}")
+    filtered = sample[sample["n"] == n]
+    background=filtered[filtered["barcode"]!="0"]['bases_on_target_total']
+    dominant =filtered[filtered["barcode"]=="0"]['bases_on_target_total']
+    print(f"background: {background.mean()}, dominant: {dominant.mean()}")
+    stat, p_value = ttest_1samp(background, dominant.mean(), alternative='less')
+    print(f"t-statistic: {stat}, p-value: {p_value}")
+    # Rare event detection via non-parametric empirical p values
+    p_empirical = np.mean(background >= dominant.mean()) #how many extreme values are larger the dominant value
+    print(f"empirical p-value: {p_empirical}")
+    sample_test[n]=[p_value, p_empirical]
+# %%
+
+index = ["One-sided t-test", "Empirical test"]
+df = pd.DataFrame(sample_test, index=index)
+
+# Add significance labels
+def add_significance_label(value):
+    if value > 0.05:
+        return "n.s."
+    elif value <= 0.001:
+        return "***"
+    elif value <= 0.01:
+        return "**"
+    elif value <= 0.05:
+        return "*"
+
+# Apply the function to create annotated labels
+annotated_labels = df.map(lambda x: f"{x:.3f} \n {add_significance_label(x)}").values
+print(annotated_labels)
+fig = px.imshow(
+    df,
+    color_continuous_scale=["green", "white"],
+    labels=dict(x="Clonality", y="Test Type"),
+    text_auto=True
+)
+fig.update_traces(text=annotated_labels, texttemplate="%{text}")
+fig.update_coloraxes(cmin=0, cmax=0.05)  # Set the color scale range to threshold at 0.05
+
+fig.update_layout(
+    title="",
+    xaxis_title="Clonality (n)",
+    yaxis_title="p-value",
+    font=dict(size=20),
+)
+fig.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black')
+fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
+fig.show()
+
 # %%
