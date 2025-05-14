@@ -1,12 +1,13 @@
-# esloco - Estimating Long-Read Coverage for Whole-Genome Sequencing
+# Simulation-guided <ins>es</ins>timation of <ins>lo</ins>cal <ins>co</ins>verage for long-read DNA sequencing (<em>esloco</em>)
 
-> `esloco` is a simulation-based tool designed to help you **es**timate **lo**cal **co**verage levels from and for long-read DNA sequencing experiments. Whether you're targeting specific regions of interest (ROI) or detecting insertions (I), `esloco` helps you generate realistic estimates for whole-genome sequencing, also allowing for complex polyclonal scenarios.
+
+`esloco` is a flexible, simulation-based tool for estimating local coverage in long-read DNA sequencing experiments. It is intended to support both <em>a priori</em> experimental planning and <em>post hoc</em> interpretation of sequencing results.
 
 ### Summary
 
-<div style="text-align: center;">
-    <img src="VIS_Simulation_Illustration.png" alt="Illustration" style="width: 50%; height: auto;">
-</div>
+<p align="center">
+    <img src="VIS_Simulation_Illustration.png" alt="Illustration" width="50%">
+</p>
 
 The illustration above demonstrates the workflow of `esloco`, which iteratively uses repeated simulations to estimate DNA sequencing coverage over target regions. The process involves two main steps:
 
@@ -225,7 +226,7 @@ done
 - Uniform read placement
     > `esloco` currently places reads uniformly at random along the genome, implying that all regions are equally likely to be sequenced. In practice, this assumption is violated due to  sequencing biases, such as GC content effects, which still exist in long-read technologies. While `esloco` does not explicitly account for such biases, its support for [weighted blocking of regions](#blocked-regions-common) allows users to incorporate empirical correction factors derived from prior sequencing data, offering a route for customization in bias-aware applications.
 
-- Short worker timeout / memory leak error
+- Short worker timeout / memory leak warning
     > In some instances, the simulation will return the following warning: "A worker stopped while some jobs were given to the executor. This can be caused by a too short worker timeout or by a memory leak." to the CLI. Usually, this has happened before when using thousands of barcodes during `Insertion [I]` mode and only a limited amount of CPUs. Usually, neither the simulation nor its results should be affected by the warning.  
 
 ## Citation & Contribution
