@@ -1,3 +1,0 @@
-[console_scripts]
-esloco = esloco.esloco:main
-plot_esloco = esloco.plot_esloco:main
