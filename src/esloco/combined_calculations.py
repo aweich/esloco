@@ -22,7 +22,7 @@ def process_combination(mean_read_length, coverage, genome_size, target_regions,
         logging.info("No custom read length distribution provided... Generating artificial one...")
         custom_read_length_distribution = generate_read_length_distribution(num_reads=1000000, mean_read_length=mean_read_length, min_read_length = min_read_length, distribution='lognormal')
         logging.info('Calculating for:' + str(mean_read_length))
-        if iteration < 1:
+        if iteration == 1:
             logging.info("Saving generated read length distribution to numpy file...")
             np.save(f"{output_path}/{coverage}_{mean_read_length}_dsitribution.npy", custom_read_length_distribution)
     
