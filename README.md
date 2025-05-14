@@ -197,11 +197,11 @@ It is also possible to select barcodes that will be affected by the pre-defined 
 >[!TIP] 
 > If the goal is to assign different blocking values to different subsets of barcodes, this can be achieved by adding an `id` column and multiple rows for the same blocked region, which forces the simulation run each set of blocked coordinates individually. 
 
-##### 4. Full chromosome mode `[COMMON]` `[I]` `[ROI]`
+##### Full chromosome mode `[COMMON]` `[I]` `[ROI]`
 
 Generally, if any of the `BED` files provided contain entries with only a chromosome defined and start and stop set to 0, the simulation will use the full chromosome. 
 
-##### 5. Fixed insertion numbers and/or locations `[I]`
+##### Fixed insertion numbers and/or locations `[I]`
 
 It is also possible to fix the number and/or location of insertions. For this, the `insertion_number_distribution` in the `configfile` needs to be set to anything else than `poisson`, which is the default. By doing this, the `insertion_numbers` option will use the defined value as a fixed value, and not as the mean value of a poisson distribution. For a fixed number of insertions at specific locations, this can be achieved by providing a `bedpath` in the `[I]` section of the `configfile`, which has the exact same number of entries as `insertion_numbers`.
 
@@ -222,9 +222,12 @@ done
 
 ## Limitations
 
-> [!CAUTION]
-> In some instances, the simulation will return the following warning: "A worker stopped while some jobs were given to the executor. This can be caused by a too short worker timeout or by a memory leak." to the CLI. Usually, this has happened before when using thousands of barcodes during `Insertion [I]` mode and only a limited amount of CPUs. Usually, neither the simulation nor its results should be affected by the warning.  
+- Uniform read placement
+    > `esloco` currently places reads uniformly at random along the genome, implying that all regions are equally likely to be sequenced. In practice, this assumption is violated due to  sequencing biases, such as GC content effects, which still exist in long-read technologies. While `esloco` does not explicitly account for such biases, its support for [weighted blocking of regions](#blocked-regions-common) allows users to incorporate empirical correction factors derived from prior sequencing data, offering a route for customization in bias-aware applications.
+
+- Short worker timeout / memory leak error
+    > In some instances, the simulation will return the following warning: "A worker stopped while some jobs were given to the executor. This can be caused by a too short worker timeout or by a memory leak." to the CLI. Usually, this has happened before when using thousands of barcodes during `Insertion [I]` mode and only a limited amount of CPUs. Usually, neither the simulation nor its results should be affected by the warning.  
 
 ## Citation & Contribution
 
-If you like this tool, please consider giving it a star. If you are using this tool for your research, please cite our corresponding publication: 
+If you like this tool, please consider giving it a star. If you are using this tool for your research, please cite our publication: ... 
