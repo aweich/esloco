@@ -6,3 +6,4 @@ path-deleted.txt
 /dist
 /case2_VCN
 /build
+/src/esloco/__pycache__/*
