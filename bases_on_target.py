@@ -60,14 +60,17 @@ print(true_positive)
 
 # %%
 
-
+print(coverage_levels)
+#sys.exit()
+#spcific level
+coverage_levels = [26]
 statistical_results = []
 for coverage in coverage_levels:
     plt.figure(figsize=(12, 6))
-    sns.boxplot(data=raw[raw["coverage"] == coverage], x="gene", y="bases_on_target", palette="Set3")
-    sns.lineplot(data=true_positive, x=3, y="bases_on_target", color="red", label="True Positive", marker="o", alpha=0.5)
-    plt.xlabel("Gene")
-    plt.ylabel("Bases on Target (X Coverage)")
+    sns.boxplot(data=raw[raw["coverage"] == coverage], x="gene", y="bases_on_target", color="blue", linecolor="blue", showfliers=False, linewidth=2)
+    sns.lineplot(data=true_positive, x=3, y="bases_on_target", color="red", label="Sequencing", marker="o", alpha=0.5, linewidth=4)
+    plt.xlabel("Full Gene Panel")
+    plt.ylabel("OTBs")
     plt.xticks(rotation=90)
 
     empirical_p_values = []
@@ -114,7 +117,7 @@ for coverage in coverage_levels:
         else:
             label = "***"
 
-        plt.text(x_position, y_position, f"{label}, {p_value}", ha="center", va="bottom", fontsize=9, rotation=90)
+        plt.text(x_position, y_position, f"{label}, {p_value}", ha="center", va="bottom", fontsize=12, rotation=90)
 
     print(f"Coverage {coverage}: {significant_count} significant values")
 
@@ -130,7 +133,7 @@ for coverage in coverage_levels:
 
     plt.tight_layout()
     #outname = os.path.join(out, f"{coverage}_plot.svg")
-    #plt.savefig(outname, format='svg')
+    #plt.savefig("/home/weichan/permanent/Projects/Presentations_Public/ISMB25/26X_line_box_plot.svg", format='svg')
     plt.show()
 
 
@@ -175,15 +178,15 @@ for i, column in enumerate(ccc_data.columns):
     print(f"Concordance Correlation Coefficient (CCC) for {column}: {ccc_value:.3f}")
 
     # Plot scatter and regression line in the corresponding subplot
-    sns.regplot(ax=axes[i], x=x, y=y, scatter_kws={'alpha': 0.4}, line_kws={"color": "red"})
+    sns.regplot(ax=axes[i], x=x, y=y, color="blue", scatter_kws={'alpha': 0.4, 's':50}, line_kws={"color": "black"})
     axes[i].set_title(f"{column} (CCC={ccc_value:.3f})")
-    axes[i].set_xlabel("Simulation Counts")
-    axes[i].set_ylabel("Sequencing Counts")
+    axes[i].set_xlabel("Simulation OTBs")
+    axes[i].set_ylabel("Sequencing OTBs")
 
     # Add the true line (1:1 line) in black
     min_val = min(min(x), min(y))
     max_val = max(max(x), max(y))
-    axes[i].plot([min_val, max_val], [min_val, max_val], '--', color='black', label="1:1 Line")
+    axes[i].plot([min_val, max_val], [min_val, max_val], '--', color='red', label="1:1 Line", linewidth=5, alpha=0.5)
 
 # Remove any unused subplots
 for j in range(i + 1, len(axes)):
@@ -192,6 +195,7 @@ for j in range(i + 1, len(axes)):
 # Adjust layout
 plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 plt.tight_layout()
+#plt.savefig("/home/weichan/permanent/Projects/Presentations_Public/ISMB25/CCC_plot.svg",format="svg", bbox_inches='tight')
 plt.show()
 
 # %%
@@ -229,20 +233,21 @@ print(f"Percentage of points within ±1.96 SD: {percentage_within_limits:.2f}%")
 outside_points = np.where((diff_counts < lower_limit) | (diff_counts > upper_limit))[0]
 
 # Plot Bland-Altman plot with labels for points outside the limits
-plt.figure(figsize=(5, 5))
-plt.scatter(mean_counts, diff_counts, alpha=0.5, edgecolors='k', linewidth=0.5, label='Data Points')
-plt.axhline(mean_diff, color='red', linestyle='--', label='Mean Difference')
-plt.axhline(mean_diff + 1.96 * std_diff, color='blue', linestyle='--', label='+1.96 SD')
-plt.axhline(mean_diff - 1.96 * std_diff, color='blue', linestyle='--', label='-1.96 SD')
+plt.figure(figsize=(3, 3))
+plt.scatter(mean_counts, diff_counts, alpha=0.5, edgecolors='k',s=60, linewidth=1, label='Data Points', color='blue')
+plt.axhline(mean_diff, color='red', linestyle='--', label='Mean Difference', linewidth=3)
+plt.axhline(mean_diff + 1.96 * std_diff, color='black', linestyle='--', label='+1.96 SD', linewidth=3)
+plt.axhline(mean_diff - 1.96 * std_diff, color='black', linestyle='--', label='-1.96 SD', linewidth=3)
 
 # Add labels for points outside the limits
 for idx in outside_points:
-    plt.text(mean_counts[idx], diff_counts[idx], full_combined.index[idx], fontsize=8, color='red')
+    plt.text(mean_counts[idx], diff_counts[idx], full_combined.index[idx], fontsize=10, color='red')
 
-plt.xlabel("Mean of Counts")
+plt.xlabel("Mean of OTBs")
 plt.ylabel("Difference (Seq - Sim)")
 plt.title("Bland-Altman Plot (CBRT)")
 plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+#plt.savefig("/home/weichan/permanent/Projects/Presentations_Public/ISMB25/Bland_Altman_plot.svg", format="svg", bbox_inches='tight')
 plt.show()
 # %%
 roi = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/roi_info.csv", sep="\t", header=0)
