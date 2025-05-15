@@ -321,7 +321,7 @@ def plot_lineplot(experiment_name, data, output_path):
     # Interactive plot with Plotly
     fig = px.line(grouped, x='id', y='on_target_bases', color='coverage', line_dash='mean_read_length', markers=True, title='Lineplot of OTBs by Coverage and Mean Read Length')
     fig.update_xaxes(title_text='ID', title_font=dict(size=12))
-    fig.update_yaxes(title_text='Mean Full Matches', title_font=dict(size=12))
+    fig.update_yaxes(title_text='Mean OTBs', title_font=dict(size=12))
     fig.write_html(output_html_otb)
     
     print(f"Partial Lineplot saved as {output_html_partial}")

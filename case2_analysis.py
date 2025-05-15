@@ -25,8 +25,8 @@ pio.templates.default = "simple_white"
 from src.esloco.config_handler import seq_read_data
 
 #%%
-seq_read_lengths = seq_read_data("/home/weichan/permanent/Projects/VIS/Data/VIS_Magdeburg/20240205_1448_MN35428_FAX66700_46d2ede9/MK025_GFPpos_sup_dorado_ref_simulation_1kb.fasta.gz", distribution=True, min_read_length=0)
-print(len(seq_read_lengths))
+#seq_read_lengths = seq_read_data("/home/weichan/permanent/Projects/VIS/Data/VIS_Magdeburg/20240205_1448_MN35428_FAX66700_46d2ede9/MK025_GFPpos_sup_dorado_ref_simulation_1kb.fasta.gz", distribution=True, min_read_length=0)
+#print(len(seq_read_lengths))
 #%%
 '''
 if len(seq_read_lengths) > 1000000:
@@ -277,31 +277,34 @@ print(vis_dict["full"])
 barplot_absolute_matches(data, vis_dict)
 
 # %%
-paths7 =  [(1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1_7_matches_table.csv'),
-         (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/10_7_matches_table.csv'),
-         (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/100_7_matches_table.csv'),
-         (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1000_7_matches_table.csv'),
-         (10000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/10000_7_matches_table.csv')]
+paths7 =  [(1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/1_7_matches_table.csv'),
+         (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/10_7_matches_table.csv'),
+         (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/100_7_matches_table.csv'),
+         (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/1000_7_matches_table.csv')]#,
+         #(10000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/10000_7_matches_table.csv')]
 
-paths5 = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1_5_matches_table.csv'),
-         (10,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/10_5_matches_table.csv'),
-         (100,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/100_5_matches_table.csv'),
-         (1000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1000_5_matches_table.csv')]
+paths5 = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/1_5_matches_table.csv'),
+         (10,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/10_5_matches_table.csv'),
+         (100,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/100_5_matches_table.csv'),
+         (1000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/1000_5_matches_table.csv')]
 
-paths10 =  [(1,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/1_10_matches_table.csv'),
-         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/10_10_matches_table.csv'),
-         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/100_10_matches_table.csv'),
-         (1000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/1000_10_matches_table.csv'),
-         (10000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/10000_10_matches_table.csv')]
+paths10 =  [(1,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/1_10_matches_table.csv'),
+         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/10_10_matches_table.csv'),
+         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/100_10_matches_table.csv'),
+         (1000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/1000_10_matches_table.csv')]#,
+         #(10000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/10000_10_matches_table.csv')]
 
-paths12 = [(1000,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/12/1000_12_matches_table.csv'),
-           (10000,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/12/10000_12_matches_table.csv')]
+paths12 = [(1,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/1_12_matches_table.csv'),
+    (10,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/10_12_matches_table.csv'),
+    (100,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/100_12_matches_table.csv'),
+    (1000,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/1000_12_matches_table.csv')]#,
+           #(10000,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/10000_12_matches_table.csv')]
 
-paths15 =  [(1,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/1_15_matches_table.csv'),
-         (10,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/10_15_matches_table.csv'),
-         (100,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/100_15_matches_table.csv'),
-         (1000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/1000_15_matches_table.csv'),
-         (10000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/10000_15_matches_table.csv')]
+paths15 =  [(1,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/1_15_matches_table.csv'),
+         (10,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/10_15_matches_table.csv'),
+         (100,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/100_15_matches_table.csv'),
+         (1000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/1000_15_matches_table.csv')]#,
+         #(10000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/10000_15_matches_table.csv')]
 
 paths = [list(paths7), list(paths5), list(paths10),list(paths12), list(paths15)]
 print(paths)
@@ -434,30 +437,33 @@ fig_bar.show()
 # %%
 # plot the barcode distribution table for each configuration (-> supposed to show that reads are equally distirbuted across barcodes)
 
-bpaths7 =  [(1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1_7_barcode_distribution_table.csv'),
-         (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/10_7_barcode_distribution_table.csv'),
-         (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/100_7_barcode_distribution_table.csv'),
-          (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/1000_7_barcode_distribution_table.csv'),
-          (10000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/10000_7_barcode_distribution_table.csv')]
+bpaths7 =  [(1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/1_7_barcode_distribution_table.csv'),
+         (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/10_7_barcode_distribution_table.csv'),
+         (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/100_7_barcode_distribution_table.csv'),
+          (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/1000_7_barcode_distribution_table.csv')#,
+          #(10000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/10000_7_barcode_distribution_table.csv')
+          ]
 
-bpaths5 = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1_5_barcode_distribution_table.csv'),
-         (10,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/10_5_barcode_distribution_table.csv'),
-         (100,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/100_5_barcode_distribution_table.csv'),
-         (1000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/1000_5_barcode_distribution_table.csv'),
-         (10000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/10000_5_barcode_distribution_table.csv')
+bpaths5 = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/1_5_barcode_distribution_table.csv'),
+         (10,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/10_5_barcode_distribution_table.csv'),
+         (100,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/100_5_barcode_distribution_table.csv'),
+         (1000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/1000_5_barcode_distribution_table.csv')#,
+         #(10000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/10000_5_barcode_distribution_table.csv')
          ]
 
-bpaths10 =  [(1,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/1_10_barcode_distribution_table.csv'),
-         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/10_10_barcode_distribution_table.csv'),
-         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/100_10_barcode_distribution_table.csv'),
-         (1000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/1000_10_barcode_distribution_table.csv'),
-         (10000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/10000_10_barcode_distribution_table.csv')]
+bpaths10 =  [(1,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/1_10_barcode_distribution_table.csv'),
+         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/10_10_barcode_distribution_table.csv'),
+         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/100_10_barcode_distribution_table.csv'),
+         (1000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/1000_10_barcode_distribution_table.csv')#
+         #(10000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/10000_10_barcode_distribution_table.csv')
+         ]
 
-bpaths15 =  [(1,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/1_15_barcode_distribution_table.csv'),
-         (10,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/10_15_barcode_distribution_table.csv'),
-         (100,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/100_15_barcode_distribution_table.csv'),
-         (1000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/1000_15_barcode_distribution_table.csv'),
-         (10000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/10000_15_barcode_distribution_table.csv')]
+bpaths15 =  [(1,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/1_15_barcode_distribution_table.csv'),
+         (10,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/10_15_barcode_distribution_table.csv'),
+         (100,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/100_15_barcode_distribution_table.csv'),
+         (1000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/1000_15_barcode_distribution_table.csv')#,
+         #(10000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/10000_15_barcode_distribution_table.csv')
+         ]
 
 
 selection = 10
@@ -499,6 +505,18 @@ fig.update_layout(
 )
 fig.update_traces(textinfo='label+percent', textfont_size=30, marker=dict(line=dict(color='black', width=5)))
 
+fig.show()
+
+#%%
+print(combined_barcode_distribution.head())
+combined_barcode_distribution['log_mean'] = np.log10(combined_barcode_distribution['mean'])
+
+fig = px.box(combined_barcode_distribution, x='n', y='mean', points="all", facet_col="n",
+             color="n", color_discrete_sequence=["black"])
+fig.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black', tickmode='array', tickvals=combined_barcode_distribution['n'].unique())
+fig.update_yaxes(showline=True, showgrid=False,  linewidth=2, linecolor='black', showticklabels=True, matches=None, tickformat=".0f")  # Limit y-axis values to two decimal places
+fig.update_layout(width=1200, height=300, font=dict(size=16), showlegend=False, 
+                  title=dict(text="Mean Reads from Individual Barcodes", font=dict(size=20)))
 fig.show()
 
 #%%
@@ -592,16 +610,16 @@ for _, row in zero_contributor_summary.iterrows():
 
 #Dominance dilution experiment
 dd10path =  [#(5,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/1_5_dd10_matches_table.csv'),
-         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/10_10_dd10_matches_table.csv'),
-         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/100_10_dd10_matches_table.csv')]
+         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/10_10_dd10_matches_table.csv'),
+         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/100_10_dd10_matches_table.csv')]
 
 dd1path =  [#(10,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/10_10_dd1_matches_table.csv'),
-            (100,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/100_10_dd1_matches_table.csv'),
-            (1000,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/1000_10_dd1_matches_table.csv')]
+            (100,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/100_10_dd1_matches_table.csv'),
+            (1000,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/1000_10_dd1_matches_table.csv')]
 
 dd01path =  [#(10,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/10_10_dd1_matches_table.csv'),
-            (1000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/1000_10_dd01_matches_table.csv'),
-            (10000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/10000_10_dd01_matches_table.csv')]
+            (1000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/1000_10_dd01_matches_table.csv'),
+            (10000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/10000_10_dd01_matches_table.csv')]
 
 
 paths = [list(dd10path), list(dd1path), list(dd01path)]
