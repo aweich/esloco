@@ -280,31 +280,32 @@ barplot_absolute_matches(data, vis_dict)
 paths7 =  [(1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/1_7_matches_table.csv'),
          (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/10_7_matches_table.csv'),
          (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/100_7_matches_table.csv'),
-         (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/1000_7_matches_table.csv')]#,
-         #(10000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/10000_7_matches_table.csv')]
+         (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/1000_7_matches_table.csv'),
+         (10000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/10000_7_matches_table.csv')]
 
 paths5 = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/1_5_matches_table.csv'),
          (10,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/10_5_matches_table.csv'),
          (100,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/100_5_matches_table.csv'),
-         (1000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/1000_5_matches_table.csv')]
+         (1000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/1000_5_matches_table.csv'),
+         (10000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/10000_5_matches_table.csv')]
 
 paths10 =  [(1,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/1_10_matches_table.csv'),
          (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/10_10_matches_table.csv'),
          (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/100_10_matches_table.csv'),
-         (1000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/1000_10_matches_table.csv')]#,
-         #(10000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/10000_10_matches_table.csv')]
+         (1000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/1000_10_matches_table.csv'),
+         (10000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/10000_10_matches_table.csv')]
 
 paths12 = [(1,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/1_12_matches_table.csv'),
     (10,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/10_12_matches_table.csv'),
     (100,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/100_12_matches_table.csv'),
-    (1000,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/1000_12_matches_table.csv')]#,
-           #(10000,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/10000_12_matches_table.csv')]
+    (1000,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/1000_12_matches_table.csv'),
+           (10000,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/10000_12_matches_table.csv')]
 
 paths15 =  [(1,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/1_15_matches_table.csv'),
          (10,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/10_15_matches_table.csv'),
          (100,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/100_15_matches_table.csv'),
-         (1000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/1000_15_matches_table.csv')]#,
-         #(10000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/10000_15_matches_table.csv')]
+         (1000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/1000_15_matches_table.csv'),
+         (10000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/10000_15_matches_table.csv')]
 
 paths = [list(paths7), list(paths5), list(paths10),list(paths12), list(paths15)]
 print(paths)
@@ -440,29 +441,36 @@ fig_bar.show()
 bpaths7 =  [(1,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/1_7_barcode_distribution_table.csv'),
          (10,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/10_7_barcode_distribution_table.csv'),
          (100,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/100_7_barcode_distribution_table.csv'),
-          (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/1000_7_barcode_distribution_table.csv')#,
-          #(10000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/7/10000_7_barcode_distribution_table.csv')
+          (1000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/1000_7_barcode_distribution_table.csv'),
+          (10000,7, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/7/10000_7_barcode_distribution_table.csv')
           ]
 
 bpaths5 = [(1,5, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/1_5_barcode_distribution_table.csv'),
          (10,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/10_5_barcode_distribution_table.csv'),
          (100,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/100_5_barcode_distribution_table.csv'),
-         (1000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/1000_5_barcode_distribution_table.csv')#,
-         #(10000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/5/10000_5_barcode_distribution_table.csv')
+         (1000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/1000_5_barcode_distribution_table.csv'),
+         (10000,5,'/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/5/10000_5_barcode_distribution_table.csv')
          ]
 
 bpaths10 =  [(1,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/1_10_barcode_distribution_table.csv'),
          (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/10_10_barcode_distribution_table.csv'),
          (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/100_10_barcode_distribution_table.csv'),
-         (1000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/1000_10_barcode_distribution_table.csv')#
-         #(10000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/10/10000_10_barcode_distribution_table.csv')
+         (1000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/1000_10_barcode_distribution_table.csv'),
+         (10000,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/10/10000_10_barcode_distribution_table.csv')
+         ]
+
+bpaths12 =  [(1,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/1_12_barcode_distribution_table.csv'),
+         (10,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/10_12_barcode_distribution_table.csv'),
+         (100,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/100_12_barcode_distribution_table.csv'),
+         (1000,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/1000_12_barcode_distribution_table.csv'),
+         (10000,12, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/12/10000_12_barcode_distribution_table.csv')
          ]
 
 bpaths15 =  [(1,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/1_15_barcode_distribution_table.csv'),
          (10,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/10_15_barcode_distribution_table.csv'),
          (100,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/100_15_barcode_distribution_table.csv'),
-         (1000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/1000_15_barcode_distribution_table.csv')#,
-         #(10000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/15/10000_15_barcode_distribution_table.csv')
+         (1000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/1000_15_barcode_distribution_table.csv'),
+         (10000,15, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example1/15/10000_15_barcode_distribution_table.csv')
          ]
 
 
@@ -812,29 +820,47 @@ for _, row in zero_contributor_summary.iterrows():
 #####
 #####
 sample=dd10
-#Dominance significance test
+# Dominance significance test
 # dominant clone higher than background
 sample_test = {}
 for n in sample["n"].unique():
     print(f"n: {n}")
     filtered = sample[sample["n"] == n]
-    background=filtered[filtered["barcode"]!="0"]['bases_on_target_total']
-    dominant =filtered[filtered["barcode"]=="0"]['bases_on_target_total']
+    background = filtered[filtered["barcode"] != "0"]['bases_on_target_total']
+    dominant = filtered[filtered["barcode"] == "0"]['bases_on_target_total']
     print(f"background: {background.mean()}, dominant: {dominant.mean()}")
     stat, p_value = ttest_1samp(background, dominant.mean(), alternative='less')
     print(f"t-statistic: {stat}, p-value: {p_value}")
     # Rare event detection via non-parametric empirical p values
-    p_empirical = np.mean(background >= dominant.mean()) #how many extreme values are larger the dominant value
+    p_empirical = np.mean(background >= dominant.mean())  # how many extreme values are larger the dominant value
     print(f"empirical p-value: {p_empirical}")
-    sample_test[n]=[p_value, p_empirical]
+    # Test if dominant mean is higher than all background values and get ranking
+    is_highest = dominant.mean() > background.max()
+    rank = int((background > dominant.mean()).sum() + 1)  # 1-based rank (1 = highest)
+    print(f"Dominant mean higher than all background: {is_highest}")
+    print(f"Dominant mean rank among all (1=highest): {rank} of {len(background)+1}")
+    sample_test[n] = [p_value, p_empirical, rank]
 # %%
-
-index = ["One-sided t-test", "Empirical test"]
+print(sample_test)
+index = ["One-sided t-test", "Empirical test", "Rank"]
 df = pd.DataFrame(sample_test, index=index)
 
+print(df)
+"""
+{np.int64(10): [np.float64(0.9621562307062487), np.float64(0.8888888888888888), 9], np.int64(100): [np.float64(8.221777863057938e-169), np.float64(0.0), 1]}
+                       10             100
+One-sided t-test  0.962156  8.221778e-169
+Empirical test    0.888889   0.000000e+00
+Rank              9.000000   1.000000e+00
+[['0.962 \n n.s.' '0.000 \n ***']
+ ['0.889 \n n.s.' '0.000 \n ***']
+ ['9.000 \n ' '1.000 \n ']]
+"""
 # Add significance labels
 def add_significance_label(value):
-    if value > 0.05:
+    if value > 1:
+        return ""
+    elif value > 0.05:
         return "n.s."
     elif value <= 0.001:
         return "***"
@@ -866,3 +892,145 @@ fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
 fig.show()
 
 # %%
+## create the barplot and add labels to the orange marked dot; the labels should be: 
+# 1.) one sided t test p value, 
+# 2.) empirical p value,
+# 3.) rank of the dominant clone
+def significance_test(sample):
+    sample_test = {}
+    for n in sample["n"].unique():
+        print(f"n: {n}")
+        filtered = sample[sample["n"] == n]
+        background = filtered[filtered["barcode"] != "0"]['bases_on_target_total']
+        dominant = filtered[filtered["barcode"] == "0"]['bases_on_target_total']
+        print(f"background: {background.mean()}, dominant: {dominant.mean()}")
+        stat, p_value = ttest_1samp(background, dominant.mean(), alternative='less')
+        print(f"t-statistic: {stat}, p-value: {p_value}")
+        # Rare event detection via non-parametric empirical p values
+        p_empirical = np.mean(background >= dominant.mean())  # how many extreme values are larger the dominant value
+        print(f"empirical p-value: {p_empirical}")
+        # Test if dominant mean is higher than all background values and get ranking
+        is_highest = dominant.mean() > background.max()
+        rank = int((background > dominant.mean()).sum() + 1)  # 1-based rank (1 = highest)
+        print(f"Dominant mean higher than all background: {is_highest}")
+        total = len(background) + 1  # total number of samples including the dominant clone
+        print(f"Dominant mean rank among all (1=highest): {rank} of {total}")
+        sample_test[n] = [p_value, p_empirical, rank, total]
+    return sample_test
+
+
+# Prepare test results for annotation
+def get_annotation_text(n, sample_test):
+    if n in sample_test:
+        pval, emp, rank, total = sample_test[n]
+        return f"p-value t-test: {pval:.2g}<br>empirical p-value: {emp:.2g}<br>rank: {rank} of {total}"
+    else:
+        return ""
+
+dd10 = combined_dominance[combined_dominance["Dominance"]==10]
+dd1 = combined_dominance[combined_dominance["Dominance"]==1]
+dd01 = combined_dominance[combined_dominance["Dominance"]==0.1]
+
+print(combined_dominance[combined_dominance["barcode"]=="0"]['n'])
+
+dilutions = [dd10, dd1, dd01]
+import random
+for dilution in dilutions:
+    fig = px.box(dilution,  x='n', y='percentage', color="n", color_discrete_sequence=px.colors.sequential.Greys_r[2:7],
+                labels={'percentage': 'Percentage (%)'})
+    # Calculate significance test results for this dilution
+    sample_test = significance_test(dilution)
+    # Add orange marker for dominant clone with annotation
+    for n in dilution["n"].unique():
+        dominant = dilution[(dilution["barcode"] == "0") & (dilution["n"] == n)]
+        if not dominant.empty:
+            annotation = get_annotation_text(n, sample_test)
+            # Add the orange marker
+            fig.add_trace(go.Scatter(
+                y=dominant['percentage'],
+                x=dominant['n'],
+                mode='markers',
+                marker=dict(color="orange", size=15, line=dict(color='black', width=2)),
+                showlegend=False
+            ))
+            # Add annotation next to the plot with an arrow
+
+            n_index = list(sorted(dilution["n"].unique())).index(n)
+            y_offset = np.mean(dominant['percentage'].values) - n_index * np.mean(dominant['percentage'].values)
+
+            fig.add_annotation(
+                x=dominant['n'],
+                y=dominant['percentage'].values[0] + y_offset,
+                text=annotation,
+                ax=50,  # Adjust the x offset for the annotation
+                ay=0,
+                font=dict(size=14, color="black"),
+                bgcolor="white",
+                bordercolor="black",
+                borderwidth=1,
+                showarrow=True
+            )
+    fig.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black')
+    fig.update_yaxes(showline=True, linewidth=2, linecolor='black') 
+    fig.update_layout(width=500, height=500, font=dict(size=20), showlegend=False)
+    fig.show()
+
+####
+#%%
+# plots of reads per barcode for each dilution vs OTB per barcode
+
+bdd10path =  [#(5,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/1_5_dd10_matches_table.csv'),
+         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/10_10_dd10_barcode_distribution_table.csv'),
+         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/100_10_dd10_barcode_distribution_table.csv')]
+
+bdd1path =  [#(10,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/10_10_dd1_matches_table.csv'),
+            (100,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/100_10_dd1_barcode_distribution_table.csv'),
+            (1000,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/1000_10_dd1_barcode_distribution_table.csv')]
+
+bdd01path =  [#(10,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/10_10_dd1_matches_table.csv'),
+            (1000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/1000_10_dd01_barcode_distribution_table.csv'),
+            (10000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/10000_10_dd01_barcode_distribution_table.csv')]
+
+
+barcode_distribution = []
+for n, vcn, i in bdd01path:
+    data = read_data(i)
+     # Identify barcode columns based on their position before the 'coverage' column
+    coverage_index = data.columns.get_loc('coverage')
+    barcode_columns = data.columns[:coverage_index]
+    summary = data[barcode_columns].mean().reset_index()
+    summary.columns = ['barcode', 'mean']
+    summary["VCN"] = vcn
+    summary["n"] = n
+    summary["log_n"] = np.log10(n)
+    barcode_distribution.append(summary)
+
+combined_barcode_distribution = pd.concat(barcode_distribution, ignore_index=True)
+
+combined_barcode_distribution['percentage'] = combined_barcode_distribution.groupby(['n'])['mean'].transform(lambda x: x / x.sum() * 100)
+print(combined_barcode_distribution.head())
+
+
+#%%
+# Define a custom color mapping
+def custom_color_mapping(barcode):
+    if barcode == '0':
+        return 'red'
+    else:
+        return f'rgba(128, 128, 128, {0.5 + 0.9 * (int(barcode) % 10) / 10})'  # Grayscale with varying transparency
+
+# Apply the custom color mapping
+combined_barcode_distribution['color'] = combined_barcode_distribution['barcode'].apply(custom_color_mapping)
+
+# Create a stacked bar chart with custom colors
+fig_bar = px.bar(combined_barcode_distribution, x='n', y='percentage', color='barcode',
+                 title="Mean Reads per Barcode: 0.1% Dilution",
+                 labels={'percentage': 'Percentage (%)', 'barcode': 'Barcode'},
+                 color_discrete_map={row['barcode']: row['color'] for _, row in combined_barcode_distribution.iterrows()})
+fig_bar.update_layout(barmode='stack', width=600, height=600, xaxis=dict(type='category'), font=dict(size=20))
+fig_bar.update_xaxes(showline=True, linewidth=2, linecolor='black')
+fig_bar.update_yaxes(showline=True, linewidth=2, linecolor='black')
+fig_bar.show()
+# %%
+# repeat the boxplot with the labels for the reads (also with the significane tests!)
+
