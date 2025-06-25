@@ -2,7 +2,7 @@
 
 #%%
 import pandas as pd
-from scipy.stats import pearsonr, sem, ttest_1samp
+from scipy.stats import ttest_1samp
 import sys
 import seaborn as sns
 import os
@@ -296,8 +296,8 @@ for dilution in dilutions:
     fig.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black')
     fig.update_yaxes(showline=True, linewidth=2, linecolor='black') 
     fig.update_layout(width=500, height=500, font=dict(size=20), showlegend=False)
-    #fig.show()
-    fig.write_image(f"../ProgressReport/simulation_description/plots/boxplot_OTB_dilution_{dilution['Dominance'].iloc[0]}.svg")
+    fig.show()
+    #fig.write_image(f"../ProgressReport/simulation_description/plots/boxplot_OTB_dilution_{dilution['Dominance'].iloc[0]}.svg")
 # %%
 # plots of reads per barcode for each dilution vs OTB per barcode
 
@@ -321,7 +321,8 @@ for path_group in [bdd10path, bdd1path, bdd01path]:
         # Identify barcode columns based on their position before the 'coverage' column
         coverage_index = data.columns.get_loc('coverage')
         barcode_columns = data.columns[:coverage_index]
-        summary = data[barcode_columns].mean().reset_index()
+        summary = data[barcode_columns].mean(axis=0).reset_index()
+        summary.columns = ['barcode', 'mean']
         summary.columns = ['barcode', 'mean']
         summary["Dominance"] = dominance
         summary["n"] = n
@@ -329,6 +330,9 @@ for path_group in [bdd10path, bdd1path, bdd01path]:
         barcode_distribution.append(summary)
 
 combined_barcode_distribution = pd.concat(barcode_distribution, ignore_index=True)
+
+print(combined_barcode_distribution.head())
+sys.exit()
 
 combined_barcode_distribution['percentage'] = combined_barcode_distribution.groupby(['n'])['mean'].transform(lambda x: x / x.sum() * 100)
 print(combined_barcode_distribution.head())
@@ -354,6 +358,8 @@ fig_bar.update_layout(barmode='stack', width=600, height=600, xaxis=dict(type='c
 fig_bar.update_xaxes(showline=True, linewidth=2, linecolor='black')
 fig_bar.update_yaxes(showline=True, linewidth=2, linecolor='black')
 fig_bar.show()
+
+
 # %%
 # repeat the boxplot with the labels for the reads (also with the significane tests!)
 print(combined_barcode_distribution.head())
@@ -364,11 +370,39 @@ dd01 = combined_barcode_distribution[combined_barcode_distribution["Dominance"]=
 print(combined_barcode_distribution[combined_barcode_distribution["barcode"]=="0"]['n'])
 
 dilutions = [dd10, dd1, dd01]
+
+
+#%%
+'''
+for dilution in dilutions:
+    #alternative plot
+    print(dilution.head())
+    # Histogram of the reads per barcode
+    for n in dilution["n"].unique():
+        fig = px.histogram(
+            dilution[dilution["n"] == n],
+            x='mean',
+            color='barcode',
+            title=f"Mean Reads per Barcode by Dominance {dilution['Dominance'].iloc[0]}% and n={n}",
+            labels={'mean': 'Mean Reads', 'barcode': 'Barcode'},
+        color_discrete_map={row['barcode']: row['color'] for _, row in combined_barcode_distribution.iterrows()}
+    )
+
+    fig.update_layout(width=300, height=300, font=dict(size=20), showlegend=False)
+    fig.update_xaxes(showline=True, linewidth=2, linecolor='black')
+    fig.update_yaxes(showline=True, linewidth=2, linecolor='black')
+    fig.show()
+'''
+
+#%%
+
+
+
 import random
 from plotly.subplots import make_subplots
 for dilution in dilutions:
-    fig = px.box(dilution,  x='n', y='percentage', color="n", color_discrete_sequence=px.colors.sequential.Greys_r[2:7],
-                labels={'percentage': 'Percentage (%)'}, title=f"Prevalence of Clone 0: {dilution['Dominance'].iloc[0]}%")
+    fig = px.box(dilution,  x='n', y='mean', color="n", color_discrete_sequence=px.colors.sequential.Greys_r[2:7],
+                labels={'mean': 'Mean Reads'}, title=f"Prevalence of Clone 0: {dilution['Dominance'].iloc[0]}%")
     # Calculate significance test results for this dilution
     sample_test = significance_test(dilution, value_column='mean')
     # Add orange marker for dominant clone with annotation
@@ -378,7 +412,7 @@ for dilution in dilutions:
             annotation = get_annotation_text(n, sample_test)
             # Add the orange marker
             fig.add_trace(go.Scatter(
-                y=dominant['percentage'],
+                y=dominant['mean'],
                 x=dominant['n'],
                 mode='markers',
                 marker=dict(color="orange", size=15, line=dict(color='black', width=2)),
@@ -387,11 +421,11 @@ for dilution in dilutions:
             # Add annotation next to the plot with an arrow
 
             n_index = list(sorted(dilution["n"].unique())).index(n)
-            y_offset = np.mean(dominant['percentage'].values) - n_index * np.mean(dominant['percentage'].values)
+            y_offset = np.mean(dominant['mean'].values) - n_index * np.mean(dominant['mean'].values)
 
             fig.add_annotation(
                 x=dominant['n'],
-                y=dominant['percentage'].values[0] + y_offset,
+                y=dominant['mean'].values[0] + y_offset,
                 text=annotation,
                 ax=50,  # Adjust the x offset for the annotation
                 ay=0,
@@ -404,6 +438,7 @@ for dilution in dilutions:
     fig.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black')
     fig.update_yaxes(showline=True, linewidth=2, linecolor='black') 
     fig.update_layout(width=500, height=500, font=dict(size=20), showlegend=False)
+    #fig.show()
     fig.write_image(f"../ProgressReport/simulation_description/plots/boxplot_reads_dilution_{dilution['Dominance'].iloc[0]}.svg")
 # %%
 # insertion level OTB plot
@@ -446,12 +481,15 @@ unique_pairs = ils_otb[['n', "Dominance"]].drop_duplicates().sort_values(['n', '
 fig = make_subplots(
     rows=1,
     cols=len(unique_pairs),
-    subplot_titles=[f"n={n}\nDominance={dominance}" for n, dominance in unique_pairs],
-    shared_yaxes=False,  # Set to False for independent y-axes
+    subplot_titles=[f"n={n}<br>Dominance={dominance}" for n, dominance in unique_pairs],
+    shared_yaxes=False,
     horizontal_spacing=0.05,
     x_title='Mean OTBs',
     y_title='Top 20 Target regions by OTBs'
 )
+# Reduce subplot title font size after creation
+for i in range(len(unique_pairs)):
+    fig.layout.annotations[i].font = dict(size=10)
 
 for idx, (n, dominance) in enumerate(unique_pairs, start=1):
     target_data = ils_otb[(ils_otb['n'] == n) & (ils_otb["Dominance"] == dominance)]
@@ -502,6 +540,6 @@ fig.update_layout(
     barmode='relative',
     showlegend=True
 )
-#fig.show()
-fig.write_image(f"../ProgressReport/simulation_description/plots/ils_barplots.svg")
+fig.show()
+#fig.write_image(f"../ProgressReport/simulation_description/plots/ils_barplots.svg")
 # %%
