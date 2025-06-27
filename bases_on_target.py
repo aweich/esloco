@@ -39,8 +39,8 @@ raw["bases_on_target"] = raw["overlap"].apply(lambda x: sum(eval(x)) if isinstan
 
 # Group by gene, mean_read_length, and coverage, then calculate the median of bases_on_target_perc across iterations
 # Calculate the median bases_on_target_perc for each gene, mean_read_length, and coverage
-averaged_bases_on_target = raw.groupby(["gene", "mean_read_length", "coverage"], as_index=False)["bases_on_target"].median()
-
+##averaged_bases_on_target = raw.groupby(["gene", "mean_read_length", "coverage"], as_index=False)["bases_on_target"].median()
+averaged_bases_on_target = raw.groupby(["gene", "mean_read_length", "coverage"], as_index=False)["bases_on_target"].mean()
 print(averaged_bases_on_target.head())
 
 # Generate individual plots for each coverage setting
@@ -66,9 +66,9 @@ print(coverage_levels)
 coverage_levels = [26]
 statistical_results = []
 for coverage in coverage_levels:
-    plt.figure(figsize=(12, 6))
-    sns.boxplot(data=raw[raw["coverage"] == coverage], x="gene", y="bases_on_target", color="blue", linecolor="blue", showfliers=False, linewidth=2)
+    plt.figure(figsize=(10, 6))
     sns.lineplot(data=true_positive, x=3, y="bases_on_target", color="red", label="Sequencing", marker="o", alpha=0.5, linewidth=4)
+    sns.boxplot(data=raw[raw["coverage"] == coverage], x="gene", y="bases_on_target", color="blue", linecolor="black", showfliers=False, linewidth=0.5)
     plt.xlabel("Full Gene Panel")
     plt.ylabel("OTBs")
     plt.xticks(rotation=90)
@@ -133,7 +133,7 @@ for coverage in coverage_levels:
 
     plt.tight_layout()
     #outname = os.path.join(out, f"{coverage}_plot.svg")
-    #plt.savefig("/home/weichan/permanent/Projects/Presentations_Public/ISMB25/26X_line_box_plot.svg", format='svg')
+    #plt.savefig("/home/weichan/permanent/Projects/Presentations_Public/ISMB25/Alternative_26X_line_box_plot.svg", format='svg')
     plt.show()
 
 
