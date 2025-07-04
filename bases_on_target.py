@@ -40,7 +40,7 @@ raw["bases_on_target"] = raw["overlap"].apply(lambda x: sum(eval(x)) if isinstan
 # Group by gene, mean_read_length, and coverage, then calculate the median of bases_on_target_perc across iterations
 # Calculate the median bases_on_target_perc for each gene, mean_read_length, and coverage
 ##averaged_bases_on_target = raw.groupby(["gene", "mean_read_length", "coverage"], as_index=False)["bases_on_target"].median()
-averaged_bases_on_target = raw.groupby(["gene", "mean_read_length", "coverage"], as_index=False)["bases_on_target"].mean()
+averaged_bases_on_target = raw.groupby(["gene", "mean_read_length", "coverage"], as_index=False)["bases_on_target"].median()
 print(averaged_bases_on_target.head())
 
 # Generate individual plots for each coverage setting
@@ -58,17 +58,70 @@ true_positive.columns = [3, "Length", "bases_on_target"]
 true_positive["bases_on_target_x"] = true_positive["bases_on_target"] / true_positive["Length"]
 print(true_positive)
 
-# %%
+#%%
+#outliers
+print(averaged_bases_on_target[averaged_bases_on_target["coverage"] == 26])
+sns.boxplot(
+    data=raw[(raw["coverage"] == 26) & (raw["gene"].isin(["WDR45", "PRKRA"]))],
+    x="gene",
+    y="bases_on_target",
+    color="blue",
+    linecolor="black",
+    showfliers=False,
+    linewidth=1
+)
 
+# Overlay true_positive data points for WDR45 and PRKRA
+for gene in ["WDR45", "PRKRA"]:
+    tp = true_positive[true_positive[3] == gene]
+    if not tp.empty:
+        plt.scatter(
+            [gene],  # x position
+            tp["bases_on_target"],  # y value(s)
+            color="red",
+            s=100,
+            marker="D",
+            label="Sequencing" if gene == "WDR45" else None,  # Only label once for legend
+            zorder=10)
+        # Print how many values in raw for the gene are bigger than the true_positive value
+        sim_vals = raw[(raw["coverage"] == 26) & (raw["gene"] == gene)]["bases_on_target"]
+        tp_val = tp["bases_on_target"].values[0]
+        count_bigger = (sim_vals > tp_val).sum()
+        print(f"{gene}: {count_bigger} simulated values are bigger than the true_positive value ({tp_val})")
+
+        # Calculate empirical two-sided p-value
+        sim_mean = sim_vals.mean()
+        distance = abs(tp_val - sim_mean)
+        more_extreme = np.sum(np.abs(sim_vals - sim_mean) >= distance)
+        empirical_p = more_extreme / len(sim_vals)
+        
+        # Use a list with a single p-value for correction
+        _, corrected_pvals, _, _ = multipletests([empirical_p], alpha=0.05, method="fdr_bh")
+        print(f"{gene}: empirical two-sided p-value = {corrected_pvals[0]:.4f}")
+
+
+# %%
 print(coverage_levels)
 #sys.exit()
 #spcific level
+coverage_levels = [20,21,22,23,24,25,26,27,28,29,30]
 coverage_levels = [26]
 statistical_results = []
 for coverage in coverage_levels:
-    plt.figure(figsize=(10, 6))
-    sns.lineplot(data=true_positive, x=3, y="bases_on_target", color="red", label="Sequencing", marker="o", alpha=0.5, linewidth=4)
-    sns.boxplot(data=raw[raw["coverage"] == coverage], x="gene", y="bases_on_target", color="blue", linecolor="black", showfliers=False, linewidth=0.5)
+    plt.figure(figsize=(10, 6)) #12 x 6 for poster
+
+    # Ensure consistent gene order
+    gene_order = sorted(raw["gene"].unique())
+    
+    sns.lineplot(
+        data=true_positive.set_index(3).loc[gene_order].reset_index(), 
+        x=3, y="bases_on_target", color="red", label="Sequencing", marker="o", alpha=0.5, linewidth=4
+    )
+    sns.boxplot(
+        data=raw[(raw["coverage"] == coverage) & (raw["gene"].isin(gene_order))], 
+        x="gene", y="bases_on_target", color="blue", linecolor="black", 
+        showfliers=False, linewidth=1, order=gene_order
+    )
     plt.xlabel("Full Gene Panel")
     plt.ylabel("OTBs")
     plt.xticks(rotation=90)
@@ -76,7 +129,7 @@ for coverage in coverage_levels:
     empirical_p_values = []
     temp_results = []
 
-    for gene in raw["gene"].unique():
+    for gene in gene_order:
         gene_data = raw[(raw["coverage"] == coverage) & (raw["gene"] == gene)]["bases_on_target"]
         true_positive_value = true_positive[true_positive[3] == gene]["bases_on_target"].values
 
@@ -90,10 +143,9 @@ for coverage in coverage_levels:
 
             temp_results.append({"gene": gene, "coverage": coverage, "empirical_p": empirical_p})
             empirical_p_values.append(empirical_p)
-
+            print(f"Gene: {gene}, Empirical two-sided p-value: {empirical_p:.4f}")
     # Apply Benjamini-Hochberg correction
     _, corrected_pvals, _, _ = multipletests(empirical_p_values, alpha=0.05, method="fdr_bh")
-
     # Append corrected results
     significant_count = 0
     for i, result in enumerate(temp_results):
@@ -103,8 +155,8 @@ for coverage in coverage_levels:
         if corrected_pvals[i] <= 0.05:
             significant_count += 1
 
-        x_position = raw["gene"].unique().tolist().index(result["gene"])
-        y_position = 4e7  # Customize for your y-axis
+        x_position = gene_order.index(result["gene"])
+        y_position = 4e7
 
         # Round and label
         p_value = round(result["adjusted_p"], 3)
@@ -121,20 +173,12 @@ for coverage in coverage_levels:
 
     print(f"Coverage {coverage}: {significant_count} significant values")
 
-    # Legend
-    '''
-    plt.legend(handles=[
-        plt.Line2D([0], [0], color='none', label="Significance Levels:"),
-        plt.Line2D([0], [0], color='none', label="n.s.: p > 0.05"),
-        plt.Line2D([0], [0], color='none', label="*: p ≤ 0.05"),
-        plt.Line2D([0], [0], color='none', label="**: p ≤ 0.01")
-    ], loc="upper right", frameon=False)
-    '''
-
     plt.tight_layout()
-    #outname = os.path.join(out, f"{coverage}_plot.svg")
-    #plt.savefig("/home/weichan/permanent/Projects/Presentations_Public/ISMB25/Alternative_26X_line_box_plot.svg", format='svg')
+    #outname = os.path.join(out, f"/home/weichan/permanent/Projects/VIS/ProgressReport/simulation_description/Supplement/{coverage}_plot.svg")
+    plt.savefig("/home/weichan/permanent/Projects/Presentations_Public/ISMB25/26X_line_box_plot_figure.svg", format='svg')
+    #plt.savefig(outname, format='svg', bbox_inches='tight')
     plt.show()
+    plt.close()
 
 
 # %%
