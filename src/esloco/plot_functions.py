@@ -44,7 +44,6 @@ def barplot_absolute_matches(experiment_name, data, output_path):
         bases_on_target_total=('on_target_bases', 'sum')
     ).reset_index()
 
-    print(summary.head())
     # Aggregate across iterations to compute mean and standard error
     final_summary = summary.groupby(['mean_read_length', 'coverage']).agg(
         full_matches_mean=('full_matches_total', 'mean'),
@@ -128,19 +127,16 @@ def barplot_absolute_matches_barcodes(experiment_name, data, output_path):
     # Divide the values by the number of iterations
     iterations_count = data['Iteration'].nunique()
     
-    print(iterations_count)
     barcode_summary['full_matches_total'] /= iterations_count
     barcode_summary['partial_matches_total'] /= iterations_count
     barcode_summary['on_target_bases_total'] /= iterations_count
 
-    print(barcode_summary)
 
     # Melt the dataframe for easier plotting with Plotly
     barcode_summary_melted = barcode_summary.melt(id_vars=['mean_read_length', 'coverage', 'Barcode'], 
                                                 value_vars=['full_matches_total', 'partial_matches_total', 'on_target_bases_total'], 
                                                 var_name='match_type', value_name='count')
 
-    print(barcode_summary_melted)
     # Create combined bar plot
     fig = make_subplots(rows=1, cols=3, subplot_titles=['Full Matches', 'Partial Matches', 'Bases on Target'],
                         shared_yaxes=False, shared_xaxes=True, x_title="Covreage and Mean Read Length", y_title="Mean Count across Iterations")
@@ -232,10 +228,10 @@ def plot_lineplot(experiment_name, data, output_path):
     output_html_otb = os.path.join(output_path, f"{experiment_name}_lineplot_otb_matches.html")
 
     os.makedirs(os.path.dirname(output_path), exist_ok=True)  # Ensure the folder exists
-
-    #Barcode_0_insertion_0_0
-    #TRA1_0_0
-    print(data["target_region"].str.split("_", expand=True))
+    
+    #examples
+    #I mode: Barcode_0_insertion_0_0 
+    #ROI mode: TRA1_0_0
     if data["target_region"].str.contains("insertion").any():
         data[["temp1","barcode","ID1","ID2","Iteration"]] = data["target_region"].str.split("_", expand=True)
         data["id"] = data["ID1"] + "_" + data["ID2"]
@@ -334,7 +330,7 @@ def plot_lineplot(experiment_name, data, output_path):
 def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_list=[]):
 
     if filter > 20 or len(id_list) > 20:
-        print("Individual plots are limited to 20 IDs. Please reduce the filter value or select up to 20 specific IDs.")
+        print("Individual plots are limited to 20 IDs. Please reduce the filter value or select up to 20 specific IDs in `plot_esloco` itself.")
         sys.exit()
     
     # Output paths

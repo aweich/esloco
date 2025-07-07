@@ -1,21 +1,37 @@
 #!/usr/bin/env python3
 import sys
 import os
-
 from esloco.config_handler import parse_config
 from esloco.plot_functions import read_data, barplot_absolute_matches, barplot_absolute_matches_barcodes, plot_barcode_distribution, plot_lineplot, plot_isolated_lineplot, plot_log_data, generate_html_report
 
+def print_help():
+    print("")
+    print("Usage: ")
+    print("         plot_esloco --config <config_file>")
+    print("")
+    print("Generate plots from the results of a local coverage estimation simulation and create an HTML report.")
+    print("")
+    print("Options:")
+    print("     --config  <config_file>    Path to the configuration file.")
+    print("     --help                     Show this help message.")
+    print("")
+    sys.exit(0)
 
 def main():
     """ Main function to plot all results at once. """
 
     # Load configuration
-    if len(sys.argv) != 2:
-        print("Usage: esloco.py <config_file>")
+    if len(sys.argv) != 3 or sys.argv[1] == "--help" or sys.argv[1] != "--config":
+        print_help()
         sys.exit(1)
     
-    config_file = sys.argv[1]
-    
+    if sys.argv[1] == "--config":
+        config_file = sys.argv[2]
+
+    if not os.path.exists(config_file):
+        print(f"Configuration file '{config_file}' does not exist.")
+        sys.exit(1)
+        
     try:
         param_dictionary = parse_config(config_file)
     except Exception as e:
@@ -34,7 +50,6 @@ def main():
 
     basic_data = read_data(f"{output_path}/{experiment_name}_barcode_distribution_table.csv")
     matches_data = read_data(f"{output_path}/{experiment_name}_matches_table.csv")
-    print(matches_data.head())
     log = f"{output_path}/{experiment_name}_log.log"
     coverage_plots = [f"{output_path_plots}/{combination[0]}_{combination[1]}_coverage.html" for combination in combinations]
 
@@ -56,9 +71,8 @@ def main():
     # HTML report
     # The html report only points to the plots it displays. 
     # As the html report is supposed to be placed in the plot output folder, it is necessary to change the relative paths. 
-
+    # This whole report generation is not very robust, but it is a quick solution to get an overview of the results.
     all_plots_relative = [os.path.relpath(plot, output_path) for plot in all_plots]
-   
     generate_html_report(all_plots_relative, config=config_file, output_html=f"{output_path}{experiment_name}_report.html")
 
 if __name__ == "__main__":

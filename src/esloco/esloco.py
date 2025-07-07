@@ -42,6 +42,10 @@ def main():
     
     if sys.argv[1] == "--config":
         config_file = sys.argv[2]
+        
+    if not os.path.exists(config_file):
+        print(f"Configuration file '{config_file}' does not exist.")
+        sys.exit(1)
 
     try:
         param_dictionary = parse_config(config_file)
