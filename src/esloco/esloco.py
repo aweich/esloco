@@ -20,16 +20,29 @@ from esloco.bed_operations import global_to_chromosome_coordinates
 from esloco.genome_generation import create_barcoded_insertion_genome, create_barcoded_roi_genome
 from esloco.combined_calculations import run_simulation_iteration
 
+def print_help():
+    print("")
+    print("Usage: ")
+    print("         esloco --config <config_file>")
+    print("")
+    print("Run a simulation for local coverage estimation.")
+    print("")
+    print("Options:")
+    print("     --config  <config_file>    Path to the configuration file.")
+    print("     --help                     Show this help message.")
+    print("")
+    sys.exit(0)
+
 def main():
     """ Main body to execute the entire simulation. """
-
     # Load configuration
-    if len(sys.argv) != 2:
-        print("Usage: esloco <config_file>")
+    if len(sys.argv) != 3 or sys.argv[1] == "--help" or sys.argv[1] != "--config":
+        print_help()
         sys.exit(1)
     
-    config_file = sys.argv[1]
-    
+    if sys.argv[1] == "--config":
+        config_file = sys.argv[2]
+
     try:
         param_dictionary = parse_config(config_file)
     except Exception as e:

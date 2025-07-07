@@ -74,11 +74,11 @@ def parse_config(config_file):
 
         # Validate required parameters
         if mode is None:
-            logging.error("Missing required parameter: mode")
+            print("Missing required parameter: mode")
             raise ValueError("Missing required parameter: mode")
         
         if reference_genome_path is None:
-            logging.error("Missing required parameter: reference_genome_path")
+            print("Missing required parameter: reference_genome_path")
             raise ValueError("Missing required parameter: reference_genome_path")
 
         # Optional parameters with default values
@@ -132,7 +132,7 @@ def parse_config(config_file):
             bedpath = config.get("I", "bedpath", fallback=None)
             insertion_numbers = config.getfloat("I", "insertion_numbers", fallback=5.0)
         else:
-            logging.error("Invalid mode selected. Exiting.")
+            print("Invalid mode selected. Exiting.")
             raise ValueError("Invalid mode selected. Allowed values: 'ROI' or 'I'.")
 
         # Generate combinations of mean_read_lengths and coverages
@@ -143,5 +143,5 @@ def parse_config(config_file):
         return param_dictionary
 
     except Exception as e:
-        logging.error(f"Configuration parsing failed: {e}")
+        print(f"Configuration parsing failed: {e}")
         sys.exit(1)
