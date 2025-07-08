@@ -138,8 +138,16 @@ def barplot_absolute_matches_barcodes(experiment_name, data, output_path):
                                                 var_name='match_type', value_name='count')
 
     # Create combined bar plot
-    fig = make_subplots(rows=1, cols=3, subplot_titles=['Full Matches', 'Partial Matches', 'Bases on Target'],
-                        shared_yaxes=False, shared_xaxes=True, x_title="Covreage and Mean Read Length", y_title="Mean Count across Iterations")
+    fig = make_subplots(
+        rows=1,
+        cols=3,
+        subplot_titles=['Full Matches', 'Partial Matches', 'Bases on Target'],
+        shared_yaxes=False,
+        shared_xaxes=True,
+        #x_title="Coverage and Mean Read Length",
+        y_title="Mean Count across Iterations"
+    )
+    fig.update_annotations(font_size=12)
 
     for match_type in barcode_summary_melted['match_type'].unique():
         subset = barcode_summary_melted[barcode_summary_melted['match_type'] == match_type]
@@ -155,8 +163,8 @@ def barplot_absolute_matches_barcodes(experiment_name, data, output_path):
                 showlegend=(col == 1)
             ), row=1, col=col)
 
-    fig.update_layout(title_text='Mean Total Matches', barmode='stack')
-
+    fig.update_xaxes(title_text='Coverage, Mean Read Length', title_font=dict(size=8), title_standoff=5)
+    fig.update_layout(title_text='Mean Count (by barcode)', showlegend=True)
     #fig.show()
     
     fig.write_html(output_html)
@@ -201,7 +209,7 @@ def plot_barcode_distribution(experiment_name, data, output_path):
                  color='barcode', 
                  title='Mean Total Reads by Coverage and Mean Read Length (Stacked by Barcode)', 
                  color_discrete_map=barcode_color_map)
-    fig.update_xaxes(title_text='Coverage and Mean Read Length', title_font=dict(size=12))
+    fig.update_xaxes(title_text='Coverage, Mean Read Length', title_font=dict(size=12))
     fig.update_yaxes(title_text='Mean Total Reads', title_font=dict(size=12))
     
     fig.show()
@@ -270,7 +278,8 @@ def plot_lineplot(experiment_name, data, output_path):
     plt.close()
     
     # Interactive plot with Plotly for partial matches
-    fig = px.line(grouped, x='id', y='partial_matches', color='coverage', line_dash='mean_read_length', markers=True, title='Lineplot of Partial Matches by Coverage and Mean Read Length')
+    fig = px.line(grouped, x='id', y='partial_matches', color='coverage', line_dash='mean_read_length', markers=True, title='Target-specific Partial Matches (by Coverage, Mean Read Length)')
+    fig.update_layout(title_font=dict(size=14))
     fig.update_xaxes(title_text='ID', title_font=dict(size=12))
     fig.update_yaxes(title_text='Mean Partial Matches', title_font=dict(size=12))
     fig.write_html(output_html_partial)
@@ -293,7 +302,8 @@ def plot_lineplot(experiment_name, data, output_path):
     plt.close()
     
     # Interactive plot with Plotly
-    fig = px.line(grouped, x='id', y='full_matches', color='coverage', line_dash='mean_read_length', markers=True, title='Lineplot of Full Matches by Coverage and Mean Read Length')
+    fig = px.line(grouped, x='id', y='full_matches', color='coverage', line_dash='mean_read_length', markers=True, title='Target-specific Full Matches (by Coverage, Mean Read Length)')
+    fig.update_layout(title_font=dict(size=14))
     fig.update_xaxes(title_text='ID', title_font=dict(size=12))
     fig.update_yaxes(title_text='Mean Full Matches', title_font=dict(size=12))
     fig.write_html(output_html_full)
@@ -315,7 +325,8 @@ def plot_lineplot(experiment_name, data, output_path):
     plt.close()
     
     # Interactive plot with Plotly
-    fig = px.line(grouped, x='id', y='on_target_bases', color='coverage', line_dash='mean_read_length', markers=True, title='Lineplot of OTBs by Coverage and Mean Read Length')
+    fig = px.line(grouped, x='id', y='on_target_bases', color='coverage', line_dash='mean_read_length', markers=True, title='Target-specific OTBs (by Coverage, Mean Read Length)')
+    fig.update_layout(title_font=dict(size=14))
     fig.update_xaxes(title_text='ID', title_font=dict(size=12))
     fig.update_yaxes(title_text='Mean OTBs', title_font=dict(size=12))
     fig.write_html(output_html_otb)
@@ -425,9 +436,9 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_lis
         for barcode in subset['barcode'].unique():
             barcode_data = subset[subset['barcode'] == barcode]
             fig.add_trace(go.Scatter(x=barcode_data['coverage_mean_read_length'], y=barcode_data['mean_partial_matches'], mode='lines+markers', name=str(barcode), legendgroup=str(barcode), showlegend=(i == 1), line=dict(color=barcode_color_map[barcode])), row=row, col=col)
-    fig.update_xaxes(title_text='Coverage and Mean Read Length', title_font=dict(size=8), title_standoff=5)
+    fig.update_xaxes(title_text='Coverage, Mean Read Length', title_font=dict(size=8), title_standoff=5)
     fig.update_yaxes(title_text='Mean Partial Matches', title_font=dict(size=8), title_standoff=5)
-    fig.update_layout(title_text='Target-specific Partial Matches', showlegend=True)
+    fig.update_layout(title_text='Target-specific Partial Matches (by barcode)', showlegend=True)
     fig.write_html(output_html_partial)
     fig.write_image(output_path_partial, scale=3, width=1200, height=1200)
 
@@ -440,15 +451,15 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_lis
         for barcode in subset['barcode'].unique():
             barcode_data = subset[subset['barcode'] == barcode]
             fig.add_trace(go.Scatter(x=barcode_data['coverage_mean_read_length'], y=barcode_data['mean_full_matches'], mode='lines+markers', name=str(barcode), legendgroup=str(barcode), showlegend=(i == 1), line=dict(color=barcode_color_map[barcode])), row=row, col=col)
-    fig.update_xaxes(title_text='Coverage and Mean Read Length', title_font=dict(size=8), title_standoff=5)
-    fig.update_yaxes(title_text='Mean Partial Matches', title_font=dict(size=8), title_standoff=5)
-    fig.update_layout(title_text='Target-specific Full Matches', showlegend=True)
+    fig.update_xaxes(title_text='Coverage, Mean Read Length', title_font=dict(size=8), title_standoff=5)
+    fig.update_yaxes(title_text='Mean Full Matches', title_font=dict(size=8), title_standoff=5)
+    fig.update_layout(title_text='Target-specific Full Matches (by barcode)', showlegend=True)
     fig.write_html(output_html_full)
     fig.write_image(output_path_full, scale=3, width=1200, height=1200)
 
     
     # Interactive plot for otb matches
-    fig = make_subplots(rows=rows, cols=cols, shared_yaxes=True, subplot_titles=filtered_full['id'].unique())
+    fig = make_subplots(rows=rows, cols=cols, shared_yaxes=True, subplot_titles=filtered_otb['id'].unique())
     for i, unique_id in enumerate(filtered_otb['id'].unique(), start=1):
         subset = otb_stats[otb_stats['id'] == unique_id]
         row = (i - 1) // cols + 1
@@ -456,9 +467,9 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filter=20, id_lis
         for barcode in subset['barcode'].unique():
             barcode_data = subset[subset['barcode'] == barcode]
             fig.add_trace(go.Scatter(x=barcode_data['coverage_mean_read_length'], y=barcode_data['mean_otb_matches'], mode='lines+markers', name=str(barcode), legendgroup=str(barcode), showlegend=(i == 1), line=dict(color=barcode_color_map[barcode])), row=row, col=col)
-    fig.update_xaxes(title_text='Coverage and Mean Read Length', title_font=dict(size=8), title_standoff=5)
+    fig.update_xaxes(title_text='Coverage, Mean Read Length', title_font=dict(size=8), title_standoff=5)
     fig.update_yaxes(title_text='Mean OTB Matches', title_font=dict(size=8), title_standoff=5)
-    fig.update_layout(title_text='Target-specific OTB', showlegend=True)
+    fig.update_layout(title_text='Target-specific OTB (by barcode)', showlegend=True)
     fig.write_html(output_html_otb)
     fig.write_image(output_path_otb, scale=3, width=1200, height=1200)
 
@@ -563,7 +574,7 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
                 font-family: Arial, sans-serif; 
                 margin: 25px;
                 text-align: center; 
-                background-color:  #f0f3f4;
+                background-color:  #d8dadb;
             }}
             h1, h2, h3 {{ color: #333; }}
             h3 {{ margin-top: 40px; border-bottom: 3px solid #444; padding-bottom: 5px; }}
@@ -629,7 +640,7 @@ def generate_html_report(image_paths, config=None, output_html="report.html"):
         <button onclick="nextPlot()">Next</button>
     </div>
     <div class="grid-container">
-        <iframe id="plotFrame" src="{image_paths[9]}" title="Coverage Plot" style="height: 1200px;"></iframe>
+        <iframe id="plotFrame" src="{image_paths[9]}" title="Coverage Plot" style="height: 800px;"></iframe>
     </div>
     <script>
         var plots = {image_paths};

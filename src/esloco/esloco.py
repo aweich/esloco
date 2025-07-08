@@ -110,7 +110,6 @@ def main():
         logging.error("Error: Invalid mode selected.")
         sys.exit(1)
 
-
     # Parallel execution
     parallel_results = ParallelPbar("Iterations...")(n_jobs=parallel_jobs)(
         delayed(run_simulation_iteration)(i, param_dictionary, genome_size, target_regions, masked_regions, log_file)
