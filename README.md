@@ -129,19 +129,35 @@ The simulation has four main output files:
 
 During the simulation, basic coverage plots are generated for the first iteration of each parameter set to monitor expected coverage and target region locations. Also, if no read length distribution is provided, the generated distribution is also saved in `.npy` format. 
 
-For a more comprehensive analysis, `plot_esloco --config {configfile}` can generate additional overview plots. These are summarized in an interactive `{experiment_name}_report.html`. Below is an exemplary overview for some of the figures encountered in the report:
+For a more comprehensive analysis, `plot_esloco --config {configfile}` can generate additional overview plots. These are summarized in an interactive `{experiment_name}_report.html`. 
+
+<details>
+<summary>Click to show exemplary overview of report figures</summary>
 
 <p align="center">
-    <a href="/docs/MeanCountBarplot.png" target="_blank">
-        <img src="/docs/MeanCountBarplot.png" alt="Barplot Absolute Numbers" width="80%">
-    </a>
-    <a href="/docs/lineplot.png" target="_blank" style="margin-left: 20px;">
-        <img src="/docs/lineplot.png" alt="Lineplot" width="80%">
-    </a>
-    <a href="/docs/coverage.png" target="_blank" style="margin-left: 20px;">
-        <img src="/docs/coverage.png" alt="Coverage Plot" width="80%">
-    </a>
+    <div>
+        <code>{experiment_name}_Barplot_Barcode_absolute_numbers</code>:<br>
+        <a href="/docs/MeanCountBarplot.png" target="_blank">
+            <img src="/docs/MeanCountBarplot.png" alt="Barplot Absolute Numbers" width="90%">
+        </a>
+    </div>
+    <br>
+    <div>
+        <code>{experiment_name}_lineplot_otb_matches</code>:<br>
+        <a href="/docs/lineplot.png" target="_blank">
+            <img src="/docs/lineplot.png" alt="Lineplot" width="90%">
+        </a>
+    </div>
+    <br>
+    <div>
+        <code>{mean_read_length}_{coverage}_coverage</code>:<br>
+        <a href="/docs/coverage.png" target="_blank">
+            <img src="/docs/coverage.png" alt="Coverage Plot" width="90%">
+        </a>
+    </div>
 </p>
+
+</details>
 
 ---
 
@@ -194,7 +210,7 @@ Generally, if any of the `BED` files provided contain entries with only a chromo
 It is also possible to fix the number and/or location of insertions. For this, the `insertion_number_distribution` in the `configfile` needs to be set to anything else than `poisson`, which is the default. By doing this, the `insertion_numbers` option will use the defined value as a fixed value, and not as the mean value of a poisson distribution. For a fixed number of insertions at specific locations, this can be achieved by providing a `bedpath` in the `[I]` section of the `configfile`, which has the exact same number of entries as `insertion_numbers`.
 
 ---
-## Wrap it up
+## Scaling up
 
 Sometimes, multiple back-to-back simulations are required. To handle this, `esloco` can be easily wrapped inside a `bash` loop that processes a directory containing multiple configuration files:
 
@@ -203,8 +219,8 @@ Sometimes, multiple back-to-back simulations are required. To handle this, `eslo
 
 for config in path/to/configs/*; do
     echo "Processing: $config"
-    esloco "$config"
-    plot_esloco "$config"
+    esloco --config "$config"
+    plot_esloco --config "$config"
 done
 ```
 
