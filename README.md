@@ -133,13 +133,13 @@ For a more comprehensive analysis, `plot_esloco --config {configfile}` can gener
 
 <p align="center">
     <a href="/docs/MeanCountBarplot.png" target="_blank">
-        <img src="/docs/MeanCountBarplot.png" alt="Barplot Absolute Numbers" width="500">
+        <img src="/docs/MeanCountBarplot.png" alt="Barplot Absolute Numbers" width="80%">
     </a>
     <a href="/docs/lineplot.png" target="_blank" style="margin-left: 20px;">
-        <img src="/docs/lineplot.png" alt="Lineplot" width="500">
+        <img src="/docs/lineplot.png" alt="Lineplot" width="80%">
     </a>
     <a href="/docs/coverage.png" target="_blank" style="margin-left: 20px;">
-        <img src="/docs/coverage.png" alt="Coverage Plot" width="500">
+        <img src="/docs/coverage.png" alt="Coverage Plot" width="80%">
     </a>
 </p>
 
