@@ -92,7 +92,7 @@ Below are the configuration options for the simulation, divided into three secti
 
 | **Option**      | **Description**                     | **Default** |
 |------------------|-------------------------------------|---------------------|
-| `roi_bedpath`    | BED file with regions of interest. | **(*)**        |
+| `roi_bedpath`    | BED file with regions of interest. Gene IDs containing underscores (`_`) are not supported. | **(*)**        |
 
 #### `[I]`
 

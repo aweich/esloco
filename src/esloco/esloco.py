@@ -35,6 +35,7 @@ def print_help():
 
 def main():
     """ Main body to execute the entire simulation. """
+
     # Load configuration
     if len(sys.argv) != 3 or sys.argv[1] == "--help" or sys.argv[1] != "--config":
         print_help()
@@ -47,6 +48,9 @@ def main():
         print(f"Configuration file '{config_file}' does not exist.")
         sys.exit(1)
 
+    # immediate CLI feedback after starting the simulation
+    print(f"Checking config...")
+    
     try:
         param_dictionary = parse_config(config_file)
     except Exception as e:
@@ -60,6 +64,10 @@ def main():
     num_iterations = param_dictionary.get("iterations")
     parallel_jobs = param_dictionary.get("parallel_jobs")
     
+    # Further CLI startup feedback
+    print(f"Starting simulation: {experiment_name}")
+    print(f"Running in mode: {mode}")
+
     for handler in logging.root.handlers[:]:
         logging.root.removeHandler(handler)
 
@@ -72,9 +80,10 @@ def main():
 
     setup_logging(log_file)
 
+    # prints startup message to log after initializing of the log file 
     logging.info(f"Starting simulation: {experiment_name}")
     logging.info(f"Running in mode: {mode}")
-
+    
     # Setup monitoring
     start_time = time.time()
     track_usage("Before")
@@ -105,6 +114,8 @@ def main():
             param_dictionary['roi_bedpath'], param_dictionary['n_barcodes'],
             param_dictionary['blocked_regions_bedpath']
         )
+        logging.info(f"Chromosome borders: {chromosome_dir}")
+        logging.info(f"Target regions: {target_regions}")
 
     else:
         logging.error("Error: Invalid mode selected.")
