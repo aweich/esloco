@@ -9,9 +9,9 @@ import sys
 import os
 
 #mean read length calculation
+import gzip
 import numpy as np
 from Bio import SeqIO
-import gzip
 
 def seq_read_data(fasta_file, distribution=False, min_read_length=0):
     """
@@ -21,15 +21,18 @@ def seq_read_data(fasta_file, distribution=False, min_read_length=0):
     # Open the file, handling gzipped files if necessary
     open_func = gzip.open if fasta_file.endswith(".gz") else open
     with open_func(fasta_file, "rt") as handle:
-        
+
         # Determine file format based on extension
-        if fasta_file.endswith(".fastq") or fasta_file.endswith(".fastq.gz") or fasta_file.endswith(".fq") or fasta_file.endswith(".fq.gz"):
+        fastq_exts = (".fastq", ".fastq.gz", ".fq", ".fq.gz")
+        fasta_exts = (".fasta", ".fasta.gz", ".fa", ".fa.gz")
+
+        if fasta_file.endswith(fastq_exts):
             file_format = "fastq"
-        elif fasta_file.endswith(".fasta") or fasta_file.endswith(".fasta.gz") or fasta_file.endswith(".fa") or fasta_file.endswith(".fa.gz"):
+        elif fasta_file.endswith(fasta_exts):
             file_format = "fasta"
         else:
             raise ValueError(f"Unsupported file format for {fasta_file}. Only FASTA and FASTQ are allowed.")
-        
+
         # Extract lengths and convert them to a numpy array
         lengths = []
         for record in SeqIO.parse(handle, file_format):
@@ -45,8 +48,7 @@ def seq_read_data(fasta_file, distribution=False, min_read_length=0):
         raise ValueError(f"No reads found in {fasta_file}")
     if distribution:
         return lengths
-    else:
-        return np.mean(lengths)
+    return np.mean(lengths)
 
 def random_seed():
     """
@@ -57,10 +59,10 @@ def random_seed():
 def parse_config(config_file):
     """
     Parses the given configuration file and returns a dictionary of parameters.
-    
+
     Args:
         config_file: Path to the configuration file.
-    
+
     Returns:
         dict: A dictionary containing all parsed configuration parameters.
     """
@@ -76,7 +78,7 @@ def parse_config(config_file):
         if mode is None:
             print("Missing required parameter: mode")
             raise ValueError("Missing required parameter: mode")
-        
+
         if reference_genome_path is None:
             print("Missing required parameter: reference_genome_path")
             raise ValueError("Missing required parameter: reference_genome_path")
@@ -101,7 +103,7 @@ def parse_config(config_file):
         #make sure output paths exist
         if not os.path.exists(output_path):
             os.makedirs(output_path)
-        
+
         if not os.path.exists(output_path_plots):
             os.makedirs(output_path_plots)
 
@@ -111,14 +113,15 @@ def parse_config(config_file):
             coverages = [coverages]
 
         mean_read_lengths = json.loads(config.get("COMMON", "mean_read_lengths", fallback="[1000]"))
-        
+
         if not isinstance(mean_read_lengths, list):
             mean_read_lengths = [mean_read_lengths]
 
         if sequenced_data_path:
+            print("Sequencing data provided. Calculating mean read length might take a while...")
             logging.info("Sequencing data provided, calculating mean read length...")
             mrl = int(seq_read_data(sequenced_data_path, min_read_length=min_read_length))
-            logging.info(f"Mean read length set to: {mrl}")
+            logging.info("Mean read length set to: {mrl}")
             mean_read_lengths = [mrl]
 
         blocked_regions_bedpath = config.get("COMMON", "blocked_regions_bedpath", fallback=None)
@@ -143,5 +146,5 @@ def parse_config(config_file):
         return param_dictionary
 
     except Exception as e:
-        print(f"Configuration parsing failed: {e}")
+        print("Configuration parsing failed: %s.", e)
         sys.exit(1)
