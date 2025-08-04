@@ -104,7 +104,7 @@ def plot_reads_coverage(ref_length,
                                                  size=10,
                                                  color=suffix_color_map[suffix])))
         except Exception:
-            fig.add_trace(go.Scatter(x=positions, 
+            fig.add_trace(go.Scatter(x=positions,
                                      y=[max_height] * len(positions),
                                      mode='markers',
                                      name=key,

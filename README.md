@@ -234,4 +234,4 @@ done
 
 ## Citation & Contribution
 
-If you like this tool, please consider giving it a star. If you are using this tool for your research, please cite our publication: ... 
+If you like this tool, please consider giving it a star. If you are using this tool for your research, please cite our upcoming publication. 
