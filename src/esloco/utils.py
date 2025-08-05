@@ -67,3 +67,14 @@ def roi_barcoding(roi_dict, n_barcodes):
             new_key = f"{key}_{i}"
             new_dict[new_key] = value
     return new_dict
+
+def kaleido_chrome_test():
+    try:
+        # Under construction
+        # import kaleido
+        # kaleido.get_chrome_sync()
+        return True
+    except Exception as e:
+        print(f"Warning: Could not export static (.svg) image because: {e}")
+        print("Skipping static image export. Please ensure Google Chrome is installed or allow Kaleido to download it.")
+        return False

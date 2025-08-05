@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 import plotly.express as px
 
-from esloco.utils import track_usage
+from esloco.utils import track_usage, kaleido_chrome_test
 
 def get_barcode_color_mapping(barcodes):
     if isinstance(barcodes, (list, pd.Series, np.ndarray)):
@@ -128,6 +128,9 @@ def plot_reads_coverage(ref_length,
     )
     # Save the plot as HTML and SVG
     track_usage("plot_reads_coverage")
-    pio.write_image(fig, output_file_svg)
+    # SVG: Kaleido soon requires chrome sync
+    if kaleido_chrome_test():
+        pio.write_image(fig, output_file_svg)
+    # HTML
     pio.write_html(fig, output_file_html)
     logging.info(f"Plots saved as {output_file_svg} and {output_file_html}")

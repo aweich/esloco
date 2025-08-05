@@ -14,6 +14,7 @@ from plotly.subplots import make_subplots
 from datetime import datetime
 pio.templates.default = "plotly_white"
 from esloco.coverage import get_barcode_color_mapping
+from esloco.utils import kaleido_chrome_test
 
 def read_data(filepath):
     data = pd.read_csv(filepath, sep='\t')
@@ -88,7 +89,10 @@ def barplot_absolute_matches(experiment_name, data, output_path):
 
     #fig.show()
     fig.write_html(output_html)
-    fig.write_image(output_svg, width=600, height=400)
+
+    # SVG: Kaleido soon requires chrome sync
+    if kaleido_chrome_test():
+        fig.write_image(output_svg, width=600, height=400)
 
     print(f"Barplot absolute numbers saved as {output_html}")
     return str(output_html)
@@ -150,7 +154,10 @@ def barplot_absolute_matches_barcodes(experiment_name, data, output_path):
     fig.update_layout(title_text='Mean Count (by barcode)', showlegend=True)
     #fig.show()
     fig.write_html(output_html)
-    fig.write_image(output_svg, width=1200, height=400)
+
+    # SVG: Kaleido soon requires chrome sync
+    if kaleido_chrome_test():
+        fig.write_image(output_svg, width=1200, height=400)
 
     print(f"Barplot absolute numbers with barcodes saved as {output_html}")
     return str(output_html)
@@ -195,7 +202,10 @@ def plot_barcode_distribution(experiment_name, data, output_path):
     fig.write_html(output_html_total)
     # Static plot
     fig.update_layout(legend=dict(font=dict(size=8), orientation="h", yanchor="bottom", y=-0.75, x=0.5, xanchor="center"))
-    fig.write_image(output_path_total, scale=10)
+
+    # SVG: Kaleido soon requires chrome sync
+    if kaleido_chrome_test():
+        fig.write_image(output_path_total, scale=10)
 
     print(f"Mean Total Reads Stacked Barplot saved as {output_html_total}")
     return str(output_html_total)
@@ -420,7 +430,10 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filterplots=20, i
     fig.update_yaxes(title_text='Mean Partial Matches', title_font=dict(size=8), title_standoff=5)
     fig.update_layout(title_text='Target-specific Partial Matches (by barcode)', showlegend=True)
     fig.write_html(output_html_partial)
-    fig.write_image(output_path_partial, scale=3, width=1200, height=1200)
+
+    # SVG: Kaleido soon requires chrome sync
+    if kaleido_chrome_test():
+        fig.write_image(output_path_partial, scale=3, width=1200, height=1200)
 
     # Interactive plot for full matches
     fig = make_subplots(rows=rows, cols=cols, shared_yaxes=True, subplot_titles=filtered_full['id'].unique())
@@ -443,7 +456,10 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filterplots=20, i
     fig.update_yaxes(title_text='Mean Full Matches', title_font=dict(size=8), title_standoff=5)
     fig.update_layout(title_text='Target-specific Full Matches (by barcode)', showlegend=True)
     fig.write_html(output_html_full)
-    fig.write_image(output_path_full, scale=3, width=1200, height=1200)
+
+    # SVG: Kaleido soon requires chrome sync
+    if kaleido_chrome_test():
+        fig.write_image(output_path_full, scale=3, width=1200, height=1200)
 
     # Interactive plot for otb matches
     fig = make_subplots(rows=rows, cols=cols, shared_yaxes=True, subplot_titles=filtered_otb['id'].unique())
@@ -466,7 +482,10 @@ def plot_isolated_lineplot(experiment_name, data, output_path, filterplots=20, i
     fig.update_yaxes(title_text='Mean OTB Matches', title_font=dict(size=8), title_standoff=5)
     fig.update_layout(title_text='Target-specific OTB (by barcode)', showlegend=True)
     fig.write_html(output_html_otb)
-    fig.write_image(output_path_otb, scale=3, width=1200, height=1200)
+    
+    # SVG: Kaleido soon requires chrome sync
+    if kaleido_chrome_test():
+        fig.write_image(output_path_otb, scale=3, width=1200, height=1200)
 
     print(f"Partial Overalps Lineplot panel saved as {output_html_partial}")
     print(f"Full Overlaps Lineplot panel saved as {output_html_full}")
@@ -542,7 +561,9 @@ def plot_log_data(experiment_name, logfile, output_path):
     fig.write_html(html_output_path)
 
     svg_output_path = os.path.join(output_path, f"{experiment_name}_log_plot.svg")
-    fig.write_image(svg_output_path, format='svg')
+    # SVG: Kaleido soon requires chrome sync
+    if kaleido_chrome_test():
+        fig.write_image(svg_output_path, format='svg')
 
     print(f"Ressource plot saved as {html_output_path}")
     return html_output_path

@@ -157,6 +157,9 @@ For a more comprehensive analysis, `plot_esloco --config {configfile}` can gener
     </div>
 </p>
 
+>[!NOTE]
+> A combination of [plotly](https://github.com/plotly/plotly.py) and [kaleido](https://github.com/plotly/Kaleido) are used for the export of images in `.html` and `.svg`. However, `kaleido` currently needs to be in a version `<1.0.0`, where the package comes as a self-contained solution and does not require Chrome. 
+
 </details>
 
 ---

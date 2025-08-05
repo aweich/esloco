@@ -118,8 +118,8 @@ def parse_config(config_file):
             mean_read_lengths = [mean_read_lengths]
 
         if sequenced_data_path:
-            print("Sequencing data provided. Calculating mean read length might take a while...")
-            logging.info("Sequencing data provided, calculating mean read length...")
+            print("Sequencing data provided. Calculating the mean read length may take a while...")
+            logging.info("Sequencing data provided. Calculating the mean read length may take a while...")
             mrl = int(seq_read_data(sequenced_data_path, min_read_length=min_read_length))
             logging.info("Mean read length set to: {mrl}")
             mean_read_lengths = [mrl]
