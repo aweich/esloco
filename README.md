@@ -1,6 +1,6 @@
 <br>
 <p align="center">
-    <img src="docs/esloco_logo.png" alt="Illustration" width="200">
+    <img src="docs/esloco_logo.png" alt="Illustration" width="300">
 </p>
 
 <h3 align="center">
@@ -157,7 +157,7 @@ For a more comprehensive analysis, `plot_esloco --config {configfile}` can gener
     </div>
 </p>
 
->[!NOTE]
+> [!NOTE]
 > A combination of [plotly](https://github.com/plotly/plotly.py) and [kaleido](https://github.com/plotly/Kaleido) are used for the export of images in `.html` and `.svg`. However, `kaleido` currently needs to be in a version `<1.0.0`, where the package comes as a self-contained solution and does not require Chrome. 
 
 </details>
