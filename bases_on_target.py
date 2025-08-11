@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 
 custom_params = {"axes.spines.right": False, "axes.spines.top": False}
 sns.set_theme(style="ticks", rc=custom_params)
-out="/home/weichan/temporary/Data/Simulation/ROI_test/Case1/analysis/"
-raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/Case1/Case1_matches_table.csv", sep="\t", header=0)
+#out="/home/weichan/temporary/Data/Simulation/ROI_test/Case1/analysis/"
+raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/Case1/Case1_matches_table.csv", sep="\t", header=0)
 print(raw["target_region"].unique())
 
 # Split using the last two underscores to handle problematic entries like 'GBA_x_0_999'
@@ -35,7 +35,7 @@ raw["partial_matches"] = raw["partial_matches"].astype(int)
 raw["bases_on_target"] = raw["overlap"].apply(lambda x: sum(eval(x)) if isinstance(x, str) else sum(x))
 
 # Calculate bases on target for each iteration by dividing by the "Length" column
-#raw["bases_on_target_x"] = raw["bases_on_target"] / raw["Length"]
+#raw["bases_on_target_norm"] = raw["bases_on_target"] / raw["Length"]
 
 # Group by gene, mean_read_length, and coverage, then calculate the median of bases_on_target_perc across iterations
 # Calculate the median bases_on_target_perc for each gene, mean_read_length, and coverage
@@ -49,13 +49,13 @@ coverage_levels = raw["coverage"].unique()
 print(len(averaged_bases_on_target))
 
 # %%
-seq = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/seq_bases_on_target.bed", sep="\t", header=None)
+seq = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/fromsra/SRR8955270_GroundTruth_OTBs.bed", sep="\t", header=None)
 print(seq.head())
 seq["Length"] = seq[2] - seq[1]
 true_positive = seq.groupby([3, "Length"])[10].sum().reset_index()
 print(len(true_positive.index))
 true_positive.columns = [3, "Length", "bases_on_target"]
-true_positive["bases_on_target_x"] = true_positive["bases_on_target"] / true_positive["Length"]
+true_positive["bases_on_target_norm"] = true_positive["bases_on_target"] / true_positive["Length"]
 print(true_positive)
 
 #%%
@@ -107,6 +107,20 @@ print(coverage_levels)
 coverage_levels = [20,21,22,23,24,25,26,27,28,29,30]
 coverage_levels = [26]
 statistical_results = []
+
+# Ensure 'gene' in raw matches column 3 in seq for merging
+genelengths = seq[[3, "Length"]].drop_duplicates()
+genelengths = genelengths.rename(columns={3: "gene"})
+
+
+
+# Merge on 'gene' to add 'Length' column to raw
+raw = pd.merge(raw, genelengths, how="left", on="gene")
+raw["bases_on_target_norm"] = raw["bases_on_target"] / raw["Length"]
+
+#%%
+print(true_positive)
+
 for coverage in coverage_levels:
     plt.figure(figsize=(10, 6)) #12 x 6 for poster
 
@@ -175,10 +189,10 @@ for coverage in coverage_levels:
 
     plt.tight_layout()
     #outname = os.path.join(out, f"/home/weichan/permanent/Projects/VIS/ProgressReport/simulation_description/Supplement/{coverage}_plot.svg")
-    plt.savefig("/home/weichan/permanent/Projects/Presentations_Public/ISMB25/26X_line_box_plot_figure.svg", format='svg')
+    #plt.savefig("/home/weichan/permanent/Projects/Presentations_Public/ISMB25/26X_line_box_plot_figure.svg", format='svg')
     #plt.savefig(outname, format='svg', bbox_inches='tight')
     plt.show()
-    plt.close()
+    #plt.close()
 
 
 # %%
@@ -217,20 +231,30 @@ for i, column in enumerate(ccc_data.columns):
     x = ccc_data[column].values  # Current column for x
     y = ccc_data["seq. count"].values  # y remains the same
 
+    # Add the true line (1:1 line) in black
+    min_val = min(min(x), min(y))
+    max_val = max(max(x), max(y))
+    axes[i].plot([min_val, max_val], [min_val, max_val], color='black', label="1:1 Line", linewidth=3, alpha=1)
+
     # Compute CCC for the current column
     ccc_value = concordance_correlation_coefficient(x, y)
     print(f"Concordance Correlation Coefficient (CCC) for {column}: {ccc_value:.3f}")
 
     # Plot scatter and regression line in the corresponding subplot
-    sns.regplot(ax=axes[i], x=x, y=y, color="blue", scatter_kws={'alpha': 0.4, 's':50}, line_kws={"color": "black"})
+    sns.regplot(
+        ax=axes[i],
+        x=x,
+        y=y,
+        color="blue",
+        scatter_kws={'alpha': 0.4, 's': 50},
+        line_kws={"color": "red", "linestyle": "--"},
+        label='Data Points'
+    )
     axes[i].set_title(f"{column} (CCC={ccc_value:.3f})")
     axes[i].set_xlabel("Simulation OTBs")
     axes[i].set_ylabel("Sequencing OTBs")
 
-    # Add the true line (1:1 line) in black
-    min_val = min(min(x), min(y))
-    max_val = max(max(x), max(y))
-    axes[i].plot([min_val, max_val], [min_val, max_val], '--', color='red', label="1:1 Line", linewidth=5, alpha=0.5)
+    
 
 # Remove any unused subplots
 for j in range(i + 1, len(axes)):
@@ -239,6 +263,7 @@ for j in range(i + 1, len(axes)):
 # Adjust layout
 plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 plt.tight_layout()
+#plt.savefig("/home/weichan/permanent/Projects/VIS/ProgressReport/simulation_description/Supplement/Updated_Case1_CCC_plot.svg",format="svg", bbox_inches='tight')
 #plt.savefig("/home/weichan/permanent/Projects/Presentations_Public/ISMB25/CCC_plot.svg",format="svg", bbox_inches='tight')
 plt.show()
 
@@ -292,6 +317,7 @@ plt.ylabel("Difference (Seq - Sim)")
 plt.title("Bland-Altman Plot (CBRT)")
 plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 #plt.savefig("/home/weichan/permanent/Projects/Presentations_Public/ISMB25/Bland_Altman_plot.svg", format="svg", bbox_inches='tight')
+#plt.savefig("/home/weichan/permanent/Projects/VIS/ProgressReport/simulation_description/Supplement/Updated_Case1_Bland_Altman_plot.svg",format="svg", bbox_inches='tight')
 plt.show()
 # %%
 roi = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test/roi_info.csv", sep="\t", header=0)
@@ -313,4 +339,83 @@ plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 plt.xlabel("Coverage")
 plt.ylabel("Mean Simulated Reads")
 plt.show()
+
+# %% Normalized on region length
+coverage_levels = [20,21,22,23,24,25,26,27,28,29,30]
+
+for coverage in coverage_levels:
+    plt.figure(figsize=(12, 6)) #12 x 6 for poster
+
+    # Ensure consistent gene order
+    gene_order = sorted(raw["gene"].unique())
+    
+    sns.boxplot(
+        data=raw[(raw["coverage"] == coverage) & (raw["gene"].isin(gene_order))], 
+        x="gene", y="bases_on_target_norm", color="blue", linecolor="black", 
+        showfliers=False, linewidth=1, order=gene_order
+    )
+
+    sns.lineplot(
+        data=true_positive.set_index(3).loc[gene_order].reset_index(), 
+        x=3, y="bases_on_target_norm", color="red", label="Sequencing", marker="o", alpha=0.6, linewidth=4
+    )
+
+    plt.xlabel("Full Gene Panel")
+    plt.ylabel("OTBs")
+    plt.xticks(rotation=90)
+
+    empirical_p_values = []
+    temp_results = []
+
+    for gene in gene_order:
+        gene_data = raw[(raw["coverage"] == coverage) & (raw["gene"] == gene)]["bases_on_target_norm"]
+        true_positive_value = true_positive[true_positive[3] == gene]["bases_on_target_norm"].values
+
+        if true_positive_value.size > 0:
+            sim_mean = gene_data.mean()
+            distance = abs(true_positive_value[0] - sim_mean)
+
+            # Calculate empirical p-value (two-sided)
+            more_extreme = np.sum(np.abs(gene_data - sim_mean) >= distance)
+            empirical_p = more_extreme / len(gene_data)
+
+            temp_results.append({"gene": gene, "coverage": coverage, "empirical_p": empirical_p})
+            empirical_p_values.append(empirical_p)
+            print(f"Gene: {gene}, Empirical two-sided p-value: {empirical_p:.4f}")
+    # Apply Benjamini-Hochberg correction
+    _, corrected_pvals, _, _ = multipletests(empirical_p_values, alpha=0.05, method="fdr_bh")
+    # Append corrected results
+    significant_count = 0
+    for i, result in enumerate(temp_results):
+        result["adjusted_p"] = corrected_pvals[i]
+        statistical_results.append(result)
+
+        if corrected_pvals[i] <= 0.05:
+            significant_count += 1
+
+        x_position = gene_order.index(result["gene"])
+        y_position = 50
+
+        # Round and label
+        p_value = round(result["adjusted_p"], 3)
+        if p_value > 0.05:
+            label = "n.s."
+        elif 0.01 < p_value <= 0.05:
+            label = "*"
+        elif 0.001 < p_value <= 0.01:
+            label = "**"
+        else:
+            label = "***"
+
+        plt.text(x_position, y_position, f"{label}, {p_value}", ha="center", va="bottom", fontsize=12, rotation=90)
+
+    print(f"Coverage {coverage}: {significant_count} significant values")
+
+    plt.tight_layout()
+    #outname = f"/home/weichan/permanent/Projects/VIS/ProgressReport/simulation_description/Supplement/Normalized_{coverage}_plot.svg"
+    #plt.savefig("/home/weichan/permanent/Projects/Presentations_Public/ISMB25/26X_line_box_plot_figure.svg", format='svg')
+    #plt.savefig(outname, format='svg', bbox_inches='tight')
+    plt.show()
+    plt.close()
+
 # %%
