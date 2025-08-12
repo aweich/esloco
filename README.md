@@ -36,7 +36,7 @@ The illustration above demonstrates the workflow of `esloco`, which iteratively 
 
 ### Installation
 
-The simulation and all its dependencies can be installed from `PyPI` using `pip` via
+The simulation and all its dependencies can be installed from [PyPI](https://pypi.org/project/esloco/) using `pip` via
 
 ```bash
 pip install esloco
