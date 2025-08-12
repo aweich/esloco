@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "esloco"
-version = "1.0.3"
+version = "1.0.4"
 authors = [{name = "aweich"}]
 description = "Estimating Long-Read Coverage for Whole-Genome Sequencing"
 readme = "README.md"
@@ -25,6 +25,7 @@ dependencies = [
     "seaborn",
     "scipy",
     "plotly",
+    "pyfiglet",
     "kaleido<1.0.0", #for svg image export
 ]
 

@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 from joblib import delayed
 from tqdm_joblib import ParallelPbar
+import pyfiglet
+
 
 # custom config reader
 from esloco.config_handler import parse_config
@@ -35,6 +37,9 @@ def print_help():
 
 def main():
     """ Main body to execute the entire simulation. """
+    #print name
+    print("")
+    print(pyfiglet.figlet_format("  esloco  ", font="slant"))
 
     # Load configuration
     if len(sys.argv) != 3 or sys.argv[1] == "--help" or sys.argv[1] != "--config":

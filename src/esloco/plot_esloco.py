@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import os
+import pyfiglet
 from esloco.config_handler import parse_config
 from esloco.plot_functions import read_data, barplot_absolute_matches, barplot_absolute_matches_barcodes, plot_barcode_distribution, plot_lineplot, plot_isolated_lineplot, plot_log_data, generate_html_report
 
@@ -19,6 +20,10 @@ def print_plot_help():
 
 def main():
     """ Main function to plot all results at once. """
+    
+    #print name
+    print("")
+    print(pyfiglet.figlet_format("  plot esloco  ", font="slant"))
 
     # Load configuration
     if len(sys.argv) != 3 or sys.argv[1] == "--help" or sys.argv[1] != "--config":
