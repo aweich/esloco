@@ -76,7 +76,7 @@ Below are the configuration options for the simulation, divided into three secti
 | `experiment_name`              | Name of the experiment.                                                                             | `default_experiment`                                                                      |
 | `output_path_plots`            | Output path for plots.                                                                              | output_path                                                                    |
 | `min_overlap_for_detection`    | Minimum overlap required between target region and read to be counted.                             | `1`                                                                                |
-| `min_read_lengths`    | Minimum length of reads drawn from the generated or provided read length dsitribution.                             | `1`     |
+| `min_read_length`    | Minimum length of reads drawn from the generated or provided read length dsitribution.                             | `1`     |
 | `chr_restriction`              | Chromosome restriction; `unrestricted` uses all chromosomes, otherwise excludes "M" or "_" chromosomes. | `None`                                                                             |
 | `barcode_weights`              | Changes barcode ratios.                                                                             | `None`                                                                |
 | `n_barcodes`                   | Number of barcodes (i.e., genomes).                                                                | `1`                                                                                |
@@ -98,7 +98,7 @@ Below are the configuration options for the simulation, divided into three secti
 
 | **Option**                     | **Description**                                                                                     | **Default**                                                                 |
 |---------------------------------|-----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
-| `insertion_number_distribution`| Distribution of insertion numbers; if not `poisson`, numbers are fixed.                            | `poisson`                                                                          |
+| `insertion_number_distribution`| Distribution of insertion numbers; if not `poisson`, numbers are fixed.                            | `None`                                                                          |
 | `insertion_length`             | Length of the inserted sequence.                                                                   | `1000`                                                                            |
 | `bedpath`                      | BED file that limits the insertion placement.                                                      | `None`                                               |
 | `insertion_numbers`            | Number of insertions; if `insertion_number_distribution=poisson`, this is the mean of the distribution, and the actual number is drawn randomly. | `5`                                                                                |

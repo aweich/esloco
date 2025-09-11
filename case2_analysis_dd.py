@@ -8,6 +8,7 @@ import seaborn as sns
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import random
 
 custom_params = {"axes.spines.right": False, "axes.spines.top": False}
 sns.set_theme(style="ticks", rc=custom_params)
@@ -145,16 +146,17 @@ def barplot_absolute_matches(data, tp_dict, noplot=False):
 #%%
 #Dominance dilution experiment
 dd10path =  [#(5,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/1_5_dd10_matches_table.csv'),
-         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/10_10_dd10_matches_table.csv'),
-         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/100_10_dd10_matches_table.csv')]
+         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2_rerun/dd/10/10_10_dd10_matches_table.csv'),
+         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2_rerun/dd/10/100_10_dd10_matches_table.csv')]
 
 dd1path =  [#(10,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/10_10_dd1_matches_table.csv'),
-            (100,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/100_10_dd1_matches_table.csv'),
-            (1000,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/1000_10_dd1_matches_table.csv')]
+            (100,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2_rerun/dd/10/100_10_dd1_matches_table.csv'),
+            (1000,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2_rerun/dd/10/1000_10_dd1_matches_table.csv')]
 
 dd01path =  [#(10,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/10_10_dd1_matches_table.csv'),
-            (1000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/1000_10_dd01_matches_table.csv'),
-            (10000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/10000_10_dd01_matches_table.csv')]
+            (1000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2_rerun/dd/10/1000_10_dd01_matches_table.csv'),
+            (10000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2_rerun/dd/10/10000_10_dd01_matches_table.csv')]
+
 
 
 paths = [list(dd10path), list(dd1path), list(dd01path)]
@@ -257,7 +259,7 @@ dd01 = combined_dominance[combined_dominance["Dominance"]==0.1]
 print(combined_dominance[combined_dominance["barcode"]=="0"]['n'])
 
 dilutions = [dd10, dd1, dd01]
-import random
+
 for dilution in dilutions:
     fig = px.box(dilution,  x='n', y='percentage', color="n", color_discrete_sequence=px.colors.sequential.Greys_r[2:7],
                 labels={'percentage': 'Percentage (%)'}, title="Contribution to total OTBs (per Barcode)")
@@ -302,16 +304,16 @@ for dilution in dilutions:
 # plots of reads per barcode for each dilution vs OTB per barcode
 
 bdd10path =  [#(5,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/1_5_dd10_matches_table.csv'),
-         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/10_10_dd10_barcode_distribution_table.csv'),
-         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/100_10_dd10_barcode_distribution_table.csv')]
+         (10,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2_rerun/dd/10/10_10_dd10_barcode_distribution_table.csv'),
+         (100,10, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2_rerun/dd/10/100_10_dd10_barcode_distribution_table.csv')]
 
 bdd1path =  [#(10,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/10_10_dd1_matches_table.csv'),
-            (100,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/100_10_dd1_barcode_distribution_table.csv'),
-            (1000,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/1000_10_dd1_barcode_distribution_table.csv')]
+            (100,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2_rerun/dd/10/100_10_dd1_barcode_distribution_table.csv'),
+            (1000,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2_rerun/dd/10/1000_10_dd1_barcode_distribution_table.csv')]
 
 bdd01path =  [#(10,1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_calc_VCN/dd/10/10_10_dd1_matches_table.csv'),
-            (1000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/1000_10_dd01_barcode_distribution_table.csv'),
-            (10000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2/dd/10/10000_10_dd01_barcode_distribution_table.csv')]
+            (1000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2_rerun/dd/10/1000_10_dd01_barcode_distribution_table.csv'),
+            (10000,0.1, '/home/weichan/temporary/Data/Simulation/I_CAR_test/Case2_example2_rerun/dd/10/10000_10_dd01_barcode_distribution_table.csv')]
 
 
 barcode_distribution = []
@@ -332,7 +334,6 @@ for path_group in [bdd10path, bdd1path, bdd01path]:
 combined_barcode_distribution = pd.concat(barcode_distribution, ignore_index=True)
 
 print(combined_barcode_distribution.head())
-sys.exit()
 
 combined_barcode_distribution['percentage'] = combined_barcode_distribution.groupby(['n'])['mean'].transform(lambda x: x / x.sum() * 100)
 print(combined_barcode_distribution.head())
@@ -438,8 +439,8 @@ for dilution in dilutions:
     fig.update_xaxes(type='category', showline=True, linewidth=2, linecolor='black')
     fig.update_yaxes(showline=True, linewidth=2, linecolor='black') 
     fig.update_layout(width=500, height=500, font=dict(size=20), showlegend=False)
-    #fig.show()
-    fig.write_image(f"../ProgressReport/simulation_description/plots/boxplot_reads_dilution_{dilution['Dominance'].iloc[0]}.svg")
+    fig.show()
+    #fig.write_image(f"../ProgressReport/simulation_description/plots/boxplot_reads_dilution_{dilution['Dominance'].iloc[0]}.svg")
 # %%
 # insertion level OTB plot
 ils = []

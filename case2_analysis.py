@@ -245,8 +245,8 @@ plt.errorbar(combined_summary["log_n"], combined_summary["on_target_bases_mean"]
              yerr=combined_summary["on_target_bases_se"], fmt='none', c='black', capsize=3, label="SE")
 
 # Find the intersection point
-intersection_x = np.log10(15000)
-intersection_y = vis_dict["otb"]
+#intersection_x = np.log10(15000)
+#intersection_y = vis_dict["otb"]
 
 # Plot horizontal and vertical lines ending at the intersection point
 #plt.plot([combined_summary["log_n"].min(), intersection_x], [intersection_y, intersection_y],
@@ -257,13 +257,12 @@ intersection_y = vis_dict["otb"]
 # Add a label at the intersection point
 #plt.text(intersection_x, intersection_y, f"({intersection_x:.2f}, {intersection_y:.2f})", 
  #        color='red', fontsize=10, ha='left', va='bottom')
-
+plt.xticks(ticks=combined_summary["log_n"].unique())#, labels=[f"{int(10**x)}" for x in combined_summary["log_n"].unique()])
 plt.title("")
 plt.xlabel("log10(n)")
 plt.ylabel("Mean  OTBs")
 plt.legend(title="VCN", loc="upper center", bbox_to_anchor=(0.5, 1.15), ncol=len(vcn_colors)+1, fontsize=10, title_fontsize=11)
-#plt.tight_layout()
-plt.savefig(f"../ProgressReport/simulation_description/plots/lineplot_fig3.svg", format='svg', bbox_inches='tight')
+#plt.savefig(f"../ProgressReport/simulation_description/plots/lineplot_fig3.svg", format='svg', bbox_inches='tight')
 plt.show()
 
 #%%
@@ -337,7 +336,7 @@ fig_bar = px.bar(combined_clonality, x='n', y='percentage', color='barcode',
 fig_bar.update_layout(barmode='stack', width=600, height=600, xaxis=dict(type='category'), font=dict(size=20))
 fig_bar.update_xaxes(showline=True, linewidth=2, linecolor='black')
 fig_bar.update_yaxes(showline=True, linewidth=2, linecolor='black')
-fig_bar.write_image(f"../ProgressReport/simulation_description/plots/barplot_fig3.png")
+#fig_bar.write_image(f"../ProgressReport/simulation_description/plots/barplot_fig3.png")
 fig_bar.show()
 
 # %%
@@ -466,7 +465,7 @@ fig.update_layout(
 fig.update_xaxes(type='category', showline=True, linewidth=3, linecolor='black', title="n", showticklabels=True, ticks="")
 fig.update_yaxes(showline=True, linewidth=2, linecolor='black', title="Coefficient of Variation", showticklabels=True, ticks="")
 fig.update_yaxes(tickvals=[0, 1, 2, 3, 4])
-fig.write_image(f"../ProgressReport/simulation_description/plots/cv.svg")
+#fig.write_image(f"../ProgressReport/simulation_description/plots/cv.svg")
 fig.show()
 
 #%%
@@ -482,7 +481,7 @@ fig.show()
 #%%
 # contirbutors
 combined_clonality['percentage'] = combined_clonality.groupby(['n'])['bases_on_target_total'].transform(lambda x: x / x.sum() * 100)
-combined_clonality['zero_contributor'] = combined_clonality['bases_on_target_total'] == 0
+combined_clonality['zero_contributor'] = combined_clonality['bases_on_target_total'] != 0
 
 # Aggregate data to count zero contributors and total barcodes per 'n'
 zero_contributor_summary = combined_clonality.groupby(['n']).agg(
@@ -497,7 +496,6 @@ zero_contributor_summary['non_zero_contributor_percentage'] = 100 - zero_contrib
 print(zero_contributor_summary)
 
 # Create a pie chart for each combination of n and Dominance
-
 # Facet all pies in one row using plotly.subplots
 
 fig = make_subplots(
@@ -527,8 +525,26 @@ fig.update_layout(
     title_text="",
     font=dict(size=14)
 )
-fig.write_image(f"../ProgressReport/simulation_description/plots/piecharts.svg")
+#fig.write_image(f"../ProgressReport/simulation_description/plots/piecharts.svg")
 fig.show()
 
 
+# %%
+# Calculate the percentage of zero and non-zero contributors for each 'n'
+zero_contributor_summary = combined_clonality.groupby(['n', 'zero_contributor']).size().reset_index(name='count')
+zero_contributor_summary['percentage'] = zero_contributor_summary.groupby('n')['count'].transform(lambda x: x / x.sum() * 100)
+
+print(zero_contributor_summary)
+#zero_contributor_summary["zero_contributor"] = zero_contributor_summary["zero_contributor"].map({True: "Contributing Barcode", False: "Not contributing Barcode"})
+# Create a stacked bar plot
+fig_bar = px.bar(zero_contributor_summary, x='n', y='percentage', color='zero_contributor',
+                 title="",
+                 labels={'percentage': 'Percentage (%)', 'zero_contributor': 'Contribution to total OTBs'},
+                 color_discrete_map={True: 'lightgrey', False: 'dimgrey'})
+
+fig_bar.update_layout(barmode='stack', width=800, height=300, xaxis=dict(type='category'), font=dict(size=18))
+fig_bar.update_xaxes(showline=True, linewidth=2, linecolor='black', title="n")
+fig_bar.update_yaxes(showline=True, linewidth=2, linecolor='black', title="Percentage (%)", range=[0, 100])
+#fig_bar.write_image(f"../ProgressReport/simulation_description/plots/barplot_NonContributors_fig3.svg")
+fig_bar.show()
 # %%
