@@ -3,6 +3,7 @@
     <img src="docs/esloco_logo.png" alt="Illustration" width="300">
 </p>
 
+
 <h3 align="center">
 <br>
 
@@ -35,6 +36,8 @@ The illustration above demonstrates the workflow of `esloco`, which iteratively 
 ---
 
 ### Installation
+
+![PyPI version](https://badge.fury.io/py/esloco.svg)
 
 The simulation and all its dependencies can be installed from [PyPI](https://pypi.org/project/esloco/) using `pip` via
 
