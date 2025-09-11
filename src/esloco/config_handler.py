@@ -112,7 +112,7 @@ def parse_config(config_file):
         if not isinstance(coverages, list):
             coverages = [coverages]
 
-        mean_read_lengths = json.loads(config.get("COMMON", "mean_read_lengths", fallback="[1000]"))
+        mean_read_lengths = json.loads(config.get("COMMON", "mean_read_lengths", fallback="[10000]"))
 
         if not isinstance(mean_read_lengths, list):
             mean_read_lengths = [mean_read_lengths]

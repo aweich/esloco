@@ -9,6 +9,9 @@ import numpy as np
 import pandas as pd
 from joblib import delayed
 from tqdm_joblib import ParallelPbar
+from joblib import Parallel
+from tqdm_joblib import tqdm_joblib
+from tqdm import tqdm
 import pyfiglet
 
 
@@ -131,7 +134,12 @@ def main():
         sys.exit(1)
 
     # Parallel execution
-    parallel_results = ParallelPbar("Iterations...")(n_jobs=parallel_jobs)(
+    if (num_iterations == 1) or (parallel_jobs == 1):
+        # For a single barcode or core, run without parallelization is faster
+        for i in tqdm(range(num_iterations), desc="Iterations..."):
+            parallel_results = [run_simulation_iteration(i, param_dictionary, genome_size, target_regions, masked_regions, log_file)]
+    else:
+        parallel_results = ParallelPbar("Iterationsp...")(n_jobs=parallel_jobs)(
         delayed(run_simulation_iteration)(i, param_dictionary, genome_size, target_regions, masked_regions, log_file)
         for i in range(num_iterations)
     )
