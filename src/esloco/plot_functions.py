@@ -184,7 +184,8 @@ def plot_barcode_distribution(experiment_name, data, output_path):
                                   value_vars=barcode_columns,
                                   var_name='barcode',
                                   value_name='count')
-    grouped_melted = grouped_melted.sort_values('barcode', key=pd.to_numeric)
+ 
+    grouped_melted = grouped_melted.sort_values('barcode')#, key=pd.to_numeric)
 
     # Color mapping for barcodes
     barcode_color_map = get_barcode_color_mapping(barcode_columns)

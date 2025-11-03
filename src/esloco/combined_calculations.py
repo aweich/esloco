@@ -15,9 +15,11 @@ def process_combination(
         target_regions,
         iteration,
         sequenced_data_path,
+        sigma,
         min_read_length,
         n_barcodes,
         barcode_weights,
+        consuming, 
         masked_regions,
         output_path,
         scaling,
@@ -42,12 +44,14 @@ def process_combination(
         custom_read_length_distribution = generate_read_length_distribution(num_reads=1000000,
                                                                             mean_read_length=mean_read_length,
                                                                             min_read_length = min_read_length,
-                                                                            distribution='lognormal')
+                                                                            sigma=sigma,
+                                                                            distribution='lognormal'
+                                                                            )
         logging.info(f'Calculating for: {mean_read_length}')
 
-        if iteration == 1:
+        if iteration == 0:
             logging.info("Saving generated read length distribution to numpy file...")
-            np.save(f"{output_path}/{coverage}_{mean_read_length}_dsitribution.npy", custom_read_length_distribution)
+            np.save(f"{output_path}/{coverage}_{mean_read_length}_{sigma}_distribution.npy", custom_read_length_distribution)
 
     reads_to_simulate = int(coverage * genome_size / mean_read_length)
     precomputed_lengths = np.random.choice(custom_read_length_distribution, size=reads_to_simulate*10) #x10 to avoid running out of reads #check if this is faster?
@@ -56,6 +60,7 @@ def process_combination(
                                                                               precomputed_lengths,
                                                                               n_barcodes,
                                                                               barcode_weights,
+                                                                              consuming,
                                                                               masked_regions)
 
     #plot coverage only for first iteration of each parameter combination
@@ -104,9 +109,11 @@ def run_simulation_iteration(iteration_id, param_dictionary, genome_size, target
             target_regions,
             iteration_id,
             param_dictionary['sequenced_data_path'],
+            param_dictionary['sigma'],
             param_dictionary['min_read_length'],
             param_dictionary['n_barcodes'],
             param_dictionary['barcode_weights'],
+            param_dictionary['consuming'],
             masked_regions,
             param_dictionary['output_path_plots'],
             param_dictionary['scaling'],

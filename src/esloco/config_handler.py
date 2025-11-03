@@ -85,6 +85,7 @@ def parse_config(config_file):
 
         # Optional parameters with default values
         sequenced_data_path = config.get("COMMON", "sequenced_data_path", fallback=None)
+        sigma = config.getint("COMMON", "sigma", fallback=1)
         output_path = config.get("COMMON", "output_path", fallback="./output/")
         experiment_name = config.get("COMMON", "experiment_name", fallback="default_experiment")
         output_path_plots = config.get("COMMON", "output_path_plots", fallback=output_path)
@@ -125,6 +126,7 @@ def parse_config(config_file):
             mean_read_lengths = [mrl]
 
         blocked_regions_bedpath = config.get("COMMON", "blocked_regions_bedpath", fallback=None)
+        consuming = config.getboolean("COMMON", "consuming", fallback=False)
 
         # Mode-specific parameters (handled safely)
         if mode == "ROI":
