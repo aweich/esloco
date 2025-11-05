@@ -1,3 +1,4 @@
+import sys
 import math
 import logging
 import pandas as pd
@@ -45,7 +46,7 @@ def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
             return None
         bed.columns = bed.columns.str.lower()
         all_cols = ["chrom", "start", "end", "id", "barcode", "weight"]
-        missing_cols = list(set(all_cols) - set(bed.columns))
+        missing_cols = sorted(list(set(all_cols) - set(bed.columns)), reverse=True)
         logging.info(f"Your BED is missing the following columns:{missing_cols}. Trying to fill in default values where possible.")
         for missing_col in missing_cols:
             if missing_col == "weight":
@@ -58,6 +59,7 @@ def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
         bed['weight'] = bed['weight'].apply(lambda x: 1 if x in ["", None] or (isinstance(x, float) and math.isnan(x)) else x)
         # Fill NaN values in the 'Barcode' column with an empty list
         bed['barcode'] = bed['barcode'].apply(lambda x: [] if x in ["", None] or (isinstance(x, float) and math.isnan(x)) else x)
+        logging.info(f"Your BED after automatically assigning columns and values: {bed.head()}")
         # Apply barcoding transformation if required
         if barcoding:
             logging.info('Barcoding selected: Transforming the chromosome names in the bed...')
@@ -68,6 +70,10 @@ def readbed(bedpath, list_of_chromosomes_in_reference, barcoding=False):
         bed = bed[bed["chrom"].isin(list_of_chromosomes_in_reference)]
     except Exception as e:
         logging.info(f"Not defined or error reading the BED file: {e}")
+        if bedpath is not None:
+            logging.info(f"Exiting. Please check the file at: {bedpath}")
+            print(f"Exiting. Please check the file at: {bedpath}")
+            sys.exit()
         return None
     return bed
 

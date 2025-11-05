@@ -49,9 +49,9 @@ def process_combination(
                                                                             )
         logging.info(f'Calculating for: {mean_read_length}')
 
-        if iteration == 0:
-            logging.info("Saving generated read length distribution to numpy file...")
-            np.save(f"{output_path}/{coverage}_{mean_read_length}_{sigma}_distribution.npy", custom_read_length_distribution)
+        #if iteration == 0:
+        #    logging.info("Saving generated read length distribution to numpy file...")
+        #    np.save(f"{output_path}/{coverage}_{mean_read_length}_{sigma}_distribution.npy", custom_read_length_distribution)
 
     reads_to_simulate = int(coverage * genome_size / mean_read_length)
     precomputed_lengths = np.random.choice(custom_read_length_distribution, size=reads_to_simulate*10) #x10 to avoid running out of reads #check if this is faster?

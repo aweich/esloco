@@ -148,5 +148,5 @@ def parse_config(config_file):
         return param_dictionary
 
     except Exception as e:
-        print("Configuration parsing failed: %s.", e)
+        print("Configuration parsing failed: ", e)
         sys.exit(1)

@@ -45,10 +45,15 @@ def create_barcoded_insertion_genome(parallel_jobs, reference_genome_path, bedpa
     #3 Parallelized step
     if (n_barcodes == 1) or (parallel_jobs == 1):
         # For a single barcode or core, run without parallelization is faster
-        for i in tqdm(range(n_barcodes), desc=f"Creating {n_barcodes} I Genome..."):
-            parallel_results = [parallel_barcoded_insertion_genome(i, chromosome_dir, bedpath, n_barcodes, ref_genome_size, insertion_length, insertion_numbers, insertion_number_distribution)]
+        parallel_results = [
+        parallel_barcoded_insertion_genome(
+            i, chromosome_dir, bedpath, n_barcodes, ref_genome_size, 
+            insertion_length, insertion_numbers, insertion_number_distribution
+        )
+        for i in tqdm(range(n_barcodes), desc=f"Creating {n_barcodes} I Genome(s) using {parallel_jobs} core(s)...")
+    ]
     else:
-        parallel_results = ParallelPbar(f"Creating {n_barcodes} I Genome(s)...")(n_jobs=parallel_jobs)(
+        parallel_results = ParallelPbar(f"Creating {n_barcodes} I Genome(s) using {parallel_jobs} core(s)...")(n_jobs=parallel_jobs)(
             delayed(parallel_barcoded_insertion_genome)(i, chromosome_dir, bedpath, n_barcodes, ref_genome_size, insertion_length, insertion_numbers, insertion_number_distribution)
             for i in range(n_barcodes)
         )
