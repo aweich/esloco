@@ -1,7 +1,10 @@
+![PyPI version](https://badge.fury.io/py/esloco.svg)
+
 <br>
 <p align="center">
     <img src="docs/esloco_logo.png" alt="Illustration" width="300">
 </p>
+
 
 <h3 align="center">
 <br>
@@ -85,9 +88,11 @@ Below are the configuration options for the simulation, divided into three secti
 | `parallel_jobs`                | Number of cores assigned for parallelization; each job performs one iteration individually.         | `1`                                                                               |
 | `coverages`                    | List of coverages used for the simulation.                                                         | `[1]`                                                                      |
 | `mean_read_lengths`            | List of mean read lengths used for the simulation; each combination of coverages and lengths is performed per iteration. | `[10000]`                                                              |
-| `blocked_regions_bedpath`      | BED file with regions that will be blocked from read generation.                                    | `None`                                                               |
+| `blocked_regions_bedpath`      | BED file with regions that will be blocked from read generation.                                    | `None`
+| `consuming`          | If `True`, reads assigned to masked/blocked regions are still counted as sequencing-yield consuming. Biologically, this represents reads that are sequenced but cannot be used/mapped downstream.                                                                | `False` 
  `no_cov_plots`      | Prevents the drawing of coverage plots during the first iteration. `True` significantly speeds up the simulation for small iteration numbers or high (`>25`) coverages.                                    | `False`                                                               |
  `seed`      | If defined, previous runs can be exactly reproduced.                                    | `random int`    
+ | `sigma`          | Custom sigma for artificial log-normal read distribution reads.                                                                      | `1`
 #### `[ROI]`
 
 | **Option**      | **Description**                     | **Default** |

@@ -5,7 +5,7 @@ import numpy as np
 
 from esloco.utils import track_usage
 
-def generate_read_length_distribution(num_reads, mean_read_length, min_read_length, distribution='lognormal'):
+def generate_read_length_distribution(num_reads, mean_read_length, min_read_length, sigma, distribution='lognormal'):
     '''
     Generate a list of read lengths with a customizable mean read length and distribution.
     '''
@@ -15,9 +15,9 @@ def generate_read_length_distribution(num_reads, mean_read_length, min_read_leng
     elif distribution == 'lognormal':
         # Generate read lengths from a log-normal distribution
         #adjust the mean so it matches the lognormal case
-        read_lengths = np.random.lognormal(mean=np.log(mean_read_length) - 0.5, sigma=1.0, size=num_reads)
+        read_lengths = np.random.lognormal(mean=np.log(mean_read_length) - 0.5, sigma=sigma, size=num_reads)
     else:
-        logging.error("Unsupported distribution. Supported options: 'normal', 'lognormal'.")
+        logging.error("Unsupported distribution. Supported options: 'lognormal'.")
         sys.exit(1)
 
     # Filter out reads by threshhold
@@ -37,14 +37,14 @@ def generate_reads(fasta, read_length_distribution):
         reads.append(read)
     return reads
 
-def check_if_blocked_region(random_barcode_number, start_position, read_length, masked_regions=None):
+def check_if_blocked_region(random_barcode_number, start_position, read_length, masked_regions):
     '''
     Checks whether the start position is inside the coordinates of a masked/blocked region.
     Blocked can mean that no reads are obtained from there or only with a certain probability.
     '''
     for values in masked_regions.values():
         # Convert Barcode string to list if needed (e.g., '[]' to [])
-        barcodes = ast.literal_eval(values["Barcode"]) if isinstance(values["Barcode"], str) else values["Barcode"]
+        barcodes = ast.literal_eval(values["barcode"]) if isinstance(values["barcode"], str) else values["barcode"]
         if barcodes is None:
             barcodes = []
         if int(random_barcode_number) in barcodes or not barcodes:
@@ -71,7 +71,7 @@ def get_weighted_probabilities(insertion_name,n_barcodes, weights_dict):
         return n_barcodes / common_denominator
     return 1 / n_barcodes
 
-def generate_reads_based_on_coverage(genome_size, coverage, read_length_distribution, n_barcodes, barcode_weights, masked_regions=None):
+def generate_reads_based_on_coverage(genome_size, coverage, read_length_distribution, n_barcodes, barcode_weights, consuming, masked_regions):
     '''
     Randomly pulls a read of size X derived from the read length distribution from the fasta until the fasta is N times covered (coverage).
     '''
@@ -92,7 +92,14 @@ def generate_reads_based_on_coverage(genome_size, coverage, read_length_distribu
         random_barcode_number = random_barcode.split('_')[-1] #otherwise user input needs to be weird
         # Check if the start position falls within a blocked region
         if masked_regions and check_if_blocked_region(random_barcode_number, start_position, read_length, masked_regions):
-            # If the start position is in a blocked region, continue to the next iteration
+        # If the start position is in a blocked region, continue to the next iteration
+            # Biologically, if the read is sequenced, it also affects the total coverage, even if it is not mappable or of low quality. 
+            if consuming:
+                # Record the read coordinates
+                read_coordinates[f"Read_{len(read_coordinates)}_Blocked/Consuming"] = (start_position, start_position + read_length)
+                covered_length += read_length
+                continue
+            read_coordinates[f"Read_{len(read_coordinates)}_Blocked/NotConsuming"] = (start_position, start_position + read_length)
             continue
         # Record the read coordinates
         read_coordinates[f"Read_{len(read_coordinates)}_{random_barcode}"] = (start_position, start_position + read_length)

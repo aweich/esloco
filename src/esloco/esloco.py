@@ -179,8 +179,13 @@ def main():
         mean_partial_matches=('partial_matches', 'mean'),
         sd_partial_matches=('partial_matches', 'std'),
         mean_bases_on_target=('on_target_bases', 'mean'),
-        sd_bases_on_target=('on_target_bases', 'std')
+        sd_bases_on_target=('on_target_bases', 'std'),
+        sem_bases_on_target=('on_target_bases', 'sem')
     )
+    
+    # 95% confidence intervals (1.96 *sem)
+    simple_results['ci_lower_bases_on_target'] = simple_results['mean_bases_on_target'] - 1.96 * simple_results['sem_bases_on_target']
+    simple_results['ci_upper_bases_on_target'] = simple_results['mean_bases_on_target'] + 1.96 * simple_results['sem_bases_on_target']
 
     # Save results
     try:
