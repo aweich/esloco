@@ -8,3 +8,5 @@ path-deleted.txt
 /build
 /src/esloco/__pycache__/*
 stack_simulations.sh
+/revision/*
+/out_rev/*
