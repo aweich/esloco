@@ -230,6 +230,7 @@ plt.xticks(rotation=90)
 plt.xlabel("Dataset Size")
 # %%
 import scipy.stats as stats
+from sklearn.metrics import r2_score
 
 categories = df["category"].unique()
 
@@ -239,7 +240,7 @@ ncols = 2
 nrows = int(np.ceil(n / ncols))
 df["log_t"] = np.log(df["execution_time_s"])
 
-fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 4 * nrows), sharey=True)
+fig, axes = plt.subplots(nrows, ncols, figsize=(6 * ncols, 4 * nrows), sharey=True)
 axes = axes.flatten()  # make indexing simpler
 
 for i, category in enumerate(categories):
@@ -249,35 +250,96 @@ for i, category in enumerate(categories):
     # Scatter points
     ax.scatter(
         subset["number"], subset["execution_time_s"],
-        s=80, edgecolor="black", linewidth=1, marker="o", alpha=0.8
+        s=80, edgecolor="black", linewidth=1.5, marker="o", alpha=0.8, color="white", zorder=5
     )
 
-    # Fit regression line
-    slope, intercept, r, p_value, sterr = stats.linregress(subset["number"], subset["execution_time_s"])
-    
-    if (slope > 0.05) and (r**2 < 0.99):
-        print(f"Warning: Weak correlation in category {category} (R^2={r**2:.3f})")
-        # try fit non-linear regressiion
+    x = subset["number"].values
+    y = subset["execution_time_s"].values
 
-    
-    x_vals = np.linspace(subset["number"].min(), subset["number"].max(), 100)
-    y_vals = intercept + slope * x_vals
-    ax.plot(x_vals, y_vals, linestyle="--", linewidth=2.5, alpha=0.7, color="C1")
+    # --- Linear model ---
+    slope, intercept, r_lin, p, se = stats.linregress(x, y)
+    y_pred_lin = intercept + slope * x
+    r2_lin = r2_score(y, y_pred_lin)
+
+    # --- Exponential model: y = a * exp(bx) ---
+    # (fit log(y) = log(a) + b*x)
+    mask = y > 0  # avoid log(0)
+    b, log_a = np.polyfit(x[mask], np.log(y[mask]), 1)
+    a = np.exp(log_a)
+    y_pred_exp = a * np.exp(b * x)
+    r2_exp = r2_score(y[mask], y_pred_exp[mask])
+
+    # --- Quadratic model: y = a*x^2 + b*x + c ---
+    a2, b2, c2 = np.polyfit(x, y, 2)
+    y_pred_quad = a2*x**2 + b2*x + c2
+    r2_quad = r2_score(y, y_pred_quad)
+
+    # --- Choose best model ---
+    models = {
+        "Linear": r2_lin,
+        "Exponential": r2_exp,
+        "Quadratic": r2_quad
+    }
+    best_model = max(models, key=models.get)
+
+    print(f"\nModel comparison for category '{category}':")
+    for name, r2 in models.items():
+        print(f"  {name:10s} R² = {r2:.4f}")
+    print(f"→ Best model: {best_model}")
+
+    # --- Plot best model ---
+    x_vals = np.linspace(x.min(), x.max(), 200)
+
+    for model in models:
+        if model == "Linear":
+            y_vals = intercept + slope * x_vals
+        elif model == "Exponential":
+            y_vals = a * np.exp(b * x_vals)
+        elif model == "Quadratic":
+            y_vals = a2*x_vals**2 + b2*x_vals + c2
+
+        ax.plot(x_vals, y_vals, linestyle="--", linewidth=2.5, alpha=0.7, label=f"{model} fit")
+        ax.legend(frameon=False, fontsize=10)
+
+    #x_vals = np.linspace(subset["number"].min(), subset["number"].max(), 100)
+    #y_vals = intercept + slope * x_vals
+   #ax.plot(x_vals, y_vals, linestyle="--", linewidth=2.5, alpha=0.7, color="C1")
+
 
     # Annotate regression equation
-    eq_text = f"{category}\n$y = {intercept:.2f} + {slope:.2f}x$\n$R^2 = {r**2:.3f}$"
+    #linear
+    leq_text = f"Linear\n$y = {intercept:.2f} + {slope:.2f}x$\n$R^2 = {r2_lin:.3f}$"
     ax.text(
-        0.05, 0.95, eq_text,
+        1.05, 0.95, leq_text,
         transform=ax.transAxes,
-        fontsize=11,
+        fontsize=10,
         verticalalignment="top",
         bbox=dict(facecolor="white", alpha=0.8, edgecolor="none", boxstyle="round,pad=0.3")
-    )
+        )
+    #exponential y = a * exp(bx)
+    eeq_text = f"Exponential\n$y = {a:.2f} \\cdot e^{{{b:.5f}x}}$\n$R^2 = {r2_exp:.3f}$"
+    ax.text(
+        1.05, 0.65, eeq_text,
+        transform=ax.transAxes,
+        fontsize=10,
+        verticalalignment="top",
+        bbox=dict(facecolor="white", alpha=0.8, edgecolor="none", boxstyle="round,pad=0.3")
+        )
+    #a2*x**2 + b2*x + c2
+    qeq_text = f"Quadratic\n$y = {a2:.5f}x² + {b2:.2f}x + {c2:.2f}$\n$R^2 = {r2_quad:.3f}$"
+    ax.text(
+        1.05, 0.35, qeq_text,
+        transform=ax.transAxes,
+        fontsize=10,
+        verticalalignment="top",
+        bbox=dict(facecolor="white", alpha=0.8, edgecolor="none", boxstyle="round,pad=0.3")
+        )
+
     ax.axvspan(xmin=ax.get_xlim()[0], xmax=50, 
                color="lightgrey", alpha=0.6, zorder=0)
     ax.set_title(category.upper(), fontstyle="oblique")
     ax.set_ylabel("Execution Time (s)")
-    ax.set_xlabel("Value levels")
+    ax.set_xlabel("")
     sns.despine(ax=ax)
 
 # Hide unused subplots if number of categories is odd
@@ -789,3 +851,38 @@ plt.legend(title="Iteration Group")
 sns.despine()
 plt.tight_layout()
 plt.show()
+
+
+#%% comparison PacBio vs ONT OTBs
+
+pb = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/fromsra/SRR8955270_GroundTruth_OTBs.bed", sep="\t", header=None)
+
+pb["Length"] = pb[2] - pb[1]
+pb = pb.groupby([3, "Length"])[10].sum().reset_index()
+
+pb.columns = [3, "Length", "bases_on_target"]
+pb["norm_OTB"] = pb["bases_on_target"] / pb["Length"]
+print(pb.head())
+#%%
+ont = pd.read_csv("/home/weichan/temporary/Data/Simulation/ONT_benchmark/ONT_GroundTruth_OTBs.bed", sep="\t", header=None)
+ont["Length"] = ont[2] - ont[1]
+ont = ont.groupby([3, "Length"])[10].sum().reset_index()
+
+ont.columns = [3, "Length", "bases_on_target"]
+ont["norm_OTB"] = ont["bases_on_target"] / ont["Length"]
+print(ont.head())
+
+#%%
+#combine the data
+
+both = pd.merge(pb, ont, how="inner", on=[3, "Length"], suffixes=("_pb", "_ont"))
+print(both.head())
+
+
+#%%
+plt.figure(figsize=(16,6))
+sns.lineplot(x=both[3], y=both["norm_OTB_ont"], linewidth=3.5, alpha=0.7, label='ONT', color="orange")
+sns.lineplot(x=both[3], y=both["norm_OTB_pb"], linewidth=3.5, alpha=0.7, label='PacBio', color="darkblue")
+plt.xticks(rotation=90)
+plt.legend()
+# %%
