@@ -6,6 +6,13 @@ import re
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from statsmodels.stats.multitest import multipletests
+
+
+
+custom_params = {"axes.spines.right": False, "axes.spines.top": False}
+sns.set_theme(style="ticks", rc=custom_params)
+sns.set_context("talk", font_scale=1.0)
 
 # Path to your log file
 logfile = "/home/weichan/permanent/Projects/VIS/VIS_Simulation/out_rev/ressources/Case1_log.log"
@@ -878,11 +885,468 @@ print(ont.head())
 both = pd.merge(pb, ont, how="inner", on=[3, "Length"], suffixes=("_pb", "_ont"))
 print(both.head())
 
+#%%
+raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ONT_benchmark/out/Case1_ONT_matches_table.csv", sep="\t", header=0)
+
+# Split using the last two underscores to handle problematic entries like 'GBA_x_0_999'
+raw[["gene", "Barcode", "Iteration"]] = raw["target_region"].str.rsplit("_", n=2, expand=True)
+
+raw = raw.drop(columns=["target_region", "Barcode"])
+print(raw.head())
+
+raw["Iteration"] = raw["Iteration"].astype(int)
+raw["full_matches"] = raw["full_matches"].astype(int)
+raw["partial_matches"] = raw["partial_matches"].astype(int)
+
+# %%
+
+#repeat with PB data
+
+pbsim = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/Case1/Case1_matches_table.csv", sep="\t", header=0)
+pbsim[["gene", "Barcode", "Iteration"]] = pbsim["target_region"].str.rsplit("_", n=2, expand=True)
+
+pbsim = pbsim[(pbsim["coverage"] == 26)]
+pbsim = pbsim.drop(columns=["target_region", "Barcode"])
+
+pbsim["Iteration"] = pbsim["Iteration"].astype(int)
+pbsim["full_matches"] = pbsim["full_matches"].astype(int)
+pbsim["partial_matches"] = pbsim["partial_matches"].astype(int)
+pbsim["pb_otbs"] = pbsim["on_target_bases"]
+print(pbsim.head())
+
 
 #%%
-plt.figure(figsize=(16,6))
-sns.lineplot(x=both[3], y=both["norm_OTB_ont"], linewidth=3.5, alpha=0.7, label='ONT', color="orange")
-sns.lineplot(x=both[3], y=both["norm_OTB_pb"], linewidth=3.5, alpha=0.7, label='PacBio', color="darkblue")
+print(raw.head())
+#%%
+# ont merge with both
+both = both.rename(columns={3: "target"})
+
+# Merge simulation data (ONT simulation)
+combined = pd.merge(raw, both, on="target", how="inner")
+combined["norm_OTB_ontsim"] = (combined["on_target_bases"] / combined["Length"]) / 54 #coverage
+
+# Merge PacBio simulation data
+pbsim = pbsim.rename(columns={"target": "target"})  # ensure consistent naming
+combined = pd.merge(pbsim, combined, on="target", how="inner")
+combined["norm_OTB_pbsim"] = (combined["pb_otbs"] / combined["Length"]) / 26
+
+print("Merged Data:")
+print(combined.head())
+#%%
+plot_df = pd.melt(
+    combined,
+    id_vars=["target"],
+    value_vars=["norm_OTB_ontsim", "norm_OTB_pbsim"],
+    var_name="Platform",
+    value_name="Normalized_OTB"
+)
+
+# Map readable names
+platform_labels = {
+    "norm_OTB_ontsim": "ONT",
+    "norm_OTB_pbsim": "PB"
+}
+plot_df["Platform"] = plot_df["Platform"].map(platform_labels)
+
+#%%
+print(both.head())
+print(plot_df.head())
+#%%
+
+results = []  # store dicts with gene, platform, empirical_p, N_sim, etc.
+
+# compute empirical p-values
+for platform in plot_df["Platform"].unique():
+    df_plat = plot_df[plot_df["Platform"] == platform]
+    N_sims_per_gene = df_plat.groupby("target")["Normalized_OTB"].count().to_dict()
+
+    for gene in df_plat["target"].unique():
+        gene_data = df_plat[df_plat["target"] == gene]["Normalized_OTB"].values
+        N = len(gene_data)
+        if N == 0:
+            continue
+
+        # Fetch the corresponding true value (make sure you divide correctly)
+        if platform == "ONT":
+            true_val = both.loc[both["target"] == gene, "norm_OTB_ont"].values
+            denom = 54.0
+        else:
+            true_val = both.loc[both["target"] == gene, "norm_OTB_pb"].values
+            denom = 26.0
+
+        if true_val.size == 0:
+            continue
+
+        true_v = float(true_val[0]) / denom  # keep your scaling if desired
+
+        center = np.median(gene_data)
+
+        # two-sided empirical p (distance from center)
+        distances = np.abs(gene_data - center)
+        obs_distance = abs(true_v - center)
+        more_extreme = np.sum(distances >= obs_distance)
+
+        empirical_p = more_extreme/ N
+
+        results.append({
+            "gene": gene,
+            "platform": platform,
+            "empirical_p": empirical_p,
+            "N": N,
+            "true_v": true_v,
+            "sim_center": center,
+            "more_extreme": int(more_extreme)
+        })
+
+# convert to DataFrame
+res_df = pd.DataFrame(results)
+
+# Apply BH correction per platform
+res_df["adjusted_p"] = np.nan
+for platform in res_df["platform"].unique():
+    mask = res_df["platform"] == platform
+    pvals = res_df.loc[mask, "empirical_p"].values
+    if len(pvals) == 0:
+        continue
+    _, adj_p, _, _ = multipletests(pvals, alpha=0.05, method="fdr_bh")
+    res_df.loc[mask, "adjusted_p"] = adj_p
+
+# optional: also compute global correction across all tests
+_, adj_p_global, _, _ = multipletests(res_df["empirical_p"].values, alpha=0.05, method="fdr_bh")
+res_df["adjusted_p_global"] = adj_p_global
+
+print(res_df.sort_values(["platform","adjusted_p"]).head(20))
+
+print(res_df[res_df["adjusted_p"] <= 0.05].groupby("platform").size())
+
+#%%
+gene_order = sorted(plot_df["target"].unique().tolist())
+
+# Convert target columns to ordered categorical
+plot_df["target"] = pd.Categorical(plot_df["target"], categories=gene_order, ordered=True)
+both["target"] = pd.Categorical(both["target"], categories=gene_order, ordered=True)
+
+plt.figure(figsize=(18, 8))
+
+sns.boxplot(
+    data=plot_df,
+    x="target",
+    y="Normalized_OTB",
+    hue="Platform",
+    dodge=True,
+    palette={"ONT": "lightblue", "PB": "pink"},
+    showfliers=False,
+    linecolor="black",
+    width=0.8,
+    orient="v",
+    linewidth=1.5,
+    saturation=0.9,
+    #native_scale=True,
+    gap=0,
+    order=gene_order  # explicitly specify order
+)
+
+# Get numeric positions for categorical x-axis
+x_positions = np.arange(len(gene_order))
+offset = 0.25  # adjust to align with boxplot position
+
+# Overlay mean reference lines from `both`
+sns.scatterplot(
+    data=both,
+    x=x_positions - offset,
+    y=both["norm_OTB_ont"]/54,
+    linewidth=2,
+    edgecolor="#00A2FF",
+    #s=120,
+    alpha=1,
+    marker="o",
+    label="ONT (Ref.)",
+    color="lightblue",
+    zorder=3
+    #sort=False  # preserve order
+)
+
+
+sns.scatterplot(
+    data=both,
+    x=x_positions + offset,  # shift right to align with PB boxplot
+    y=both["norm_OTB_pb"]/26,
+    linewidth=2,
+    alpha=1,
+    edgecolor="#FF0080",
+    marker="o",
+    label="PacBio (Ref.)",
+    color="pink",
+    zorder=3
+)
+
+
+# choose which adjusted p to show (platform-level)
+for _, row in res_df.iterrows():
+    gene = row["gene"]
+    plat = row["platform"]
+    adjp = row["adjusted_p"]
+    x_pos = gene_order.index(gene)
+    p_value = round(adjp, 3)
+
+    # choose y coordinate carefully (above plotted points)
+    y_pos = 1.6 # tweak; or compute per-gene max + margin
+
+    if adjp <= 0.001:
+        label = "***"
+    elif adjp <= 0.01:
+        label = "**"
+    elif adjp <= 0.05:
+        label = "*"
+    else:
+        label = "n.s."
+    
+    if label != "n.s.":
+        plt.text(x_pos + (0.25 if plat == "PB" else -0.25), y_pos, f"{label}, {p_value} ({plat})",ha="center", va="bottom", fontsize=15, rotation=90)
+
+
 plt.xticks(rotation=90)
-plt.legend()
+plt.xlabel("Target Region")
+plt.ylabel("Normalized On-Target Bases")
+plt.legend(title="Platform", frameon=False)
+sns.despine()
+plt.tight_layout()
+plt.show()
+
+# %%
+
+# plot different distributions
+import matplotlib.pyplot as plt
+
+def load_lengths(path, max_reads=1_000_000):
+    # Stream file and stop after max_reads entries
+    lens = []
+    with open(path) as f:
+        for i, line in enumerate(f):
+            if i >= max_reads:
+                break
+            lens.append(float(line.strip()))
+    return np.array(lens)
+
+lens1 = load_lengths("/home/weichan/temporary/Data/Simulation/ONT_benchmark/ONT_lengths.txt")
+lens2 = load_lengths("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/fromsra/PB_lengths.txt")
+
+# --- Combine ---
+df_lens = pd.DataFrame({
+    "length": np.concatenate([lens1, lens2]),
+    "Platform": ["ONT"] * len(lens1) + ["PB"] * len(lens2)
+})
+
+# --- Filter invalids ---
+df_lens = df_lens[df_lens["length"] > 0]
+
+# --- Plot histogram (much faster than KDE) ---
+plt.figure(figsize=(3, 3))
+sns.histplot(
+    data=df_lens,
+    x="length",
+    hue="Platform",
+    palette={"ONT": "#00A2FF", "PB": "#FF0080"},
+    log_scale=True,      # logarithmic x-axis
+    element="step",      # outline hist for clarity
+    stat="density",      # comparable to KDE
+    common_norm=False,
+    bins=200,            # adjust granularity
+    alpha=0.75
+)
+
+plt.xlabel("")
+plt.ylabel("")
+plt.yticks([0, 1])
+plt.title("")
+plt.legend([],[], frameon=False)
+sns.despine()
+plt.tight_layout()
+plt.savefig("/home/weichan/temporary/Data/Simulation/RevisionPlots/Distributions.png", format="png", bbox_inches='tight', dpi=500)
+plt.show()
+# %%
+print(combined.head())
+#ccc plot for specific coverage
+def concordance_correlation_coefficient(y_true, y_pred):
+    """Computes Concordance Correlation Coefficient (CCC) with consistent ddof=0."""
+    mean_x = np.mean(y_true)
+    mean_y = np.mean(y_pred)
+    var_x = np.var(y_true)  # ddof=0 by default
+    var_y = np.var(y_pred)
+    covariance = np.mean((y_true - mean_x) * (y_pred - mean_y))  # Manual population covariance
+
+    ccc = (2 * covariance) / (var_x + var_y + (mean_x - mean_y) ** 2)
+    return ccc
+
+
+#%% ONT CCC
+sns.set_context("talk", font_scale=0.8)
+
+ccc_data = combined[["target", "on_target_bases_y", "iteration_y"]]
+ccc_data = ccc_data.groupby("target").agg({"on_target_bases_y": "mean"}).reset_index()
+ccc_data.index = ccc_data["target"]
+ccc_data = ccc_data.drop(columns=["target"])
+print(ccc_data.head())
+
+# Ensure the column exists or rename it if necessary
+# Align indices before concatenation
+
+# Set index on both DataFrames to align by target/gene
+both_indexed = both.set_index("target")
+ccc_data_indexed = ccc_data.reset_index().set_index("target")
+
+# Concatenate along columns (axis=1) with aligned indices
+
+ccc_data_indexed = ccc_data_indexed.rename(columns={"on_target_bases_y": "sim"})
+ccc_data = pd.concat([ccc_data_indexed, both_indexed["bases_on_target_ont"]], axis=1)
+print(ccc_data.head())
+
+ccc_data["seq"] = ccc_data["bases_on_target_ont"]
+ccc_data = ccc_data.drop(columns=["bases_on_target_ont"])
+print(ccc_data.head())
+
+fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+x = ccc_data["sim"].values
+y = ccc_data["seq"].values
+
+# Compute CCC
+ccc_value = concordance_correlation_coefficient(x, y)
+print(f"Concordance Correlation Coefficient (CCC) for 54: {ccc_value:.3f}")
+
+# Left plot: Regression
+sns.regplot(
+    ax=axes[0],
+    x=x,
+    y=y,
+    color='#00A2FF',
+    scatter_kws={'alpha': 0.7, 's': 90, "zorder":10, "edgecolor":"black", "linewidths":1.5},
+    line_kws={"color": "black", "linestyle": "-"},
+    label='ONT Data Points',
+)
+axes[0].set_title(f"54x (CCC={ccc_value:.4f})")
+axes[0].set_xlabel("ONT Simulation OTBs")
+axes[0].set_ylabel("ONT Sequencing OTBs")
+axes[0].legend()
+
+# Right plot: Bland-Altman
+mean_counts = (y + x) / 2 
+diff_counts = y - x
+
+diff_counts = np.cbrt(diff_counts)
+mean_counts = np.cbrt(mean_counts)
+
+mean_diff = np.mean(diff_counts)
+std_diff = np.std(diff_counts)
+
+upper_limit = mean_diff + 1.96 * std_diff
+lower_limit = mean_diff - 1.96 * std_diff
+
+within_limits = np.sum((diff_counts >= lower_limit) & (diff_counts <= upper_limit))
+total_points = len(diff_counts)
+percentage_within_limits = (within_limits / total_points) * 100
+
+print(f"Percentage of points within ±1.96 SD: {percentage_within_limits:.2f}%")
+
+outside_points = np.where((diff_counts < lower_limit) | (diff_counts > upper_limit))[0]
+
+axes[1].scatter(mean_counts, diff_counts, alpha=0.7, edgecolors='k', s=90, linewidth=1.5, label='Data Points', color='#00A2FF')
+axes[1].axhline(mean_diff, color='red', linestyle='--', label='Mean Difference', linewidth=3)
+axes[1].axhline(upper_limit, color='black', linestyle='--', label='+1.96 SD', linewidth=3)
+axes[1].axhline(lower_limit, color='black', linestyle='--', label='-1.96 SD', linewidth=3)
+
+for idx in outside_points:
+    axes[1].text(mean_counts[idx], diff_counts[idx], ccc_data.index[idx], fontsize=10, color='red')
+
+axes[1].set_xlabel("Mean of OTBs")
+axes[1].set_ylabel("Difference (Seq - Sim)")
+axes[1].set_title("Bland-Altman Plot (CBRT)")
+axes[1].legend()
+
+plt.tight_layout()
+plt.show()
+#%%
+cov26 = combined[combined["coverage_x"] == 26]
+ccc_data = cov26[["target", "on_target_bases_x", "iteration_x"]]
+
+ccc_data = ccc_data.groupby("target").agg({"on_target_bases_x": "mean"}).reset_index()
+ccc_data.index = ccc_data["target"]
+ccc_data = ccc_data.drop(columns=["target"])
+print(ccc_data.head())
+
+# Ensure the column exists or rename it if necessary
+# Align indices before concatenation
+
+# Set index on both DataFrames to align by target/gene
+both_indexed = both.set_index("target")
+ccc_data_indexed = ccc_data.reset_index().set_index("target")
+
+# Concatenate along columns (axis=1) with aligned indices
+
+ccc_data_indexed = ccc_data_indexed.rename(columns={"on_target_bases_x": "sim"})
+ccc_data = pd.concat([ccc_data_indexed, both_indexed["bases_on_target_pb"]], axis=1)
+print(ccc_data.head())
+
+ccc_data["seq"] = ccc_data["bases_on_target_pb"]
+ccc_data = ccc_data.drop(columns=["bases_on_target_pb"])
+print(ccc_data.head())
+
+fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+x = ccc_data["sim"].values
+y = ccc_data["seq"].values
+
+# Compute CCC
+ccc_value = concordance_correlation_coefficient(x, y)
+print(f"Concordance Correlation Coefficient (CCC) for 26: {ccc_value:.3f}")
+
+# Left plot: Regression
+sns.regplot(
+    ax=axes[0],
+    x=x,
+    y=y,
+    color='#FF0080',
+    scatter_kws={'alpha': 0.7, 's': 90, "zorder":10, "edgecolor":"black", "linewidths":1.5},
+    line_kws={"color": "black", "linestyle": "-"},
+    label='PB Data Points',
+)
+axes[0].set_title(f"26x (CCC={ccc_value:.4f})")
+axes[0].set_xlabel("PB Simulation OTBs")
+axes[0].set_ylabel("PB Sequencing OTBs")
+axes[0].legend()
+
+# Right plot: Bland-Altman
+mean_counts = (y + x) / 2 
+diff_counts = y - x
+
+diff_counts = np.cbrt(diff_counts)
+mean_counts = np.cbrt(mean_counts)
+
+mean_diff = np.mean(diff_counts)
+std_diff = np.std(diff_counts)
+
+upper_limit = mean_diff + 1.96 * std_diff
+lower_limit = mean_diff - 1.96 * std_diff
+
+within_limits = np.sum((diff_counts >= lower_limit) & (diff_counts <= upper_limit))
+total_points = len(diff_counts)
+percentage_within_limits = (within_limits / total_points) * 100
+
+print(f"Percentage of points within ±1.96 SD: {percentage_within_limits:.2f}%")
+
+outside_points = np.where((diff_counts < lower_limit) | (diff_counts > upper_limit))[0]
+
+axes[1].scatter(mean_counts, diff_counts, alpha=0.7, edgecolors='k', s=90, linewidth=1.5, label='Data Points', color='#FF0080')
+axes[1].axhline(mean_diff, color='red', linestyle='--', label='Mean Difference', linewidth=3)
+axes[1].axhline(upper_limit, color='black', linestyle='--', label='+1.96 SD', linewidth=3)
+axes[1].axhline(lower_limit, color='black', linestyle='--', label='-1.96 SD', linewidth=3)
+
+for idx in outside_points:
+    axes[1].text(mean_counts[idx], diff_counts[idx], ccc_data.index[idx], fontsize=10, color='red')
+
+axes[1].set_xlabel("Mean of OTBs")
+axes[1].set_ylabel("Difference (Seq - Sim)")
+axes[1].set_title("Bland-Altman Plot (CBRT)")
+axes[1].legend()
+
+plt.tight_layout()
+plt.show()
 # %%
