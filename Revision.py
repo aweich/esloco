@@ -1025,8 +1025,8 @@ gene_order = sorted(plot_df["target"].unique().tolist())
 # Convert target columns to ordered categorical
 plot_df["target"] = pd.Categorical(plot_df["target"], categories=gene_order, ordered=True)
 both["target"] = pd.Categorical(both["target"], categories=gene_order, ordered=True)
-
-plt.figure(figsize=(18, 8))
+sns.set_context("talk", font_scale=1.1)
+plt.figure(figsize=(18, 6))
 
 sns.boxplot(
     data=plot_df,
@@ -1034,13 +1034,14 @@ sns.boxplot(
     y="Normalized_OTB",
     hue="Platform",
     dodge=True,
-    palette={"ONT": "lightblue", "PB": "pink"},
+    palette={"ONT": "#00A2FF", "PB": "#FF0080"},
     showfliers=False,
     linecolor="black",
     width=0.8,
+    fill=False,
     orient="v",
-    linewidth=1.5,
-    saturation=0.9,
+    linewidth=2,
+    #saturation=0.5,
     #native_scale=True,
     gap=0,
     order=gene_order  # explicitly specify order
@@ -1056,12 +1057,12 @@ sns.scatterplot(
     x=x_positions - offset,
     y=both["norm_OTB_ont"]/54,
     linewidth=2,
-    edgecolor="#00A2FF",
+    edgecolor="#000000",
     #s=120,
     alpha=1,
     marker="o",
-    label="ONT (Ref.)",
-    color="lightblue",
+    label="ONT (Sequencing)",
+    color="#00A2FF",
     zorder=3
     #sort=False  # preserve order
 )
@@ -1073,10 +1074,10 @@ sns.scatterplot(
     y=both["norm_OTB_pb"]/26,
     linewidth=2,
     alpha=1,
-    edgecolor="#FF0080",
+    edgecolor="#000000",
     marker="o",
-    label="PacBio (Ref.)",
-    color="pink",
+    label="PacBio (Sequencing)",
+    color="#FF0080",
     zorder=3
 )
 
@@ -1102,7 +1103,7 @@ for _, row in res_df.iterrows():
         label = "n.s."
     
     if label != "n.s.":
-        plt.text(x_pos + (0.25 if plat == "PB" else -0.25), y_pos, f"{label}, {p_value} ({plat})",ha="center", va="bottom", fontsize=15, rotation=90)
+        plt.text(x_pos + (0.25 if plat == "PB" else -0.25), y_pos, f"{label}, {p_value} ({plat})",ha="center", va="bottom", fontsize=14, rotation=90)
 
 
 plt.xticks(rotation=90)
@@ -1162,7 +1163,7 @@ plt.title("")
 plt.legend([],[], frameon=False)
 sns.despine()
 plt.tight_layout()
-plt.savefig("/home/weichan/temporary/Data/Simulation/RevisionPlots/Distributions.png", format="png", bbox_inches='tight', dpi=500)
+#plt.savefig("/home/weichan/temporary/Data/Simulation/RevisionPlots/Distributions.png", format="png", bbox_inches='tight', dpi=500)
 plt.show()
 # %%
 print(combined.head())
@@ -1205,7 +1206,7 @@ ccc_data["seq"] = ccc_data["bases_on_target_ont"]
 ccc_data = ccc_data.drop(columns=["bases_on_target_ont"])
 print(ccc_data.head())
 
-fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+fig, axes = plt.subplots(2, 1, figsize=(4, 8))
 x = ccc_data["sim"].values
 y = ccc_data["seq"].values
 
@@ -1290,7 +1291,7 @@ ccc_data["seq"] = ccc_data["bases_on_target_pb"]
 ccc_data = ccc_data.drop(columns=["bases_on_target_pb"])
 print(ccc_data.head())
 
-fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+fig, axes = plt.subplots(2, 1, figsize=(4, 8))
 x = ccc_data["sim"].values
 y = ccc_data["seq"].values
 

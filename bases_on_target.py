@@ -13,7 +13,9 @@ import matplotlib.pyplot as plt
 custom_params = {"axes.spines.right": False, "axes.spines.top": False}
 sns.set_theme(style="ticks", rc=custom_params)
 #out="/home/weichan/temporary/Data/Simulation/ROI_test/Case1/analysis/"
-raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/Case1/Case1_matches_table.csv", sep="\t", header=0)
+#raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/Case1/Case1_matches_table.csv", sep="\t", header=0)
+raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ONT_benchmark/out/Case1_ONT_matches_table.csv", sep="\t", header=0)
+
 print(raw["target_region"].unique())
 
 # Split using the last two underscores to handle problematic entries like 'GBA_x_0_999'
@@ -49,7 +51,8 @@ coverage_levels = raw["coverage"].unique()
 print(len(averaged_bases_on_target))
 
 # %%
-seq = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/fromsra/SRR8955270_GroundTruth_OTBs.bed", sep="\t", header=None)
+#seq = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/fromsra/SRR8955270_GroundTruth_OTBs.bed", sep="\t", header=None)
+seq = pd.read_csv("/home/weichan/temporary/Data/Simulation/ONT_benchmark/ONT_GroundTruth_OTBs.bed", sep="\t", header=None)
 print(seq.head())
 seq["Length"] = seq[2] - seq[1]
 true_positive = seq.groupby([3, "Length"])[10].sum().reset_index()
@@ -106,6 +109,7 @@ print(coverage_levels)
 #spcific level
 coverage_levels = [20,21,22,23,24,25,26,27,28,29,30]
 coverage_levels = [26]
+coverage_levels = [54]
 statistical_results = []
 
 # Ensure 'gene' in raw matches column 3 in seq for merging
@@ -245,7 +249,7 @@ for i, column in enumerate(ccc_data.columns):
         ax=axes[i],
         x=x,
         y=y,
-        color="blue",
+        color='#00A2FF',
         scatter_kws={'alpha': 0.4, 's': 50},
         line_kws={"color": "red", "linestyle": "--"},
         label='Data Points'
@@ -275,8 +279,10 @@ print("CCC self test:", concordance_correlation_coefficient(x, x))
 
 full_combined = ccc_data 
 
-mean_counts = (full_combined["seq. count"].values + full_combined.loc[:,26].values) / 2 
-diff_counts = full_combined["seq. count"].values - full_combined.loc[:,26].values
+#mean_counts = (full_combined["seq. count"].values + full_combined.loc[:,26].values) / 2 
+#diff_counts = full_combined["seq. count"].values - full_combined.loc[:,26].values
+mean_counts = (full_combined["seq. count"].values + full_combined.loc[:,54].values) / 2 
+diff_counts = full_combined["seq. count"].values - full_combined.loc[:,54].values
 
 diff_counts = np.cbrt(diff_counts)
 mean_counts = np.cbrt(mean_counts)
@@ -303,7 +309,7 @@ outside_points = np.where((diff_counts < lower_limit) | (diff_counts > upper_lim
 
 # Plot Bland-Altman plot with labels for points outside the limits
 plt.figure(figsize=(3, 3))
-plt.scatter(mean_counts, diff_counts, alpha=0.5, edgecolors='k',s=60, linewidth=1, label='Data Points', color='blue')
+plt.scatter(mean_counts, diff_counts, alpha=0.5, edgecolors='k',s=60, linewidth=1, label='Data Points', color='#00A2FF') #liightblue for ONT, pink for PB
 plt.axhline(mean_diff, color='red', linestyle='--', label='Mean Difference', linewidth=3)
 plt.axhline(mean_diff + 1.96 * std_diff, color='black', linestyle='--', label='+1.96 SD', linewidth=3)
 plt.axhline(mean_diff - 1.96 * std_diff, color='black', linestyle='--', label='-1.96 SD', linewidth=3)
@@ -419,3 +425,5 @@ for coverage in coverage_levels:
     plt.close()
 
 # %%
+
+
