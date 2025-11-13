@@ -26,6 +26,7 @@ dependencies = [
     "scipy",
     "plotly",
     "pyfiglet",
+    "intervaltree", #new, not yet on pypi
     "kaleido<1.0.0", #for svg image export
 ]
 

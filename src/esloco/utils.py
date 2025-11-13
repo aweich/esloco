@@ -4,6 +4,8 @@ import time
 import os
 from functools import wraps
 import psutil
+import ast
+from intervaltree import IntervalTree
 
 def track_usage(label=None):
     cpu_usage = psutil.cpu_percent(interval=None)
@@ -19,7 +21,7 @@ def setup_logging(filename):
     )
 
 def profile_iteration(func):
-    """Decorator to profile CPU, memory, and time usage for each iteration."""
+    "Decorator to profile CPU, memory, and time usage for each iteration"
     @wraps(func)
     def wrapper(*args, **kwargs):
         pid = os.getpid()
@@ -78,3 +80,17 @@ def kaleido_chrome_test():
         print(f"Warning: Could not export static (.svg) image because: {e}")
         print("Skipping static image export. Please ensure Google Chrome is installed or allow Kaleido to download it.")
         return False
+
+def build_mask_tree(masked_regions):
+    "Convert masked_regions dict to barcode-specific interval trees"
+    trees = {}
+    for values in masked_regions.values():
+        barcodes = values["barcode"]
+        if isinstance(barcodes, str):
+            barcodes = ast.literal_eval(barcodes)
+        if not barcodes:  #empty means all
+            barcodes = ["ALL"]
+        start, end, weight = values["start"], values["end"], values.get("weight")
+        for bc in barcodes:
+            trees.setdefault(bc, IntervalTree()).addi(start, end, weight)
+    return trees

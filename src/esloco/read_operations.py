@@ -2,7 +2,7 @@ import logging
 import sys
 import ast
 import numpy as np
-
+from intervaltree import IntervalTree
 from esloco.utils import track_usage
 
 def generate_read_length_distribution(num_reads, mean_read_length, min_read_length, sigma, distribution='lognormal'):
@@ -37,7 +37,7 @@ def generate_reads(fasta, read_length_distribution):
         reads.append(read)
     return reads
 
-def check_if_blocked_region(random_barcode_number, start_position, read_length, masked_regions):
+def check_if_blocked_regionold(random_barcode_number, start_position, read_length, masked_regions):
     '''
     Checks whether the start position is inside the coordinates of a masked/blocked region.
     Blocked can mean that no reads are obtained from there or only with a certain probability.
@@ -56,6 +56,16 @@ def check_if_blocked_region(random_barcode_number, start_position, read_length, 
                 if np.random.rand() < weight:
                     return True  # position is blocked
 
+def check_if_blocked_region(random_barcode_number, start_position, read_length, masked_tree):
+    """Fast lookup via interval trees."""
+    relevant_trees = [masked_tree.get(random_barcode_number), masked_tree.get("ALL")]
+    for tree in filter(None, relevant_trees):
+        hits = tree.overlap(start_position, start_position + read_length)
+        for hit in hits:
+            if np.random.rand() < float(hit.data):  # 'weight' is stored in .data
+                return True
+    return False
+
 def get_weighted_probabilities(insertion_name,n_barcodes, weights_dict):
     '''
     Uses a target name and checks for a key in the weights  and returns the weighting factor.
@@ -71,7 +81,9 @@ def get_weighted_probabilities(insertion_name,n_barcodes, weights_dict):
         return n_barcodes / common_denominator
     return 1 / n_barcodes
 
-def generate_reads_based_on_coverage(genome_size, coverage, read_length_distribution, n_barcodes, barcode_weights, consuming, masked_regions):
+
+
+def generate_reads_based_on_coverage(genome_size, coverage, read_length_distribution, n_barcodes, barcode_weights, consuming, masked_tree):
     '''
     Randomly pulls a read of size X derived from the read length distribution from the fasta until the fasta is N times covered (coverage).
     '''
@@ -83,6 +95,7 @@ def generate_reads_based_on_coverage(genome_size, coverage, read_length_distribu
     # barcode weights
     probabilities = [get_weighted_probabilities(i, n_barcodes, barcode_weights) for i in barcode_names]
     probabilities = probabilities / np.sum(probabilities)  # Normalize probabilities to sum to 1
+
     #Reads pulled until desired coverage is reached
     while covered_length < coverage * genome_size:
         random_barcode = np.random.choice(barcode_names, p=probabilities)  # chooses one of the barcodes based on weighted probability
@@ -91,8 +104,9 @@ def generate_reads_based_on_coverage(genome_size, coverage, read_length_distribu
         # Check if the random barcode is in the list of barcodes that require checking for blocked regions
         random_barcode_number = random_barcode.split('_')[-1] #otherwise user input needs to be weird
         # Check if the start position falls within a blocked region
-        if masked_regions and check_if_blocked_region(random_barcode_number, start_position, read_length, masked_regions):
-        # If the start position is in a blocked region, continue to the next iteration
+        #if masked_regions and check_if_blocked_region(random_barcode_number, start_position, read_length, masked_regions):
+        if masked_tree and check_if_blocked_region(random_barcode_number, start_position, read_length, masked_tree):
+        # If the start position is in a fully blocked region, continue to the next iteration
             # Biologically, if the read is sequenced, it also affects the total coverage, even if it is not mappable or of low quality. 
             if consuming:
                 # Record the read coordinates

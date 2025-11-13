@@ -3,6 +3,7 @@
 #%%
 
 import re
+import sys
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -638,7 +639,7 @@ df_lin = df[["chrom", "start", "end", "linear_blocking"]]
 # Plotting the influence of different number sof iterations
 
 raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/Case1/Case1_matches_table.csv", sep="\t", header=0)
-print(raw.head())
+
 raw["iteration"] = raw["iteration"].astype(int)
 
 seq = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/fromsra/SRR8955270_GroundTruth_OTBs.bed", sep="\t", header=None)
@@ -794,7 +795,7 @@ for target in raw["target"].unique():
 import random 
 combined = pd.concat(collection, ignore_index=True)
 
-combined = combined[combined["coverage"] == 27]
+combined = combined[combined["coverage"] == 26]
 
 # Optional: sort by length for smoother lines
 combined = combined.sort_values("Length")
@@ -834,6 +835,7 @@ plt.ylabel("SEM (Target length normalized)")
 plt.legend(title="Iteration Group")
 sns.despine()
 plt.tight_layout()
+#plt.savefig("/home/weichan/temporary/Data/Simulation/RevisionPlots/TargetLength_SEM.svg", format="svg", bbox_inches='tight')
 plt.show()
 # %%
 # Create the plot
@@ -863,7 +865,7 @@ plt.show()
 #%% comparison PacBio vs ONT OTBs
 
 pb = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/fromsra/SRR8955270_GroundTruth_OTBs.bed", sep="\t", header=None)
-
+print(pb.head())
 pb["Length"] = pb[2] - pb[1]
 pb = pb.groupby([3, "Length"])[10].sum().reset_index()
 
@@ -888,6 +890,8 @@ print(both.head())
 #%%
 raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ONT_benchmark/out/Case1_ONT_matches_table.csv", sep="\t", header=0)
 
+print(raw.head())
+
 # Split using the last two underscores to handle problematic entries like 'GBA_x_0_999'
 raw[["gene", "Barcode", "Iteration"]] = raw["target_region"].str.rsplit("_", n=2, expand=True)
 
@@ -903,6 +907,7 @@ raw["partial_matches"] = raw["partial_matches"].astype(int)
 #repeat with PB data
 
 pbsim = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/Case1/Case1_matches_table.csv", sep="\t", header=0)
+#pbsim = pd.read_csv("/home/weichan/temporary/Data/Simulation/Revision_SoftMasking_Case1/Case1_logistic_matches_table.csv", sep="\t", header=0)
 pbsim[["gene", "Barcode", "Iteration"]] = pbsim["target_region"].str.rsplit("_", n=2, expand=True)
 
 pbsim = pbsim[(pbsim["coverage"] == 26)]
@@ -958,7 +963,7 @@ results = []  # store dicts with gene, platform, empirical_p, N_sim, etc.
 # compute empirical p-values
 for platform in plot_df["Platform"].unique():
     df_plat = plot_df[plot_df["Platform"] == platform]
-    N_sims_per_gene = df_plat.groupby("target")["Normalized_OTB"].count().to_dict()
+    #N_sims_per_gene = df_plat.groupby("target")["Normalized_OTB"].count().to_dict()
 
     for gene in df_plat["target"].unique():
         gene_data = df_plat[df_plat["target"] == gene]["Normalized_OTB"].values
@@ -1351,3 +1356,365 @@ axes[1].legend()
 plt.tight_layout()
 plt.show()
 # %%
+import pyranges as pr
+
+# normalization for the last question
+
+genes = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/fromsra/SRR8955270_GroundTruth_OTBs.bed", sep="\t", header=None)
+print(genes.head())
+
+cov = pd.read_csv("/home/weichan/temporary/Data/Simulation/Revision_SoftMasking_Case1/SRR8955270_coverage_100kb.bed", sep="\t", header=None, names=["chrom", "start", "end", "mean_cov"])
+cov["mean_cov"] = pd.to_numeric(cov["mean_cov"], errors='coerce')
+cov["mean_cov"] = cov["mean_cov"].fillna(0.0)
+# Coverage dataframe
+cov_df = cov.rename(columns={"chrom": "Chromosome", "start": "Start", "end": "End", "mean_cov": "mean_cov"})
+
+# Gene dataframe — keep only relevant columns (chrom, start, end, gene)
+genes_df = genes[[0, 5, 6, 3]].copy()
+genes_df.columns = ["Chromosome", "Start", "End", "Gene"]
+
+
+print(cov_df.head())
+print(genes_df.head())
+
+pr_cov = pr.PyRanges(cov_df)
+pr_genes = pr.PyRanges(genes_df)
+
+print(type(pr_cov)) #pandas and not pyyRanges 
+# Find overlaps
+overlaps = pr_cov.overlap(pr_genes)
+
+print(type(overlaps.head()))
+test = overlaps.copy()
+print(type(test))
+# %%
+overlap_idx = cov_df.index[cov_df.set_index(["Chromosome", "Start", "End"]).index.isin(
+    overlaps[["Chromosome", "Start", "End"]].set_axis(["Chromosome", "Start", "End"], axis=1).apply(tuple, axis=1)
+)]
+plt.figure(figsize=(14, 5))
+
+# Base coverage line
+plt.plot(cov_df["Start"], np.log(cov_df["mean_cov"]), color="lightgray", linewidth=1.5, label="Coverage")
+
+# Highlight overlapping bins
+plt.scatter(
+    y=cov_df.loc[overlap_idx, "Start"],
+    x=np.log(cov_df.loc[overlap_idx, "mean_cov"]),
+    color="red",
+    s=20,
+    label="Panel Genes"
+)
+
+plt.xlabel("Genomic position (bp)")
+plt.ylabel("Mean coverage")
+plt.title("Coverage profile with gene overlaps")
+plt.legend(frameon=False)
+plt.tight_layout()
+plt.show()
+# %%
+def coverage_to_blocking_linear(cov):
+    cov = np.asarray(cov, dtype=float)
+    cov = np.clip(cov, 0, None)  # prevent negatives
+    cov_max = cov.max()
+    if cov_max == 0:
+        return np.ones_like(cov)
+    blocking = 1 - (cov / cov_max)
+    return blocking
+
+
+transformed = np.log(cov_df["mean_cov"]+1)
+# Scale by median
+transformed = transformed / np.median(transformed)
+# Z-score normalization
+transformed = (transformed - np.mean(transformed)) / np.std(transformed)
+cov_df["transformed"] = transformed
+blocking = coverage_to_blocking_linear(transformed)
+blocking = np.round(blocking , decimals=2)
+
+print(cov_df.head())
+#%%
+plt.figure(figsize=(6,4))
+sns.scatterplot(x=cov_df["transformed"], y=blocking, marker='o', size=120, sizes=(120,120), alpha=0.3)
+sns.scatterplot(
+    y=blocking[overlap_idx],
+    x=cov_df.loc[overlap_idx, "transformed"],
+    color="red",
+    s=100,
+    label="Panel Genes"
+)
+plt.xlabel("log10(Mean coverage + 1)")
+plt.ylabel("Blocking probability")
+#plt.xscale("log")
+#plt.legend([],[], frameon=False)
+plt.title("Linear inverse mapping: 0→1, max→0")
+#plt.grid(True)
+plt.show()
+# %% 
+
+from scipy.stats import rankdata
+# new strategies
+
+def winsorize_series(s, lower_pct=0.01, upper_pct=0.99):
+    lo = s.quantile(lower_pct)
+    hi = s.quantile(upper_pct)
+    return s.clip(lower=lo, upper=hi)
+
+# 1) Robust linear mapping on log scale (recommended baseline)
+def map_block_prob_log_winsor(cov_df, log_offset=1, lower_pct=0.01, upper_pct=0.99):
+    cov = cov_df['mean_cov'].astype(float).copy()
+    cov_w = winsorize_series(cov, lower_pct, upper_pct)
+    logcov = np.log10(cov_w + log_offset)
+    # robust scaling: map median -> some mid p, top percentile -> near zero blocking
+    low_ref = np.percentile(logcov, 1)   # 1st percentile maps to near 1 (blocked)
+    high_ref = np.percentile(logcov, 95) # 95th percentile maps to near 0 (unblocked)
+    # linear rescale, then invert so high coverage -> low blocking
+    scaled = (logcov - low_ref) / (high_ref - low_ref)
+    scaled = np.clip(scaled, 0, 1)
+    block_prob = 1.0 - scaled  # 1 => fully blocked (low coverage); 0 => unblocked (high coverage)
+    return block_prob
+
+# 2) Rank-based empirical CDF mapping (robust to magnitude)
+def map_block_prob_ecdf(cov_df):
+    cov = cov_df['mean_cov'].astype(float).copy()
+    # compute empirical CDF in [0,1], higher cov -> larger cdf
+    ranks = rankdata(cov, method='average')  # 1..N
+    ecdf = (ranks - 1) / (len(cov) - 1)
+    # blocking = 1 - ecdf, but we can add a power to compress middle values
+    block_prob = 1.0 - ecdf  # highest cov -> block_prob ~ 0
+    # optional: sharpen extremes with exponent <1 or >1
+    gamma = 1.5   # try 0.8, 1.0, 1.2 etc
+    block_prob = np.clip(block_prob ** gamma, 0, 1)
+    return block_prob
+
+# 3) Logistic mapping for smooth middle behavior (after robust scaling)
+def map_block_prob_logistic(cov_df, log_offset=1, lower_pct=0.1, upper_pct=0.9, k=10, mid=0.8):
+    cov = cov_df['mean_cov'].astype(float).copy()
+    cov_w = winsorize_series(cov, lower_pct, upper_pct)
+    logcov = np.log10(cov_w + log_offset)
+    # scale to [0,1]
+    lo, hi = np.percentile(logcov, 1), np.percentile(logcov, 99)
+    s = (logcov - lo) / (hi - lo)
+    s = np.clip(s, 0, 1)
+    # logistic: p(block) = 1 / (1 + exp(k*(s - mid)))
+    # large k = sharper threshold, smaller k = smoother curve
+    block_prob = 1.0 / (1.0 + np.exp(k * (s - mid)))
+    return block_prob
+
+# Usage example: choose one mapping
+
+cov_df['block_prob_log'] = map_block_prob_log_winsor(cov_df)
+cov_df['block_prob_ecdf'] = map_block_prob_ecdf(cov_df)
+cov_df['block_prob_logistic'] = map_block_prob_logistic(cov_df)
+
+print(cov_df.head())
+cov_df["label"] = cov_df["Chromosome"].astype(str) + ":" + cov_df["Start"].astype(str)
+'''
+sns.lineplot(x=cov_df["mean_cov"], y=cov_df["block_prob_log"], label="Log Winsorized", color="blue")
+sns.scatterplot(
+    y=cov_df["block_prob_log"][overlap_idx],
+    x=cov_df.loc[overlap_idx, "mean_cov"],
+    color="blue",
+    s=100,
+    label="Panel Genes"
+)
+sns.lineplot(x=cov_df["mean_cov"], y=cov_df["block_prob_ecdf"], label="Empirical CDF", color="green")
+sns.scatterplot(
+    y=cov_df["block_prob_ecdf"][overlap_idx],
+    x=cov_df.loc[overlap_idx, "mean_cov"],
+    color="green",
+    s=100,
+    label="Panel Genes"
+)'''
+#plt.figure(figsize=(5, 8))
+sns.lineplot(x=cov_df["mean_cov"], y=cov_df["block_prob_logistic"], label="Logistic", color="red")
+for i in overlap_idx:
+    plt.text(cov_df.loc[i, "mean_cov"], cov_df.loc[i, "block_prob_logistic"], 
+             cov_df.loc[i, "label"], fontsize=8, ha='left', rotation=90)
+
+# Color chr1 dots in blue, others in red
+chr1_mask = (cov_df.loc[overlap_idx, "Chromosome"] == "chr1") & (cov_df.loc[overlap_idx, "Start"] >= 155000000)
+chr1_idx = overlap_idx[chr1_mask]
+other_idx = overlap_idx[~chr1_mask]
+other_idx = overlap_idx[~chr1_mask]
+
+# Plot chr1 dots in blue
+if len(chr1_idx) > 0:
+    sns.scatterplot(
+        y=cov_df["block_prob_logistic"][chr1_idx],
+        x=cov_df.loc[chr1_idx, "mean_cov"],
+        color="blue",
+        s=100,
+        label="Panel Genes (chr1)",
+        zorder=3
+    )
+
+# Plot other chromosomes in red
+if len(other_idx) > 0:
+    sns.scatterplot(
+        y=cov_df["block_prob_logistic"][other_idx],
+        x=cov_df.loc[other_idx, "mean_cov"],
+        color="red",
+        s=100,
+        label="Panel Genes (other)"
+    )
+
+plt.xscale("log")
+
+#%%
+df_logistic = cov_df[["Chromosome", "Start", "End", "block_prob_logistic"]]
+#df_logistic.to_csv("/home/weichan/temporary/Data/Simulation/Revision_SoftMasking_Case1/Case1_logistic90k10m06_mask.bed", sep="\t", header=False, index=False)
+
+# %%
+
+maskpath = Path("/home/weichan/temporary/Data/Simulation/mask_test/")
+for file in maskpath.glob("*.bed"):
+    maskfile = pd.read_csv(file, sep="\t")
+    print(maskfile.head())
+    case1, logistic, cutoff, k, m, mask = file.stem.split("_")
+    label = f"{cutoff}_{k}_{m}"
+    
+    # Color mapping based on cutoff value
+    #color_map = {"95": "blue", "99": "red", "90": "green"}
+    #color = color_map.get(cutoff, "black")  # default to black if cutoff not in map
+    
+    sns.lineplot(x=cov_df["mean_cov"], y=maskfile["weight"], label=label, linewidth=4, alpha=0.6)
+    plt.xscale("log")
+    
+
+# %%
+
+outpath = Path("/home/weichan/temporary/Data/Simulation/Revision_SoftMasking_Case1/logistic")
+for file in outpath.glob("*matches_table.csv"):
+    out = pd.read_csv(file, sep="\t", header=0)
+    case1, logistic, cutoff, k, m, matches, table = file.stem.split("_")
+    label = f"{cutoff}_{k}_{m}"
+    
+    
+    out[["gene", "Barcode", "Iteration"]] = out["target_region"].str.rsplit("_", n=2, expand=True)
+
+    out = out.drop(columns=["target_region", "Barcode"])
+
+    out["Iteration"] = out["Iteration"].astype(int)
+    out[f"{label}_otbs"] = out["on_target_bases"]
+
+    out = out.rename(columns={"target": "target"})  # ensure consistent naming
+    combined = pd.merge(out, both, on="target", how="inner")
+    combined[f"norm_{label}_OTB"] = (combined[f"{label}_otbs"] / combined["Length"]) / 26
+
+    #
+    results = []
+    for gene in combined["target"].unique():
+        gene_data = combined[combined["target"] == gene][f"norm_{label}_OTB"].values
+        N = len(gene_data)
+        if N == 0:
+            continue
+
+        true_val = both.loc[both["target"] == gene, "norm_OTB_pb"].values
+        denom = 26.0
+
+        if true_val.size == 0:
+            continue
+
+        true_v = float(true_val[0]) / denom  # keep your scaling if desired
+
+        center = np.median(gene_data)
+
+        # two-sided empirical p (distance from center)
+        distances = np.abs(gene_data - center)
+        obs_distance = abs(true_v - center)
+        more_extreme = np.sum(distances >= obs_distance)
+
+        empirical_p = more_extreme/ N
+
+        results.append({
+            "gene": gene,
+            "empirical_p": empirical_p,
+            "N": N,
+            "true_v": true_v,
+            "sim_center": center,
+            "more_extreme": int(more_extreme)
+        })
+    res_df = pd.DataFrame(results)
+
+    # Apply BH correction per platform
+    res_df["adjusted_p"] = np.nan
+    _, adj_p, _, _ = multipletests(res_df["empirical_p"], alpha=0.05, method="fdr_bh")
+    res_df["adjusted_p"] = adj_p
+    print(len(res_df[res_df["adjusted_p"] <= 0.05]))
+    
+    
+    gene_order = sorted(combined["target"].unique().tolist())
+
+    # Convert target columns to ordered categorical
+    combined["target"] = pd.Categorical(combined["target"], categories=gene_order, ordered=True)
+    both["target"] = pd.Categorical(both["target"], categories=gene_order, ordered=True)
+    sns.set_context("talk", font_scale=1.1)
+    plt.figure(figsize=(18, 6))
+
+    sns.boxplot(
+        data=combined,
+        x="target",
+        y=f"norm_{label}_OTB",
+        showfliers=False,
+        linecolor="black",
+        width=0.8,
+        fill=False,
+        orient="v",
+        linewidth=2,
+        #saturation=0.5,
+        #native_scale=True,
+        gap=0,
+        order=gene_order  # explicitly specify order
+    )
+
+    # Get numeric positions for categorical x-axis
+    x_positions = np.arange(len(gene_order))
+    offset = 0.0 # adjust to align with boxplot position
+
+    sns.scatterplot(
+        data=both,
+        x=x_positions + offset,  # shift right to align with PB boxplot
+        y=both["norm_OTB_pb"]/26,
+        linewidth=2,
+        alpha=1,
+        edgecolor="#000000",
+        marker="o",
+        #label="PacBio (Sequencing)",
+        color="#FF0080",
+        zorder=3
+    )
+
+    for _, row in res_df.iterrows():
+        gene = row["gene"]
+        adjp = row["adjusted_p"]
+        x_pos = gene_order.index(gene)
+        p_value = round(adjp, 3)
+
+        # choose y coordinate carefully (above plotted points)
+        y_pos = 1.5 # tweak; or compute per-gene max + margin
+
+        if adjp <= 0.001:
+            label = "***"
+        elif adjp <= 0.01:
+            label = "**"
+        elif adjp <= 0.05:
+            label = "*"
+        else:
+            label = "n.s."
+        
+        if label != "n.s.":
+            plt.text(x_pos, y_pos, f"{label}, {p_value}",ha="center", va="bottom", fontsize=14, rotation=90)
+
+    plt.text(x_positions[0], 0.25, f"Significant: {len(res_df[res_df['adjusted_p'] <= 0.05])}", fontsize=24, weight='bold')
+    plt.xticks(rotation=90)
+    plt.title(f"Logistic Masking: cutoff={cutoff}, k={k}, m={m}", pad=40)
+    plt.xlabel("Target Region")
+    plt.ylabel("Normalized On-Target Bases")
+    plt.legend()
+    sns.despine()
+    plt.tight_layout()
+    plt.show()
+
+# %%
+print(len(both["target"].unique()))
+print(len(out["target"].unique()))
