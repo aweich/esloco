@@ -58,7 +58,7 @@ df = pd.DataFrame(data)
 print(df.head())
 
 print(df.tail())
-#%%
+
 
 # %%
 print(df["time_s"])
@@ -250,6 +250,8 @@ df["log_t"] = np.log(df["execution_time_s"])
 
 fig, axes = plt.subplots(nrows, ncols, figsize=(6 * ncols, 4 * nrows), sharey=True)
 axes = axes.flatten()  # make indexing simpler
+print(categories)
+categories = ['barcodes','weight','coverage','iterations','masking','targetlengthkb']
 
 for i, category in enumerate(categories):
     subset = df[df["category"] == category]
@@ -1453,8 +1455,8 @@ plt.show()
 
 from scipy.stats import rankdata
 # new strategies
-
-def winsorize_series(s, lower_pct=0.01, upper_pct=0.99):
+from scipy.stats.mstats import winsorize
+def winsorize_series(s, lower_pct, upper_pct):
     lo = s.quantile(lower_pct)
     hi = s.quantile(upper_pct)
     return s.clip(lower=lo, upper=hi)
@@ -1490,7 +1492,8 @@ def map_block_prob_ecdf(cov_df):
 def map_block_prob_logistic(cov_df, log_offset=1, lower_pct=0.1, upper_pct=0.9, k=10, mid=0.8):
     cov = cov_df['mean_cov'].astype(float).copy()
     cov_w = winsorize_series(cov, lower_pct, upper_pct)
-    logcov = np.log10(cov_w + log_offset)
+    #cov_w = winsorize(cov, limits=[lower_pct, None])
+    logcov = np.log10(cov_w)# + log_offset)
     # scale to [0,1]
     lo, hi = np.percentile(logcov, 1), np.percentile(logcov, 99)
     s = (logcov - lo) / (hi - lo)
@@ -1583,7 +1586,7 @@ for file in maskpath.glob("*.bed"):
 
 # %%
 
-outpath = Path("/home/weichan/temporary/Data/Simulation/Revision_SoftMasking_Case1/logistic")
+outpath = Path("/home/weichan/temporary/Data/Simulation/Revision_SoftMasking_Case1/logistic/refined/")
 for file in outpath.glob("*matches_table.csv"):
     out = pd.read_csv(file, sep="\t", header=0)
     case1, logistic, cutoff, k, m, matches, table = file.stem.split("_")
@@ -1702,8 +1705,8 @@ for file in outpath.glob("*matches_table.csv"):
         else:
             label = "n.s."
         
-        if label != "n.s.":
-            plt.text(x_pos, y_pos, f"{label}, {p_value}",ha="center", va="bottom", fontsize=14, rotation=90)
+        #if label != "n.s.":
+        plt.text(x_pos, y_pos, f"{label}, {p_value}",ha="center", va="bottom", fontsize=14, rotation=90)
 
     plt.text(x_positions[0], 0.25, f"Significant: {len(res_df[res_df['adjusted_p'] <= 0.05])}", fontsize=24, weight='bold')
     plt.xticks(rotation=90)
