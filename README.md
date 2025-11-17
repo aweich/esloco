@@ -137,7 +137,7 @@ During the simulation, basic coverage plots are generated for the first iteratio
 For a more comprehensive analysis, `plot_esloco --config {configfile}` can generate additional overview plots. These are summarized in an interactive `{experiment_name}_report.html`. 
 
 <details>
-<summary>Click to show exemplary overview of report figures</summary>
+<summary>Show exemplary overview of report figures</summary>
 
 <p align="center">
     <div>
@@ -170,7 +170,7 @@ For a more comprehensive analysis, `plot_esloco --config {configfile}` can gener
 
 ## Advanced Usage
 
-##### Custom read length distributions
+#### Custom read length distributions
 
 If there is `FASTA`/`FASTQ` file provided in the `sequenced_data_path` option of the `configurationfile.ini`, the simulation will use it as its read length distribution, thus dicarding any options provided as `mean_read_lengths`. 
 
@@ -178,50 +178,49 @@ If there is `FASTA`/`FASTQ` file provided in the `sequenced_data_path` option of
 > If your read length input files are `.fasta.gz` instead of `.fasta`, you can decompress
 them beforehand to improve simulation speed.
 
-##### Blocked regions `[COMMON]`
+#### Blocked regions `[COMMON]`
 
 If there is a `blocked_regions_bedpath` provided, the simulation will use the locations, as defined by the first three columns (`chr` - `start` - `end`), as well as optional `id` and `weight` columns. The weight column ultimately determines how _strict_ the blocking of the defined region will be performed. If no `weight` is assigned, the default of 1, i.e. 100% will be applied. If only 50% of the reads that fall into this region are supposed to be blocked, `weight` should be set to 0.5. This allows for more complex non-uniformly distributed setups or partial monosomies. 
 
 >[!Note] 
 > When substantial portions of the genome are blocked, `consuming = False` introduces a major runtime cost. This is because many simulated reads are discarded before reaching the global coverage threshold, leading to substantially more read draws in total.
 
-##### Barcode Weighting `[COMMON]`
+#### Barcode Weighting `[COMMON]`
 
-###### Cellular proportions `[COMMON]`
+##### Cellular proportions `[COMMON]`
 
 One key feature of the simulation is the option to manually assign weights to individual barcodes, allowing to simulate different cellular compositions and over- or under-representations of specific subsets. These weights can be directly assigned in the `configfile`. Here, `barcode_weights` can be set to any `directory` structure with the `barcode_numbers` as keys and their assigned proportions as values (e.g. `barcode_weights={"0": 10}`). In this example, a read drawn at random is 10 times more likely to be originating from/assigned to barcode 0. 
 
 <details>
-<summary>Click to show how weights of individual barcodes are calculated</summary>
+<summary>Show how weights of individual barcodes are calculated</summary>
 
->[!Note] 
-> Weights of individual barcodes are calculated as 
->
->$$S_{k} = \frac{W_{k} \cdot N}{D}$$
->
->where S<sub>k</sub> is the weighted share of barcode k, and D is the common denominator, given by:
->
->$$D = \left( \sum_{i} W_{i} + N - \lvert W \rvert \right) \cdot N$$
->
->W<sub>i</sub>​ refers to the individual barcode weights specified in the user-defined weights dictionary, N is the total number of barcodes, and ∣W∣ represents the number of barcodes with assigned weights. 
->
->In summary, barcodes with assigned weights contribute proportionally, while unweighted barcodes are evenly distributed. 
+Weights of individual barcodes are calculated as 
+
+$$S_{k} = \frac{W_{k} \cdot N}{D}$$
+
+where S<sub>k</sub> is the weighted share of barcode k, and D is the common denominator, given by:
+
+$$D = \left( \sum_{i} W_{i} + N - \lvert W \rvert \right) \cdot N$$
+
+W<sub>i</sub>​ refers to the individual barcode weights specified in the user-defined weights dictionary, N is the total number of barcodes, and ∣W∣ represents the number of barcodes with assigned weights. 
+
+In summary, barcodes with assigned weights contribute proportionally, while unweighted barcodes are evenly distributed. 
 
 </details>
 
 
-###### Selective blocking/masking `[COMMON]`
+##### Selective blocking/masking `[COMMON]`
 
 It is also possible to select barcodes that will be affected by the pre-defined [Blocked regions](#blocked-regions-common). For this, an optional `barcode` column can be added to the bed file, containing a list of barcodes (e.g. ["0", "1"]). 
 
 >[!TIP] 
 > If the goal is to assign different blocking values to different subsets of barcodes, this can be achieved by adding an `id` column and multiple rows for the same blocked region, which forces the simulation run each set of blocked coordinates individually. 
 
-##### Full chromosome mode `[COMMON]` `[I]` `[ROI]`
+#### Full chromosome mode `[COMMON]` `[I]` `[ROI]`
 
 Generally, if any of the `BED` files provided contain entries with only a chromosome defined and start and stop set to 0, the simulation will use the full chromosome. 
 
-##### Fixed insertion numbers and/or locations `[I]`
+#### Fixed insertion numbers and/or locations `[I]`
 
 It is also possible to fix the number and/or location of insertions. For this, the `insertion_number_distribution` in the `configfile` needs to be set to anything else than `poisson`, which is the default. By doing this, the `insertion_numbers` option will use the defined value as a fixed value, and not as the mean value of a poisson distribution. For a fixed number of insertions at specific locations, this can be achieved by providing a `bedpath` in the `[I]` section of the `configfile`, which has the exact same number of entries as `insertion_numbers`.
 
