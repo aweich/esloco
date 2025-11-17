@@ -357,6 +357,7 @@ for j in range(i + 1, len(axes)):
     fig.delaxes(axes[j])
 
 plt.tight_layout()
+#plt.savefig("/home/weichan/temporary/Data/Simulation/RevisionPlots/SpeedBenchmark.svg", format="svg")
 plt.show()
 
 

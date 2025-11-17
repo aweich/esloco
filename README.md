@@ -180,13 +180,19 @@ them beforehand to improve simulation speed.
 
 ##### Blocked regions `[COMMON]`
 
-If there is a `blocked_regions_bedpath` provided, the simulation will use the locations, as defined by the first three columns (`chr` - `start` - `end`), as well as optional `id` and `weight` columns. The weight column ultimately determines how _strict_ the blocking of the defined region will be performed. If no `weight` is assigned, the default of 1, i.e. 100% will be applied. If only 50% of the reads that fall into this region are supposed to be blocked, `weight` should be set to 0.5. This allows for more complex non-uniformly distributed setups or partial monosomies.   
+If there is a `blocked_regions_bedpath` provided, the simulation will use the locations, as defined by the first three columns (`chr` - `start` - `end`), as well as optional `id` and `weight` columns. The weight column ultimately determines how _strict_ the blocking of the defined region will be performed. If no `weight` is assigned, the default of 1, i.e. 100% will be applied. If only 50% of the reads that fall into this region are supposed to be blocked, `weight` should be set to 0.5. This allows for more complex non-uniformly distributed setups or partial monosomies. 
+
+>[!Note] 
+> When substantial portions of the genome are blocked, `consuming = False` introduces a major runtime cost. This is because many simulated reads are discarded before reaching the global coverage threshold, leading to substantially more read draws in total.
 
 ##### Barcode Weighting `[COMMON]`
 
 ###### Cellular proportions `[COMMON]`
 
 One key feature of the simulation is the option to manually assign weights to individual barcodes, allowing to simulate different cellular compositions and over- or under-representations of specific subsets. These weights can be directly assigned in the `configfile`. Here, `barcode_weights` can be set to any `directory` structure with the `barcode_numbers` as keys and their assigned proportions as values (e.g. `barcode_weights={"0": 10}`). In this example, a read drawn at random is 10 times more likely to be originating from/assigned to barcode 0. 
+
+<details>
+<summary>Click to show how weights of individual barcodes are calculated</summary>
 
 >[!Note] 
 > Weights of individual barcodes are calculated as 
@@ -200,6 +206,9 @@ One key feature of the simulation is the option to manually assign weights to in
 >W<sub>i</sub>​ refers to the individual barcode weights specified in the user-defined weights dictionary, N is the total number of barcodes, and ∣W∣ represents the number of barcodes with assigned weights. 
 >
 >In summary, barcodes with assigned weights contribute proportionally, while unweighted barcodes are evenly distributed. 
+
+</details>
+
 
 ###### Selective blocking/masking `[COMMON]`
 
