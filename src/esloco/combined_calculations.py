@@ -20,7 +20,7 @@ def process_combination(
         n_barcodes,
         barcode_weights,
         consuming, 
-        masked_regions,
+        masked_tree,
         output_path,
         scaling,
         min_overlap_for_detection,
@@ -61,7 +61,7 @@ def process_combination(
                                                                               n_barcodes,
                                                                               barcode_weights,
                                                                               consuming,
-                                                                              masked_regions)
+                                                                              masked_tree)
 
     #plot coverage only for first iteration of each parameter combination
     if iteration < 1 and not no_cov_plots:
@@ -95,7 +95,7 @@ def process_combination(
     return detected, barcode_distribution
 
 @profile_iteration
-def run_simulation_iteration(iteration_id, param_dictionary, genome_size, target_regions, masked_regions, log_file):
+def run_simulation_iteration(iteration_id, param_dictionary, genome_size, target_regions, masked_tree, log_file):
     """
     Executes a single iteration of the simulation.
     """
@@ -114,7 +114,7 @@ def run_simulation_iteration(iteration_id, param_dictionary, genome_size, target
             param_dictionary['n_barcodes'],
             param_dictionary['barcode_weights'],
             param_dictionary['consuming'],
-            masked_regions,
+            masked_tree,
             param_dictionary['output_path_plots'],
             param_dictionary['scaling'],
             param_dictionary['min_overlap_for_detection'],
