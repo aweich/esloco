@@ -756,14 +756,15 @@ both = pd.merge(pb, ont, how="inner", on=[3, "Length"], suffixes=("_pb", "_ont")
 print(both.head())
 
 #%%
-raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ONT_benchmark/out_full/Case1_ONT_matches_table.csv", sep="\t", header=0)
+raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ONT_benchmark/out_56/Case1_ONT56_matches_table.csv", sep="\t", header=0)
 
 print(raw.head())
 
 # Split using the last two underscores to handle problematic entries like 'GBA_x_0_999'
 raw[["gene", "Barcode", "Iteration"]] = raw["target_region"].str.rsplit("_", n=2, expand=True)
 
-raw = raw[(raw["coverage"] == 55)]
+ontdenom = 56
+raw = raw[(raw["coverage"] == ontdenom)]
 raw = raw.drop(columns=["target_region", "Barcode"])
 print(raw.head())
 
@@ -779,7 +780,8 @@ pbsim = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproducti
 #pbsim = pd.read_csv("/home/weichan/temporary/Data/Simulation/Revision_SoftMasking_Case1/Case1_logistic_matches_table.csv", sep="\t", header=0)
 pbsim[["gene", "Barcode", "Iteration"]] = pbsim["target_region"].str.rsplit("_", n=2, expand=True)
 
-pbsim = pbsim[(pbsim["coverage"] == 26)]
+pbdenom = 26
+pbsim = pbsim[(pbsim["coverage"] == pbdenom)]
 pbsim = pbsim.drop(columns=["target_region", "Barcode"])
 
 pbsim["Iteration"] = pbsim["Iteration"].astype(int)
@@ -797,12 +799,12 @@ both = both.rename(columns={3: "target"})
 
 # Merge simulation data (ONT simulation)
 combined = pd.merge(raw, both, on="target", how="inner")
-combined["norm_OTB_ontsim"] = (combined["on_target_bases"] / combined["Length"]) / 54 #coverage
+combined["norm_OTB_ontsim"] = (combined["on_target_bases"] / combined["Length"]) / ontdenom #coverage
 
 # Merge PacBio simulation data
 pbsim = pbsim.rename(columns={"target": "target"})  # ensure consistent naming
 combined = pd.merge(pbsim, combined, on="target", how="inner")
-combined["norm_OTB_pbsim"] = (combined["pb_otbs"] / combined["Length"]) / 26
+combined["norm_OTB_pbsim"] = (combined["pb_otbs"] / combined["Length"]) / pbdenom
 
 print("Merged Data:")
 print(combined.head())
@@ -841,10 +843,10 @@ for platform in plot_df["Platform"].unique():
         # Fetch the corresponding true value (make sure you divide correctly)
         if platform == "ONT":
             true_val = both.loc[both["target"] == gene, "norm_OTB_ont"].values
-            denom = 54.0
+            denom = ontdenom
         else:
             true_val = both.loc[both["target"] == gene, "norm_OTB_pb"].values
-            denom = 26.0
+            denom = pbdenom
 
         if true_val.size == 0:
             continue
@@ -927,7 +929,7 @@ offset = 0.25  # adjust to align with boxplot position
 sns.scatterplot(
     data=both,
     x=x_positions - offset,
-    y=both["norm_OTB_ont"]/54,
+    y=both["norm_OTB_ont"]/ontdenom,
     linewidth=2,
     edgecolor="#000000",
     #s=120,
@@ -943,7 +945,7 @@ sns.scatterplot(
 sns.scatterplot(
     data=both,
     x=x_positions + offset,  # shift right to align with PB boxplot
-    y=both["norm_OTB_pb"]/26,
+    y=both["norm_OTB_pb"]/pbdenom,
     linewidth=2,
     alpha=1,
     edgecolor="#000000",
@@ -1084,7 +1086,7 @@ y = ccc_data["seq"].values
 
 # Compute CCC
 ccc_value = concordance_correlation_coefficient(x, y)
-print(f"Concordance Correlation Coefficient (CCC) for 54: {ccc_value:.3f}")
+print(f"Concordance Correlation Coefficient (CCC) for: {ccc_value:.3f}")
 
 # Left plot: Regression
 sns.regplot(
@@ -1096,7 +1098,7 @@ sns.regplot(
     line_kws={"color": "black", "linestyle": "-"},
     label='ONT Data Points',
 )
-axes[0].set_title(f"54x (CCC={ccc_value:.4f})")
+axes[0].set_title(f"{ontdenom}x (CCC={ccc_value:.4f})")
 axes[0].set_xlabel("ONT Simulation OTBs")
 axes[0].set_ylabel("ONT Sequencing OTBs")
 axes[0].legend()
@@ -1138,7 +1140,7 @@ axes[1].legend()
 plt.tight_layout()
 plt.show()
 #%%
-cov26 = combined[combined["coverage_x"] == 26]
+cov26 = combined[combined["coverage_x"] == pbdenom]
 ccc_data = cov26[["target", "on_target_bases_x", "iteration_x"]]
 
 ccc_data = ccc_data.groupby("target").agg({"on_target_bases_x": "mean"}).reset_index()
@@ -1169,7 +1171,7 @@ y = ccc_data["seq"].values
 
 # Compute CCC
 ccc_value = concordance_correlation_coefficient(x, y)
-print(f"Concordance Correlation Coefficient (CCC) for 26: {ccc_value:.3f}")
+print(f"Concordance Correlation Coefficient (CCC) for: {ccc_value:.3f}")
 
 # Left plot: Regression
 sns.regplot(
@@ -1181,7 +1183,7 @@ sns.regplot(
     line_kws={"color": "black", "linestyle": "-"},
     label='PB Data Points',
 )
-axes[0].set_title(f"26x (CCC={ccc_value:.4f})")
+axes[0].set_title(f"{pbdenom}x (CCC={ccc_value:.4f})")
 axes[0].set_xlabel("PB Simulation OTBs")
 axes[0].set_ylabel("PB Sequencing OTBs")
 axes[0].legend()
@@ -1393,7 +1395,8 @@ df_logistic = cov_df[["Chromosome", "Start", "End", "block_prob_logistic"]]
 # %%
 
 maskpath = Path("/home/weichan/temporary/Data/Simulation/mask_test/")
-plt.figure(figsize=(4,4))
+plt.figure(figsize=(6,4))
+plt.axhline(y=0, color='#FF0080', linestyle='-', linewidth=4, alpha=0.8, label="Unmasked")
 for file in maskpath.glob("Case1_logistic_90_k10*.bed"):
     maskfile = pd.read_csv(file, sep="\t")
     print(maskfile.head())
@@ -1402,21 +1405,23 @@ for file in maskpath.glob("Case1_logistic_90_k10*.bed"):
     
     # Color mapping based on cutoff value
     color_map = {"m04": "blue", "m05": "red", "m06": "orange"}
+    color_map = {'m04': "#000000", 'm05': "#686868", 'm06': "#C4BFBF"}
     color = color_map.get(m, "black")  # default to black if cutoff not in map
     
-    sns.lineplot(x=cov_df["mean_cov"], y=maskfile["weight"], label=label, linewidth=4, alpha=0.6, color=color)
+    sns.lineplot(x=cov_df["mean_cov"], y=maskfile["weight"], label=label, linewidth=4, alpha=0.8, color=color)
     sns.scatterplot(
     y=cov_df[m][other_idx],
     x=cov_df.loc[other_idx, "mean_cov"],
     color=color,
     s=60,
-    alpha=0.8,
+    alpha=1,
     edgecolor="black",
     label=""
 )
-    plt.xscale("log")
+
+plt.xscale("log")
 plt.xlabel("Mean coverage (binned 100kb)")
-plt.ylabel("Blocking probability / mask weight")
+plt.ylabel("Masking probability")
 #plt.savefig("/home/weichan/temporary/Data/Simulation/RevisionPlots/SoftMask_Lineplot.svg", format="svg")
 plt.show()
 
@@ -1577,7 +1582,7 @@ for file in outpath.glob("*matches_table.csv"):
 
     # merge with sequencing truth table `both`
     merged = pd.merge(out, both, on="target", how="inner")
-    merged[f"norm_{label}_OTB"] = (merged["on_target_bases"] / merged["Length"]) / 26.0
+    merged[f"norm_{label}_OTB"] = (merged["on_target_bases"] / merged["Length"]) / pbdenom
 
     # record long-format simulation values for plotting
     tmp = merged[["target", f"norm_{label}_OTB"]].copy()
@@ -1596,7 +1601,7 @@ for file in outpath.glob("*matches_table.csv"):
         if true_val.size == 0:
             continue
 
-        true_v = float(true_val[0]) / 26.0
+        true_v = float(true_val[0]) / pbdenom
         center = np.median(gene_data)
         distances = np.abs(gene_data - center)
         obs_distance = abs(true_v - center)
@@ -1611,6 +1616,9 @@ for file in outpath.glob("*matches_table.csv"):
             "N": N
         })
 
+# Option: plot only significantly different genes
+only_significant = True  # set to False to plot all genes
+
 # make combined DataFrames
 sim_df = pd.concat(long_records, ignore_index=True)
 pvals_df = pd.DataFrame(pvals_results)
@@ -1624,23 +1632,64 @@ for mask_label, group in pvals_df.groupby("mask"):
     _, adj, _, _ = multipletests(pvals, alpha=0.05, method="fdr_bh")
     pvals_df.loc[pvals_df["mask"] == mask_label, "adjusted_p"] = adj
 
-# Prepare plotting order and palette
-gene_order = sorted(sim_df["target"].unique().tolist())
-sim_df["target"] = pd.Categorical(sim_df["target"], categories=gene_order, ordered=True)
-both["target"] = pd.Categorical(both["target"], categories=gene_order, ordered=True)
+# determine significant genes (any mask)
+sig_genes = pvals_df.loc[pvals_df["adjusted_p"] <= 0.05, "gene"].unique().tolist()
 
-masks = sorted(sim_df["mask"].unique().tolist())
-nm = len(masks)
-palette = {'90_k10_m04': "blue", '90_k10_m05': "red", '90_k10_m06': "orange"}
+# Prepare plotting order and palette
+if only_significant and len(sig_genes) > 0:
+    sim_df = sim_df[sim_df["target"].isin(sig_genes)].copy()
+    both_subset = both[both["target"].isin(sig_genes)].copy()
+    gene_order = sorted(sig_genes)
+else:
+    both_subset = both.copy()
+    gene_order = sorted(sim_df["target"].unique().tolist())
+
+sim_df["target"] = pd.Categorical(sim_df["target"], categories=gene_order, ordered=True)
+both_subset["target"] = pd.Categorical(both_subset["target"], categories=gene_order, ordered=True)
+
 
 # compute max y per gene to place annotations
 max_per_gene = sim_df.groupby("target")["norm_OTB"].max()
 # consider also PB truth values when computing annotation height
-pb_vals = both.set_index("target")["norm_OTB_pb"] / 26.0
+pb_vals = both_subset.set_index("target")["norm_OTB_pb"] / pbdenom
 max_y = pd.concat([max_per_gene, pb_vals.rename("pb")], axis=1).max(axis=1)
-y_margin = (max_y.max() - max_y.min()) * 0.08 if max_y.max() != max_y.min() else 0.05
+y_margin = (max_y.max() - max_y.min()) * 0.08 if (max_y.max() != max_y.min()) else 0.05
 
-plt.figure(figsize=(20, 6))
+if only_significant:
+    plt.figure(figsize=(8, 4))
+    unmasked = combined[["target", "norm_OTB_pbsim"]].copy()
+    unmasked = unmasked.rename(columns={"norm_OTB_pbsim": "norm_OTB"})
+    unmasked["mask"] = "Unmasked"
+    # only keep genes mentioned in sim_df
+    unmasked = unmasked[unmasked["target"].isin(gene_order)].copy()
+    sim_df = pd.concat([unmasked, sim_df], ignore_index=True)
+
+    unmasked_pvals = res_df[res_df["platform"] == "PB"][["gene", "empirical_p", "N", "adjusted_p"]].copy()
+    unmasked_pvals["mask"] = "Unmasked"
+    unmasked_pvals["m"] = "Unmasked"
+    unmasked_pvals = unmasked_pvals[unmasked_pvals["gene"].isin(gene_order)].copy()
+    pvals_df = pd.concat([unmasked_pvals, pvals_df], ignore_index=True)
+
+    sim_df["target"] = pd.Categorical(sim_df["target"], categories=gene_order, ordered=True)
+    both_subset["target"] = pd.Categorical(both_subset["target"], categories=gene_order, ordered=True)
+
+    masks = sorted(sim_df["mask"].unique().tolist())
+    nm = len(masks)##686868", 'm06': "#C4BFBF"
+    palette = {'90_k10_m04': "#000000", '90_k10_m05': "#686868", '90_k10_m06': "#C4BFBF", "Unmasked": "#FF0080"}
+    width = 0.8
+    lwidth = 2
+    fontsize=10
+
+else:
+    plt.figure(figsize=(20, 6))
+    masks = sorted(sim_df["mask"].unique().tolist())
+    nm = len(masks)
+    palette = {'90_k10_m04': "blue", '90_k10_m05': "red", '90_k10_m06': "orange"}
+    width = 0.8
+    lwidth = 2
+    fontsize = 12
+
+
 sns.boxplot(
     data=sim_df,
     x="target",
@@ -1648,33 +1697,54 @@ sns.boxplot(
     hue="mask",
     palette=palette,
     showfliers=False,
-    linewidth=2,
+    linewidth=lwidth,
     fill=False,
-    width=0.8
+    width=width
 )
 
 # overlay PB sequencing reference points
 x_positions = np.arange(len(gene_order))
-sns.lineplot(
-    data=both,
+"""sns.lineplot(
+    data=both_subset,
     x=x_positions,  # shift right to align with PB boxplot
-    y=both["norm_OTB_pb"]/26,
-    linewidth=2,
-    alpha=1,
-    #edgecolor="#000000",
+    y=both_subset["norm_OTB_pb"]/pbdenom,
+    linewidth=3,
+    alpha=0.6,
     marker="o",
-    #label="PacBio (Sequencing)",
     color="#000000",
     zorder=3
 )
+"""
+sns.scatterplot(
+    data=both_subset,
+    x=x_positions,
+    y=both_subset["norm_OTB_pb"]/pbdenom,
+    linewidth=2,
+    alpha=1,
 
+    edgecolor="#000000",
+    marker="o",
+    #label="PacBio (Sequencing)",
+    color="#FF0080",
+    zorder=3
+)
 # annotate significant mask/gene pairs with stars
-# compute horizontal offsets for masks so stars don't overlap
+# unmasked left most (if present), others scale accoridngly
 if nm > 1:
-    offsets = np.linspace(-0.25, 0.25, nm)
+    if "Unmasked" in masks:
+        others = [m for m in masks if m != "Unmasked"]
+        n_others = len(others)
+        if n_others > 0:
+            other_offsets = np.linspace(-0.1, 0.3, n_others)
+            mask_offset = {mask: other_offsets[i] for i, mask in enumerate(others)}
+        else:
+            mask_offset = {}
+        mask_offset["Unmasked"] = -0.3
+    else:
+        offsets = np.linspace(-0.25, 0.25, nm)
+        mask_offset = {mask: offsets[i] for i, mask in enumerate(masks)}
 else:
-    offsets = [0.0]
-mask_offset = {mask: offsets[i] for i, mask in enumerate(masks)}
+    mask_offset = {m: 0.0 for m in masks}
 
 for _, row in pvals_df.iterrows():
     adjp = row["adjusted_p"]
@@ -1691,13 +1761,15 @@ for _, row in pvals_df.iterrows():
 
     gene = row["gene"]
     mask = row["mask"]
-    m = row["m"]
-    x_pos = gene_order.index(gene) + mask_offset[mask]
+    m = row.get("m", "")
+    if gene not in gene_order:
+        continue  # skip annotations for genes not plotted
+    x_pos = gene_order.index(gene) + mask_offset.get(mask, 0.0)
     y_pos = max_y.loc[gene] + y_margin
-    plt.text(x_pos, y_pos, f"{star} {adjp} ({m})", ha="center", va="bottom", fontsize=12, color="black", rotation=90)
-     
-plt.xticks(rotation=90)
-plt.xlabel("Target Region")
+    plt.text(x_pos, y_pos, f"{star} {adjp:.3f} ({m})", ha="center", va="bottom", fontsize=fontsize, color="black", rotation=90)
+
+#plt.xticks(rotation=90)
+plt.xlabel("")
 plt.ylabel("Normalized On-Target Bases")
 plt.legend(frameon=False)
 sns.despine()
@@ -1705,10 +1777,23 @@ plt.tight_layout()
 #plt.savefig("/home/weichan/temporary/Data/Simulation/RevisionPlots/SoftMask_Boxplots.svg", format="svg")
 plt.show()
 #%%
-plt.figure(figsize=(4, 4))
-sns.barplot(y=["Unmasked", "m04", "m05", "m06"], x=[8, 6,4,4], palette={"Unmasked": "lightgrey", "m04": "blue", "m05": "red", "m06": "orange"},
-            edgecolor="black", linewidth=2)
-plt.xticks([0,2,4,6,8,10])
+plt.figure(figsize=(3, 4))
+colors = {'m04': "#000000", 'm05': "#555555", 'm06': "#888888", "Unmasked": "#FF0080"}
+colors = {'m04': "#000000", 'm05': "#686868", 'm06': "#C4BFBF", "Unmasked": "#FF0080"}
+labels = ["Unmasked", "m04", "m05", "m06"]
+values = [8, 6, 4, 4]
+
+ax = sns.barplot(y=labels, x=values, palette=[colors[l] for l in labels], dodge=False, width=0.6)
+
+# Make bars empty (no fill) and set colored outlines
+for i, patch in enumerate(ax.patches):
+    patch.set_facecolor('none')                 # no fill
+    patch.set_edgecolor(colors[labels[i]])      # colored outline
+    patch.set_linewidth(4)                      # outline width
+
+plt.xticks([0, 5, 10])
+plt.xlabel("Number of significant genes")
+plt.xticks([0,5,10])
 plt.xlabel("Number of significant genes")
 #plt.savefig("/home/weichan/temporary/Data/Simulation/RevisionPlots/SoftMask_Barplots.svg", format="svg")
 
