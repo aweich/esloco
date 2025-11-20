@@ -180,7 +180,7 @@ them beforehand to improve simulation speed.
 
 #### Blocked regions `[COMMON]`
 
-If there is a `blocked_regions_bedpath` provided, the simulation will use the locations, as defined by the first three columns (`chr` - `start` - `end`), as well as optional `id` and `weight` columns. The weight column ultimately determines how _strict_ the blocking of the defined region will be performed. If no `weight` is assigned, the default of 1, i.e. 100% will be applied. If only 50% of the reads that fall into this region are supposed to be blocked, `weight` should be set to 0.5. This allows for more complex non-uniformly distributed setups or partial monosomies. 
+If there is a `blocked_regions_bedpath` provided, the simulation will use the locations, as defined by the first three columns (`chrom` - `start` - `end`), as well as optional `id` and `weight` columns. The weight column ultimately determines how _strict_ the blocking of the defined region will be performed. If no `weight` is assigned, the default of 1, i.e. 100% will be applied. If only 50% of the reads that fall into this region are supposed to be blocked, `weight` should be set to 0.5. This allows for more complex non-uniformly distributed setups or partial monosomies. When setting custom weights, the columns **must** have the titles `chrom` - `start` - `end`- `weight`, otherwise `esloco` assumes no `weight` column has been assigned and all regions will be fully blocked. 
 
 >[!Note] 
 > When substantial portions of the genome are blocked, `consuming = False` introduces a major runtime cost. This is because many simulated reads are discarded before reaching the global coverage threshold, leading to substantially more read draws in total.
@@ -193,7 +193,7 @@ One key feature of the simulation is the option to manually assign weights to in
 
 <details>
 <summary>Show how weights of individual barcodes are calculated</summary>
-
+<br>
 Weights of individual barcodes are calculated as 
 
 $$S_{k} = \frac{W_{k} \cdot N}{D}$$
