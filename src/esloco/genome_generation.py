@@ -4,11 +4,12 @@ from joblib import delayed
 from tqdm import tqdm
 
 from esloco.create_insertion_genome import add_insertions_to_genome_sequence_with_bed
-from esloco.utils import check_barcoding, barcode_genome, track_usage
+from esloco.utils import check_barcoding, barcode_genome, track_usage, setup_logging
 from esloco.fasta_operations import pseudo_fasta_coordinates
 from esloco.bed_operations import readbed, chromosome_to_global_coordinates
 
-def parallel_barcoded_insertion_genome(i,chromosome_dir, bedpath, n_barcodes, ref_genome_size, insertion_length, insertion_numbers, insertion_number_distribution):
+def parallel_barcoded_insertion_genome(i,chromosome_dir, bedpath, n_barcodes, ref_genome_size, insertion_length, insertion_numbers, insertion_number_distribution, log_file):
+    setup_logging(log_file) #necessary for correct logging in parallel processes
     barcoded_chromosome_dir = barcode_genome(chromosome_dir, i)
     if not bedpath or bedpath.lower() == "none":
         logging.info("Insertions will be placed randomly...")
@@ -21,7 +22,7 @@ def parallel_barcoded_insertion_genome(i,chromosome_dir, bedpath, n_barcodes, re
     )
     return insertion_dict
 
-def create_barcoded_insertion_genome(parallel_jobs, reference_genome_path, bedpath, blocked_regions_bedpath, restriction, insertion_length, insertion_numbers, insertion_number_distribution, n_barcodes):
+def create_barcoded_insertion_genome(parallel_jobs, reference_genome_path, bedpath, blocked_regions_bedpath, restriction, insertion_length, insertion_numbers, insertion_number_distribution, n_barcodes, log_file):
     '''
     Pre-processment step of the insertion mode.
     The reference genome cooridnates are transformed into a string-like format (One single FASTA string) and the chromsome borders are stored
@@ -44,17 +45,17 @@ def create_barcoded_insertion_genome(parallel_jobs, reference_genome_path, bedpa
         masked_regions = chromosome_to_global_coordinates(blocked_bed, chromosome_dir)
     #3 Parallelized step
     if (n_barcodes == 1) or (parallel_jobs == 1):
-        # For a single barcode or core, run without parallelization is faster
+        # For only few or a single barcode or core, run without parallelization is faster
         parallel_results = [
         parallel_barcoded_insertion_genome(
             i, chromosome_dir, bedpath, n_barcodes, ref_genome_size, 
-            insertion_length, insertion_numbers, insertion_number_distribution
+            insertion_length, insertion_numbers, insertion_number_distribution, log_file
         )
         for i in tqdm(range(n_barcodes), desc=f"Creating {n_barcodes} I Genome(s) using {parallel_jobs} core(s)...")
     ]
     else:
         parallel_results = ParallelPbar(f"Creating {n_barcodes} I Genome(s) using {parallel_jobs} core(s)...")(n_jobs=parallel_jobs)(
-            delayed(parallel_barcoded_insertion_genome)(i, chromosome_dir, bedpath, n_barcodes, ref_genome_size, insertion_length, insertion_numbers, insertion_number_distribution)
+            delayed(parallel_barcoded_insertion_genome)(i, chromosome_dir, bedpath, n_barcodes, ref_genome_size, insertion_length, insertion_numbers, insertion_number_distribution, log_file)
             for i in range(n_barcodes)
         )
     #4 Unpack

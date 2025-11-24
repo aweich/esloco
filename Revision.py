@@ -720,15 +720,15 @@ for i in combined["target"].unique():
              i, 
              fontsize=11, ha="center", va="bottom", rotation=45)
 plt.xscale("log")
-plt.title("Effect of Target Length on SEM across Iteration Groups (Coverage = 27x)", pad=40)
+plt.title("Effect of Target Length on SEM across Iteration Groups", pad=40)
 plt.xlabel("Target Length (bp)")
 plt.ylabel("SEM (Target length normalized)")
 plt.legend(title="Iteration Group")
 sns.despine()
 plt.tight_layout()
-#plt.savefig("/home/weichan/temporary/Data/Simulation/RevisionPlots/TargetLength_SEM.svg", format="svg", bbox_inches='tight')
+plt.savefig("/home/weichan/temporary/Data/Simulation/RevisionPlots/TargetLength_SEM.svg", format="svg", bbox_inches='tight')
 plt.show()
-
+sys.exit()
 
 #%% comparison PacBio vs ONT OTBs
 
@@ -1705,5 +1705,26 @@ plt.tight_layout()
 #plt.savefig("/home/weichan/temporary/Data/Simulation/RevisionPlots/SoftMask_GBA1Coverage.svg", format="svg")
 
 plt.show()
+
+# %%
+
+insertions = pd.read_csv("/home/weichan/temporary/Data/Simulation/InsertionFeature/weigthed_chromosome1_insertion_locations.bed", sep="\t")
+print(insertions.head())
+
+insertion_count = insertions.groupby("chrom").size().reset_index(name="count")
+print(insertion_count)
+insertion_count["percentage"] = insertion_count["count"] / insertion_count["count"].sum() * 100
+print(insertion_count)
+insertion_count["location"] ="Insertion"
+
+fig, ax = plt.subplots(figsize=(4,4))
+ax = sns.barplot(insertion_count, x="chrom", y="percentage", 
+                 hue="location", dodge=True, 
+                 edgecolor="black", linewidth=2, palette={"Insertion": "#4967CA"})
+ax.bar_label(ax.containers[0], rotation=90, padding = 5, fontsize=15)
+plt.xlabel("")
+plt.xticks(rotation=90)
+plt.legend([],[], frameon=False)
+plt.ylabel("Percentage of Insertions (%)")
 
 # %%
