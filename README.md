@@ -1,4 +1,4 @@
-![PyPI version](https://badge.fury.io/py/esloco.svg)
+![PyPI version](https://badge.fury.io/py/esloco.svg) [![DOI](https://zenodo.org/badge/956026655.svg)](https://doi.org/10.5281/zenodo.17776160)
 
 <br>
 <p align="center">
