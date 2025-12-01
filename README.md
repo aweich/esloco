@@ -88,7 +88,7 @@ Below are the configuration options for the simulation, divided into three secti
 | `parallel_jobs`                | Number of cores assigned for parallelization; each job performs one iteration individually.         | `1`                                                                               |
 | `coverages`                    | List of coverages used for the simulation.                                                         | `[1]`                                                                      |
 | `mean_read_lengths`            | List of mean read lengths used for the simulation; each combination of coverages and lengths is performed per iteration. | `[10000]`                                                              |
-| `blocked_regions_bedpath`      | BED file with regions that will be blocked from read generation.                                    | `None`
+| `blocked_regions_bedpath`      | BED file with regions that will be blocked from read generation. [Optional partial masking](#blocked-regions-common) using `weight` column.                                   | `None`
 | `consuming`          | If `True`, reads assigned to masked/blocked regions are still counted as sequencing-yield consuming. Biologically, this represents reads that are sequenced but cannot be used/mapped downstream.                                                                | `False` 
  `no_cov_plots`      | Prevents the drawing of coverage plots during the first iteration. `True` significantly speeds up the simulation for small iteration numbers or high (`>25`) coverages.                                    | `False`                                                               |
  `seed`      | If defined, previous runs can be exactly reproduced.                                    | `random int`    
@@ -105,7 +105,7 @@ Below are the configuration options for the simulation, divided into three secti
 |---------------------------------|-----------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
 | `insertion_number_distribution`| Distribution of insertion numbers; if not `poisson`, numbers are fixed.                            | `None`                                                                          |
 | `insertion_length`             | Length of the inserted sequence.                                                                   | `1000`                                                                            |
-| `bedpath`                      | BED file that limits the insertion placement.                                                      | `None`                                               |
+| `bedpath`                      | BED file that limits the insertion placement. [Optional biased placement](#weighted-insertion-locations-i) using `weight` column. Without `weight`, insertions are placed relative to the size of the defined regions.                                                     | `None`                                               |
 | `insertion_numbers`            | Number of insertions; if `insertion_number_distribution=poisson`, this is the mean of the distribution, and the actual number is drawn randomly. | `5`                                                                                |
 
 ---
@@ -222,7 +222,11 @@ Generally, if any of the `BED` files provided contain entries with only a chromo
 
 #### Fixed insertion numbers and/or locations `[I]`
 
-It is also possible to fix the number and/or location of insertions. For this, the `insertion_number_distribution` in the `configfile` needs to be set to anything else than `poisson`, which is the default. By doing this, the `insertion_numbers` option will use the defined value as a fixed value, and not as the mean value of a poisson distribution. For a fixed number of insertions at specific locations, this can be achieved by providing a `bedpath` in the `[I]` section of the `configfile`, which has the exact same number of entries as `insertion_numbers`.
+It is also possible to fix the number and/or location of insertions. For this, the `insertion_number_distribution` in the `configfile` needs to be set to anything else than `poisson`, which is the default. By doing this, the `insertion_numbers` option will use the defined value as a fixed value, and not as the mean value of a poisson distribution. For a fixed number of insertions at specific locations, this can be achieved by providing a `bedpath` in the `[I]` section of the `configfile`, which has the exact same number of entries as `insertion_numbers`. 
+
+#### Weighted insertion locations `[I]`
+
+If a `bedpath` containing a different number of regions than specified in `insertion_numbers` is provided, `esloco` will distribute insertions proportionally to the lengths of the regions in the BED by default. However, if the BED file includes an additional `weight` column (`chrom` - `start` - `end`- `weight`), `esloco` will instead place insertions according to the normalized weights, allowing explicit control over the insertion probabilities for each region. 
 
 ---
 ## Scaling up

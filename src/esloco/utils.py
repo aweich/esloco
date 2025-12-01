@@ -13,6 +13,11 @@ def track_usage(label=None):
     logging.info(f"Process: {label}, CPU: {cpu_usage}%, Memory: {memory_usage}%")
 
 def setup_logging(filename):
+    root = logging.getLogger()
+    if root.handlers:
+        for handler in root.handlers[:]:
+            root.removeHandler(handler)
+
     logging.basicConfig(
         filename=filename,
         level=logging.INFO,

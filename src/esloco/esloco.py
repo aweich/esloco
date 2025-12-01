@@ -114,6 +114,7 @@ def main():
             param_dictionary['insertion_numbers'],
             param_dictionary['insertion_number_distribution'],
             param_dictionary['n_barcodes'],
+            log_file
         )
         logging.info(f"Number of insertions: {len(insertion_dict)}")
         target_regions = insertion_dict
