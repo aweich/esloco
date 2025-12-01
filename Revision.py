@@ -16,8 +16,9 @@ sns.set_theme(style="ticks", rc=custom_params)
 sns.set_context("talk", font_scale=1.0)
 
 # Path to your log file
-logfile = "/home/weichan/permanent/Projects/VIS/VIS_Simulation/out_rev/ressources/Case1_log.log"
-
+#logfile = "/home/weichan/permanent/Projects/VIS/VIS_Simulation/out_rev/ressources/Case1_log.log"
+logfile = "/home/weichan/temporary/Data/Simulation/PB_benchmark/out/Case1_log.log"
+#logfile= "/home/weichan/temporary/Data/Simulation/ONT_benchmark/out_fullfullrange/Case1_ONT_fullrange_log.log"
 # Regex patterns for the two line types
 iteration_pattern = re.compile(
     r"Iteration\s+(\d+):\s+Time=(\d+(?:\.\d+)?)s,\s+Memory Used=(\d+(?:\.\d+)?)MB,\s+CPU=(\d+(?:\.\d+)?)%"
@@ -726,9 +727,9 @@ plt.ylabel("SEM (Target length normalized)")
 plt.legend(title="Iteration Group")
 sns.despine()
 plt.tight_layout()
-plt.savefig("/home/weichan/temporary/Data/Simulation/RevisionPlots/TargetLength_SEM.svg", format="svg", bbox_inches='tight')
+#plt.savefig("/home/weichan/temporary/Data/Simulation/RevisionPlots/TargetLength_SEM.svg", format="svg", bbox_inches='tight')
 plt.show()
-sys.exit()
+
 
 #%% comparison PacBio vs ONT OTBs
 
@@ -757,7 +758,7 @@ print(both.head())
 
 #%%
 raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ONT_benchmark/out_56/Case1_ONT5758_matches_table.csv", sep="\t", header=0)
-
+#raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ONT_benchmark/out_fullfullrange/Case1_ONT_fullrange_matches_table.csv", sep="\t", header=0)
 print(raw.head())
 
 # Split using the last two underscores to handle problematic entries like 'GBA_x_0_999'
@@ -1707,7 +1708,7 @@ plt.tight_layout()
 plt.show()
 
 # %%
-
+# weighted insertion feature (comment #5)
 insertions = pd.read_csv("/home/weichan/temporary/Data/Simulation/InsertionFeature/weigthed_chromosome1_insertion_locations.bed", sep="\t")
 print(insertions.head())
 

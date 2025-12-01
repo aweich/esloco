@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 custom_params = {"axes.spines.right": False, "axes.spines.top": False}
 sns.set_theme(style="ticks", rc=custom_params)
 #out="/home/weichan/temporary/Data/Simulation/ROI_test/Case1/analysis/"
-raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/Case1/Case1_matches_table.csv", sep="\t", header=0)
-#raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ONT_benchmark/out_full/Case1_ONT_matches_table.csv", sep="\t", header=0)
+#raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/Case1/Case1_matches_table.csv", sep="\t", header=0)
+raw = pd.read_csv("/home/weichan/temporary/Data/Simulation/ONT_benchmark/out_fullfullrange/Case1_ONT_fullrange_matches_table.csv", sep="\t", header=0)
 
 print(raw["target_region"].unique())
 
@@ -51,8 +51,8 @@ coverage_levels = raw["coverage"].unique()
 print(len(averaged_bases_on_target))
 
 # %%
-seq = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/fromsra/SRR8955270_GroundTruth_OTBs.bed", sep="\t", header=None)
-#seq = pd.read_csv("/home/weichan/temporary/Data/Simulation/ONT_benchmark/ONT_GroundTruth_OTBs.bed", sep="\t", header=None)
+#seq = pd.read_csv("/home/weichan/temporary/Data/Simulation/ROI_test_reproduction/fromsra/SRR8955270_GroundTruth_OTBs.bed", sep="\t", header=None)
+seq = pd.read_csv("/home/weichan/temporary/Data/Simulation/ONT_benchmark/ONT_GroundTruth_OTBs.bed", sep="\t", header=None)
 print(seq.head())
 seq["Length"] = seq[2] - seq[1]
 true_positive = seq.groupby([3, "Length"])[10].sum().reset_index()
@@ -107,9 +107,9 @@ for gene in ["WDR45", "PRKRA"]:
 print(coverage_levels)
 #sys.exit()
 #spcific level
-coverage_levels = [20,21,22,23,24,25,26,27,28,29,30]
+#coverage_levels = [20,21,22,23,24,25,26,27,28,29,30]
 #coverage_levels = [26]
-#coverage_levels = [53,54,55]
+coverage_levels = [53,54,55,56,57,58]
 statistical_results = []
 
 # Ensure 'gene' in raw matches column 3 in seq for merging
@@ -231,7 +231,7 @@ print(ccc_data.head())
 
 ### ccc
 num_columns = len(ccc_data.columns)
-fig, axes = plt.subplots(nrows=int(np.ceil(num_columns / 2)), ncols=6, figsize=(20, 5 * int(np.ceil(num_columns / 3))))
+fig, axes = plt.subplots(nrows=int(np.ceil(num_columns / 2)), ncols=4, figsize=(20, 5 * int(np.ceil(num_columns / 3))))
 axes = axes.flatten()
 
 for i, column in enumerate(ccc_data.columns):
@@ -252,7 +252,7 @@ for i, column in enumerate(ccc_data.columns):
         ax=axes[i],
         x=x,
         y=y,
-        color="#FF0080", #'#00A2FF',
+        color='#00A2FF',#"#FF0080", #'#00A2FF',
         scatter_kws={'alpha': 0.4, 's': 50},
         line_kws={"color": "red", "linestyle": "--"},
         label='Data Points'
@@ -270,7 +270,7 @@ for j in range(i + 1, len(axes)):
 # Adjust layout
 plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 plt.tight_layout()
-#plt.savefig("/home/weichan/permanent/Projects/VIS/ProgressReport/simulation_description/Supplement/Updated_Case1_PB_CCC_plot.svg",format="svg", bbox_inches='tight')
+#plt.savefig("/home/weichan/permanent/Projects/VIS/ProgressReport/simulation_description/Supplement/Updated_Case1_PB_CCC_Supp_plot.svg",format="svg", bbox_inches='tight')
 #plt.savefig("/home/weichan/permanent/Projects/Presentations_Public/ISMB25/CCC_plot.svg",format="svg", bbox_inches='tight')
 plt.show()
 
