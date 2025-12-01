@@ -17,7 +17,7 @@ def add_insertions_to_genome_sequence_with_bed(reference_sequence,
 
     For each insertion, a random position on the reference sequence is chosen and its coordinates are stored. 
     For all follwoing insertions, the coordinates of their location are updated if needed (i.e. if they happend to insert at an earlier position)
-    In case of a bed-guided insertion, each region in the file is assigned a probability according to its length.
+    In case of a bed-guided insertion, each region in the file is assigned a probability according to its provided weight or length.
     '''
     position = {}
     if insertion_number_distribution == 'poisson':
@@ -29,9 +29,19 @@ def add_insertions_to_genome_sequence_with_bed(reference_sequence,
     if bed_df is not None:
         logging.info("BED guided insertion pattern...")
         # Step 1: Calculate probabilities based on region lengths
-        logging.info("Calculating insertion probabilities (region length / sum of all regions lengths)...")
-        region_lengths = bed_df['end'] - bed_df['start']
-        region_probabilities = region_lengths / region_lengths.sum()
+        if np.mean(bed_df['weight'].astype(float)) != 1.0:
+            logging.info("Using provided weights for insertion placement...")
+            region_probabilities = bed_df['weight'].astype(float)
+            if region_probabilities.sum() != 1:
+                logging.info("Insertion weights do not sum to 1. Normalizing weights...")
+                region_probabilities = region_probabilities / region_probabilities.sum()
+                logging.info(f"Normalized insertion weights: {region_probabilities}")
+
+        else:
+            logging.info("No weights provided or incorrect. Calculating insertion probabilities (region length / sum of all regions lengths)...")
+            region_lengths = bed_df['end'] - bed_df['start']
+            region_probabilities = region_lengths / region_lengths.sum()
+        
         for i in range(num_insertions):
             # Step 2: Randomly select insertion regions #so that each region is selected once!
             if len(bed_df.index) == num_insertions:

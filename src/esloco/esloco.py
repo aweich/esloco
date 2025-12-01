@@ -20,7 +20,7 @@ from esloco.config_handler import parse_config
 
 #custom functions
 #from create_insertion_genome import add_insertions_to_genome_sequence_with_bed
-from esloco.utils import track_usage, setup_logging
+from esloco.utils import track_usage, setup_logging, build_mask_tree
 from esloco.bed_operations import global_to_chromosome_coordinates
 from esloco.genome_generation import create_barcoded_insertion_genome, create_barcoded_roi_genome
 from esloco.combined_calculations import run_simulation_iteration
@@ -114,6 +114,7 @@ def main():
             param_dictionary['insertion_numbers'],
             param_dictionary['insertion_number_distribution'],
             param_dictionary['n_barcodes'],
+            log_file
         )
         logging.info(f"Number of insertions: {len(insertion_dict)}")
         target_regions = insertion_dict
@@ -132,15 +133,21 @@ def main():
     else:
         logging.error("Error: Invalid mode selected.")
         sys.exit(1)
+    
+    # efficient region masking using interval trees if masked regions are provided
+    if masked_regions:
+        masked_tree = build_mask_tree(masked_regions)
+    else:
+        masked_tree = masked_regions
 
     # Parallel execution
     if (num_iterations == 1) or (parallel_jobs == 1):
         # For a single barcode or core, run without parallelization is faster
         for i in tqdm(range(num_iterations), desc="Iterations..."):
-            parallel_results = [run_simulation_iteration(i, param_dictionary, genome_size, target_regions, masked_regions, log_file)]
+            parallel_results = [run_simulation_iteration(i, param_dictionary, genome_size, target_regions, masked_tree, log_file)]
     else:
-        parallel_results = ParallelPbar("Iterationsp...")(n_jobs=parallel_jobs)(
-        delayed(run_simulation_iteration)(i, param_dictionary, genome_size, target_regions, masked_regions, log_file)
+        parallel_results = ParallelPbar("Iterations...")(n_jobs=parallel_jobs)(
+        delayed(run_simulation_iteration)(i, param_dictionary, genome_size, target_regions, masked_tree, log_file)
         for i in range(num_iterations)
     )
 
