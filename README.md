@@ -39,13 +39,13 @@ The illustration above demonstrates the workflow of `esloco`, which iteratively 
 
 ### Installation
 
-The simulation and all its dependencies can be installed from [PyPI](https://pypi.org/project/esloco/) using `pip` via
+The simulation and all its dependencies can be installed from [PyPI](https://pypi.org/project/esloco/) using `pip`
 
 ```bash
 pip install esloco
 ```
 
-or build it yourself via
+or build it yourself using
 
 ```bash
 git clone https://github.com/aweich/esloco.git
