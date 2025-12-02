@@ -44,10 +44,15 @@ The simulation and all its dependencies can be installed from [PyPI](https://pyp
 ```bash
 pip install esloco
 ```
+
+or build it yourself via
+
+```bash
+git clone https://github.com/aweich/esloco.git
+cd esloco
+pip install .
+```
 ---
-
-or by cloning this repository and manually installing the dependencies mentioned in the `.toml` file. 
-
 ### Usage
 
 Run the simulation on the command line using
@@ -253,4 +258,4 @@ done
 
 ## Citation & Contribution
 
-If you like this tool, please consider giving it a star. If you are using this tool for your research, please cite our upcoming publication. 
+If you like this tool, please consider giving it a star. If you are using this tool for your research, please cite our upcoming publication. If you encounter a bug or have a feature suggestion, feel free to open an issue.
