@@ -15,7 +15,7 @@ Simulation-guided <ins>es</ins>timation of <ins>lo</ins>cal <ins>co</ins>verage 
 <p align="center">
 <code>esloco</code> is a flexible tool for estimating local coverage in long-read DNA sequencing experiments, designed to support both <em>a priori</em> experimental planning and <em>post hoc</em> interpretation of sequencing results.
  <br>
-    <a href="https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/btag009/8418384">(see *Weich et al. in Bioinformatics, 2026*)</a>
+    <a href="https://academic.oup.com/bioinformatics/advance-article/doi/10.1093/bioinformatics/btag009/8418384">(see <em>Weich et al. in Bioinformatics, 2026</em>)</a>
 </p>
 
 ### Summary
